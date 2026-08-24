@@ -6,12 +6,12 @@ import qrcode
 from io import BytesIO
 
 st.set_page_config(
-    page_title="ServiceTicker Pro - Perfect Print Edition",
+    page_title="ServiceTicker Pro - Stable Print Edition",
     layout="wide",
     page_icon="💻"
 )
 
-# --- CSS สำหรับจัดการการพิมพ์ (Print CSS) ---
+# --- CSS สำหรับซ่อนเมนูเวลาพิมพ์ ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
@@ -21,23 +21,11 @@ st.markdown("""
     }
 
     @media print {
-        /* ซ่อนองค์ประกอบของ Streamlit ทั้งหมดเมื่อสั่งพิมพ์ */
         header, footer, [data-testid="stSidebar"], .stButton, .stSelectbox, .stRadio, .no-print {
             display: none !important;
         }
         body {
             background-color: white !important;
-        }
-        .printable-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 10px;
-            background: white !important;
-            color: black !important;
-            box-shadow: none !important;
         }
     }
     </style>
@@ -45,7 +33,7 @@ st.markdown("""
 
 # --- 1. DATABASE SETUP ---
 def init_db():
-    conn = sqlite3.connect('serviceticker_perfect_v5.db', check_same_thread=False)
+    conn = sqlite3.connect('serviceticker_fixed_v6.db', check_same_thread=False)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -164,12 +152,11 @@ mode = query_params.get("mode", "")
 if mode == "register":
     st.title(f"🛠️ {shop_info['shop_name']}")
     st.subheader("📝 ลงทะเบียนแจ้งซ่อมด้วยตนเอง")
-    st.write("กรุณากรอกข้อมูลอุปกรณ์และอาการเสียเพื่อให้ช่างตรวจสอบเบื้องต้นครับ")
     
     with st.form("cust_reg_form"):
         c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
         c_phone = st.text_input("เบอร์โทรศัพท์มือถือ")
-        c_model = st.text_input("รุ่นคอมพิวเตอร์ / โน้ตบุ๊ก (เช่น ASUS TUF)")
+        c_model = st.text_input("รุ่นคอมพิวเตอร์ / โน้ตบุ๊ก")
         c_sn = st.text_input("Serial Number (ถ้ามี)")
         c_issue = st.text_area("อาการเสีย / ปัญหาที่พบ")
         
@@ -188,12 +175,7 @@ if mode == "register":
                 conn.commit()
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{j_no}**")
             else:
-                st.error("❌ กรุณากรอกชื่อ เบอร์โทร และรุ่นคอมพิวเตอร์ให้ครบถ้วน")
-    
-    st.markdown("---")
-    if st.button("🔐 สำหรับเจ้าของร้าน: กลับสู่ระบบหลังบ้าน"):
-        st.query_params.clear()
-        st.rerun()
+                st.error("❌ กรุณากรอกข้อมูลให้ครบถ้วน")
     st.stop()
 
 # ====================================================
@@ -218,9 +200,6 @@ if not st.session_state.logged_in:
                 if user:
                     st.session_state.logged_in = True
                     st.session_state.user = {"id": user[0], "username": user[1], "name": user[3], "role": user[4]}
-                    cursor.execute("INSERT INTO audit_logs (timestamp, username, action) VALUES (?, ?, ?)", 
-                                   (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user[1], "Login เข้าสู่ระบบ"))
-                    conn.commit()
                     st.success("เข้าสู่ระบบสำเร็จ!")
                     st.rerun()
                 else:
@@ -235,13 +214,11 @@ current_user = st.session_state.user
 
 with st.sidebar:
     st.markdown(f"### 👤 ผู้ใช้งาน: {current_user['name']}")
-    st.write(f"**สิทธิ์:** {current_user['role']}")
     if st.button("🚪 ออกจากระบบ", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user = None
         st.rerun()
     st.markdown("---")
-    st.markdown("### 🛠️ เมนูระบบหลัก")
     
     menu = st.sidebar.radio("เลือกเมนูการทำงาน", [
         "🛠️ ระบบรับ-ส่งงานซ่อม",
@@ -259,7 +236,7 @@ with st.sidebar:
     ])
 
 # ----------------------------------------------------
-# 1. ระบบรับ-ส่งงานซ่อม (พร้อมระบบพิมพ์ฟอร์มถูกต้อง 100%)
+# 1. ระบบรับ-ส่งงานซ่อม (แก้ไขฟอร์มพิมพ์ให้สมบูรณ์)
 # ----------------------------------------------------
 if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
     st.subheader("🛠️ ระบบบริหารจัดการงานซ่อมคอมพิวเตอร์")
@@ -299,16 +276,18 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
             j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{st.session_state['last_saved_job']}'", conn).iloc[0]
             
             st.markdown("""
-                <button onclick="window.print()" class="no-print" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin-bottom:15px;">
-                    🖨️ กดที่นี่เพื่อสั่งพิมพ์ (Print Document)
-                </button>
+                <div class="no-print">
+                    <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin-bottom:15px;">
+                        🖨️ กดที่นี่เพื่อสั่งพิมพ์เอกสาร (Print Document)
+                    </button>
+                </div>
             """, unsafe_allow_html=True)
             
             st.markdown(f"""
-            <div class="printable-area" style="border: 1px solid #333; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
+            <div style="border: 1px solid #333; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
                 <h2 style="text-align:center; margin:0;">{shop_info['shop_name']}</h2>
                 <p style="text-align:center; font-size:12px; margin:2px;">ที่อยู่: {shop_info['address']} | โทร. {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
-                <h3 style="text-align:center; margin: 15px 0 5px 0; border-bottom: 2px solid #000; padding-bottom: 5px;">ใบรับซ่อมสินค้า / SERVICE RECEIPT (ต้นฉบับสำหรับร้าน)</h3>
+                <h3 style="text-align:center; margin: 15px 0 5px 0; border-bottom: 2px solid #000; padding-bottom: 5px;">ใบรับซ่อมสินค้า / SERVICE RECEIPT</h3>
                 
                 <table style="width:100%; font-size:14px; margin-top: 15px; border-collapse: collapse;">
                     <tr><td style="padding: 5px;"><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td style="padding: 5px;"><b>วันที่รับ:</b> {j_data['date']}</td></tr>
@@ -325,23 +304,6 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
                     </tr>
                 </table>
             </div>
-
-            <div style="border-top: 2px dashed #999; margin: 40px 0; text-align: center; color: #666;" class="no-print">✂️ ------------------------------------ รอยปะตัดสำหรับลูกค้ามารับเครื่อง ------------------------------------ ✂️</div>
-
-            <div class="printable-area" style="border: 1px solid #333; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
-                <h2 style="text-align:center; margin:0;">{shop_info['shop_name']}</h2>
-                <p style="text-align:center; font-size:12px; margin:2px;">โทร. {shop_info['phone']} | {shop_info['footer_message']}</p>
-                <h3 style="text-align:center; margin: 15px 0 5px 0; border-bottom: 2px solid #000; padding-bottom: 5px;">ใบรับซ่อมสินค้า / SERVICE RECEIPT (สำเนาสำหรับลูกค้า)</h3>
-                
-                <table style="width:100%; font-size:14px; margin-top: 15px; border-collapse: collapse;">
-                    <tr><td style="padding: 5px;"><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td style="padding: 5px;"><b>วันที่รับ:</b> {j_data['date']}</td></tr>
-                    <tr><td style="padding: 5px;"><b>ชื่อลูกค้า:</b> {j_data['customer']}</td><td style="padding: 5px;"><b>เบอร์โทร:</b> {j_data['phone']}</td></tr>
-                    <tr><td style="padding: 5px;"><b>รุ่นอุปกรณ์:</b> {j_data['device_model']}</td><td style="padding: 5px;"><b>Serial No:</b> {j_data['serial_no']}</td></tr>
-                    <tr><td colspan="2" style="padding: 5px;"><b>อาการเสีย / ตำหนิ:</b> {j_data['issue']}</td></tr>
-                </table>
-                <br>
-                <p style="font-size:12px; text-align:center; color:#555;">*กรุณานำใบรับซ่อมนี้มาแสดงทุกครั้งเมื่อมารับอุปกรณ์คืนจากทางร้าน</p>
-            </div>
             """, unsafe_allow_html=True)
                 
     with tab2:
@@ -354,7 +316,7 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
             row = repairs_df[repairs_df['job_no'] == selected_job].iloc[0]
             
             shortcut_doc = st.selectbox("เลือกประเภทเอกสารที่ต้องการพิมพ์", [
-                "ใบรับซ่อม (A4 ปะรอยฉีก)", 
+                "ใบรับซ่อม", 
                 "ใบประเมินราคา", 
                 "ใบเสนอราคา", 
                 "ใบส่งของ", 
@@ -364,86 +326,60 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
             ])
             
             st.markdown("""
-                <button onclick="window.print()" class="no-print" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin: 10px 0;">
-                    🖨️ สั่งพิมพ์เอกสารนี้ (Print)
-                </button>
+                <div class="no-print">
+                    <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin: 10px 0;">
+                        🖨️ กดที่นี่เพื่อสั่งพิมพ์เอกสาร (Print Document)
+                    </button>
+                </div>
             """, unsafe_allow_html=True)
             
-            # พรีวิวฟอร์มเอกสารทางธุรกิจที่ถูกต้องตามมาตรฐาน
-            if shortcut_doc == "ใบรับซ่อม (A4 ปะรอยฉีก)":
-                st.markdown(f"""
-                <div class="printable-area" style="border: 1px solid #333; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
-                    <h2 style="text-align:center; margin:0;">{shop_info['shop_name']}</h2>
-                    <p style="text-align:center; font-size:12px; margin:2px;">ที่อยู่: {shop_info['address']} | โทร. {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
-                    <h3 style="text-align:center; margin: 15px 0 5px 0; border-bottom: 2px solid #000; padding-bottom: 5px;">ใบรับซ่อมสินค้า (ต้นฉบับสำหรับร้าน)</h3>
-                    
-                    <table style="width:100%; font-size:14px; margin-top: 15px;">
-                        <tr><td><b>เลขที่ใบงาน:</b> {row['job_no']}</td><td><b>วันที่รับ:</b> {row['date']}</td></tr>
-                        <tr><td><b>ชื่อลูกค้า:</b> {row['customer']}</td><td><b>เบอร์โทร:</b> {row['phone']}</td></tr>
-                        <tr><td><b>รุ่นอุปกรณ์:</b> {row['device_model']}</td><td><b>Serial No:</b> {row['serial_no']}</td></tr>
-                        <tr><td colspan="2"><b>อาการเสีย:</b> {row['issue']}</td></tr>
-                        <tr><td><b>ช่างผู้รับผิดชอบ:</b> {row['technician']}</td><td><b>สถานะ:</b> {row['status']}</td></tr>
-                    </table>
-                </div>
-                <br>
-                <div class="printable-area" style="border: 1px solid #333; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
-                    <h2 style="text-align:center; margin:0;">{shop_info['shop_name']}</h2>
-                    <p style="text-align:center; font-size:12px; margin:2px;">โทร. {shop_info['phone']} | {shop_info['footer_message']}</p>
-                    <h3 style="text-align:center; margin: 15px 0 5px 0; border-bottom: 2px solid #000; padding-bottom: 5px;">ใบรับซ่อมสินค้า (สำเนาสำหรับลูกค้า)</h3>
-                    
-                    <table style="width:100%; font-size:14px; margin-top: 15px;">
-                        <tr><td><b>เลขที่ใบงาน:</b> {row['job_no']}</td><td><b>วันที่รับ:</b> {row['date']}</td></tr>
-                        <tr><td><b>ชื่อลูกค้า:</b> {row['customer']}</td><td><b>เบอร์โทร:</b> {row['phone']}</td></tr>
-                        <tr><td><b>รุ่นอุปกรณ์:</b> {row['device_model']}</td><td><b>Serial No:</b> {row['serial_no']}</td></tr>
-                        <tr><td colspan="2"><b>อาการเสีย:</b> {row['issue']}</td></tr>
-                    </table>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="printable-area" style="border: 1px solid #222; padding: 35px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <div>
+            # ฟอร์มเอกสารที่แก้ไขโครงสร้าง HTML ให้อยู่ในรูปตารางที่ถูกต้อง ป้องกันข้อผิดพลาดตอนพิมพ์
+            st.markdown(f"""
+            <div style="border: 1px solid #222; padding: 35px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td>
                             <h2 style="margin:0;">{shop_info['shop_name']}</h2>
-                            <p style="font-size:12px; margin:0;">{shop_info['address']}<br>โทร: {shop_info['phone']} | เลขประจำตัวผู้เสียภาษี: {shop_info['tax_id']}</p>
-                        </div>
-                        <div style="text-align:right;">
+                            <p style="font-size:12px; margin:0;">{shop_info['address']}<br>โทร: {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
+                        </td>
+                        <td style="text-align:right; vertical-align:top;">
                             <h2 style="color:#1E3A8A; margin:0;">{shortcut_doc.upper()}</h2>
                             <p style="font-size:12px; margin:0;"><b>เลขที่:</b> DOC-{row['job_no']}<br><b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
-                        </div>
-                    </div>
-                    <hr style="margin: 15px 0;">
-                    <p style="font-size:14px; margin:5px 0;"><b>นามลูกค้า:</b> {row['customer']} (โทร: {row['phone']})</p>
-                    
-                    <table style="width:100%; border-collapse: collapse; margin-top: 20px; font-size:14px;" border="1">
-                        <tr style="background:#f2f2f2;">
-                            <th style="padding:10px; text-align:left;">ลำดับ</th>
-                            <th style="padding:10px; text-align:left;">รายการสินค้า / บริการซ่อม ({row['device_model']})</th>
-                            <th style="padding:10px; text-align:center;">จำนวน</th>
-                            <th style="padding:10px; text-align:right;">ราคาต่อหน่วย</th>
-                            <th style="padding:10px; text-align:right;">จำนวนเงิน (บาท)</th>
-                        </tr>
-                        <tr>
-                            <td style="padding:10px;">1</td>
-                            <td style="padding:10px;">ค่าบริการตรวจเช็คและซ่อมอุปกรณ์ (S/N: {row['serial_no']})</td>
-                            <td style="padding:10px; text-align:center;">1</td>
-                            <td style="padding:10px; text-align:right;">{row['total_price']:,.2f}</td>
-                            <td style="padding:10px; text-align:right;">{row['total_price']:,.2f}</td>
-                        </tr>
-                    </table>
-                    <br>
-                    <div style="text-align:right; font-size:16px;">
-                        <p><b>ยอดรวมทั้งสิ้น:</b> {row['total_price']:,.2f} บาท</p>
-                    </div>
-                    <br><br>
-                    <table style="width:100%; font-size:14px; margin-top:30px;">
-                        <tr>
-                            <td style="text-align:center; width:50%;">___________________________________<br>ผู้มีอำนาจลงนาม / ผู้ออกเอกสาร</td>
-                            <td style="text-align:center; width:50%;">___________________________________<br>ผู้รับสินค้า / ลูกค้า</td>
-                        </tr>
-                    </table>
+                        </td>
+                    </tr>
+                </table>
+                <hr style="margin:15px 0;">
+                <p style="font-size:14px;"><b>นามลูกค้า:</b> {row['customer']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>เบอร์โทร:</b> {row['phone']}</p>
+                
+                <table style="width:100%; border-collapse: collapse; margin-top: 20px; font-size:14px;" border="1">
+                    <tr style="background:#f2f2f2;">
+                        <th style="padding:10px; text-align:left; width:10%;">ลำดับ</th>
+                        <th style="padding:10px; text-align:left; width:50%;">รายการสินค้า / บริการซ่อม ({row['device_model']})</th>
+                        <th style="padding:10px; text-align:center; width:10%;">จำนวน</th>
+                        <th style="padding:10px; text-align:right; width:15%;">ราคาต่อหน่วย</th>
+                        <th style="padding:10px; text-align:right; width:15%;">จำนวนเงิน</th>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px;">1</td>
+                        <td style="padding:10px;">ค่าบริการตรวจเช็คและซ่อมอุปกรณ์ (S/N: {row['serial_no']})</td>
+                        <td style="padding:10px; text-align:center;">1</td>
+                        <td style="padding:10px; text-align:right;">{row['total_price']:,.2f}</td>
+                        <td style="padding:10px; text-align:right;">{row['total_price']:,.2f}</td>
+                    </tr>
+                </table>
+                <br>
+                <div style="text-align:right; font-size:16px;">
+                    <p><b>ยอดรวมทั้งสิ้น:</b> {row['total_price']:,.2f} บาท</p>
                 </div>
-                """, unsafe_allow_html=True)
+                <br><br>
+                <table style="width:100%; font-size:14px; margin-top:30px; border-collapse:collapse;">
+                    <tr>
+                        <td style="text-align:center; width:50%;">___________________________________<br>ผู้มีอำนาจลงนาม / ผู้ออกเอกสาร</td>
+                        <td style="text-align:center; width:50%;">___________________________________<br>ผู้รับสินค้า / ลูกค้า</td>
+                    </tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
             
             st.markdown("---")
             st.markdown("### ⚙️ อัปเดตสถานะและคำนวณค่าบริการปกติ")
@@ -514,9 +450,11 @@ elif menu == "🧾 ออกใบเสร็จรับเงิน (Dynamic 
         qr_bytes = make_qr(qr_text)
         
         st.markdown("""
-            <button onclick="window.print()" class="no-print" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin: 10px 0;">
-                🖨️ สั่งพิมพ์ใบเสร็จรับเงิน (Print)
-            </button>
+            <div class="no-print">
+                <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin: 10px 0;">
+                    🖨️ สั่งพิมพ์ใบเสร็จรับเงิน (Print Receipt)
+                </button>
+            </div>
         """, unsafe_allow_html=True)
         
         col_q1, col_q2 = st.columns([1, 2])
@@ -524,13 +462,13 @@ elif menu == "🧾 ออกใบเสร็จรับเงิน (Dynamic 
             st.image(qr_bytes, caption=f"สแกนชำระผ่าน PromptPay ({shop_info['promptpay']})", width=220)
         with col_q2:
             st.markdown(f"""
-            <div class="printable-area" style="border: 1px solid #333; padding: 25px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
+            <div style="border: 1px solid #333; padding: 25px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
                 <h3 style="text-align:center; margin:0;">{shop_info['shop_name']}</h3>
                 <p style="text-align:center; font-size:12px; margin:2px;">{shop_info['address']}<br>โทร: {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
                 <h3 style="text-align:center; margin: 10px 0; border-bottom: 2px solid #000; padding-bottom: 3px;">ใบเสร็จรับเงิน / RECEIPT</h3>
-                <p><b>ลูกค้า:</b> {c_name_input} | <b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+                <p><b>ลูกค้า:</b> {c_name_input} &nbsp;&nbsp;|&nbsp;&nbsp; <b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
                 <table style="width:100%; font-size:13px; border-collapse:collapse; margin-top:10px;" border="1">
-                    <tr style="background:#eee;"><th style="padding:5px;">รายการ</th><th style="padding:5px; text-align:center;">จำนวน</th><th style="padding:5px; text-align:right;">ราคา</th></tr>
+                    <tr style="background:#eee;"><th style="padding:5px; text-align:left;">รายการ</th><th style="padding:5px; text-align:center;">จำนวน</th><th style="padding:5px; text-align:right;">ราคา</th></tr>
             """, unsafe_allow_html=True)
             for itm in st.session_state.receipt_items:
                 st.markdown(f"<tr><td style='padding:5px;'>{itm['item']}</td><td style='padding:5px; text-align:center;'>{itm['qty']}</td><td style='padding:5px; text-align:right;'>{(itm['qty']*itm['price']):,.2f}</td></tr>", unsafe_allow_html=True)
@@ -552,7 +490,6 @@ elif menu == "🧾 ออกใบเสร็จรับเงิน (Dynamic 
 # ----------------------------------------------------
 elif menu == "⚙️ จัดการข้อมูลร้านค้า (Shop Admin)":
     st.subheader("⚙️ ระบบจัดการข้อมูลร้านค้า (Administrator Shop Profile)")
-    
     current_shop = get_shop_info()
     with st.form("shop_admin_form"):
         s_name = st.text_input("ชื่อร้านค้า / ชื่อบริษัท", value=current_shop['shop_name'])
@@ -560,8 +497,8 @@ elif menu == "⚙️ จัดการข้อมูลร้านค้า (
         s_addr = st.text_area("ที่อยู่ร้านค้า", value=current_shop['address'])
         s_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value=current_shop['phone'])
         s_email = st.text_input("อีเมลติดต่อ", value=current_shop['email'])
-        s_promptpay = st.text_input("เบอร์ PromptPay / เลขพร้อมเพย์สำหรับสร้าง QR", value=current_shop['promptpay'])
-        s_footer = st.text_input("ข้อความท้ายใบเสร็จ (Footer Message)", value=current_shop['footer_message'])
+        s_promptpay = st.text_input("เบอร์ PromptPay สำหรับสร้าง QR", value=current_shop['promptpay'])
+        s_footer = st.text_input("ข้อความท้ายใบเสร็จ", value=current_shop['footer_message'])
         
         if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงข้อมูลร้าน"):
             cursor.execute("""
@@ -570,7 +507,7 @@ elif menu == "⚙️ จัดการข้อมูลร้านค้า (
                 WHERE id=1
             """, (s_name, s_tax, s_addr, s_phone, s_email, s_footer, s_promptpay))
             conn.commit()
-            st.success("บันทึกข้อมูลร้านค้าและพร้อมเพย์สำเร็จ!")
+            st.success("บันทึกข้อมูลร้านค้าสำเร็จ!")
             st.rerun()
 
 # ----------------------------------------------------
@@ -585,45 +522,15 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
     with bo_tab1:
         users_df = pd.read_sql("SELECT * FROM users", conn)
         st.dataframe(users_df, use_container_width=True)
-        if not users_df.empty:
-            edit_user_id = st.selectbox("เลือกผู้ใช้ที่ต้องการแก้ไข/ลบ (ID)", users_df['id'].tolist(), key="sel_user")
-            u_row = users_df[users_df['id'] == edit_user_id].iloc[0]
-            with st.form("edit_user_form"):
-                e_user = st.text_input("Username", value=u_row['username'])
-                e_pass = st.text_input("Password", value=u_row['password'])
-                e_name = st.text_input("ชื่อ-นามสกุล", value=u_row['fullname'])
-                e_role = st.selectbox("สิทธิ์", ["Admin", "Technician", "Cashier"], index=["Admin", "Technician", "Cashier"].index(u_row['role']) if u_row['role'] in ["Admin", "Technician", "Cashier"] else 0)
-                if st.form_submit_button("💾 บันทึกแก้ไข"):
-                    cursor.execute("UPDATE users SET username=?, password=?, fullname=?, role=? WHERE id=?", (e_user, e_pass, e_name, e_role, edit_user_id))
-                    conn.commit()
-                    st.success("สำเร็จ!")
-                    st.rerun()
-
     with bo_tab2:
         inv_df = pd.read_sql("SELECT * FROM inventory", conn)
         st.dataframe(inv_df, use_container_width=True)
-        if not inv_df.empty:
-            edit_inv_id = st.selectbox("เลือกสินค้าที่ต้องการจัดการ (ID)", inv_df['id'].tolist(), key="sel_inv")
-            i_row = inv_df[inv_df['id'] == edit_inv_id].iloc[0]
-            with st.form("edit_inv_form"):
-                i_code = st.text_input("รหัส", value=i_row['code'])
-                i_name = st.text_input("ชื่อ", value=i_row['name'])
-                i_sn = st.text_input("S/N", value=i_row['serial_no'])
-                i_qty = st.number_input("จำนวน", value=int(i_row['qty']))
-                if st.form_submit_button("💾 บันทึกแก้ไขสต็อก"):
-                    cursor.execute("UPDATE inventory SET code=?, name=?, serial_no=?, qty=? WHERE id=?", (i_code, i_name, i_sn, i_qty, edit_inv_id))
-                    conn.commit()
-                    st.success("สำเร็จ!")
-                    st.rerun()
-
     with bo_tab3:
         rep_df = pd.read_sql("SELECT * FROM repairs", conn)
         st.dataframe(rep_df[['job_no', 'customer', 'device_model', 'status', 'total_price']], use_container_width=True)
-
     with bo_tab4:
         sales_df = pd.read_sql("SELECT * FROM sales", conn)
         st.dataframe(sales_df, use_container_width=True)
-
     with bo_tab5:
         claim_df = pd.read_sql("SELECT * FROM claims", conn)
         st.dataframe(claim_df, use_container_width=True)
@@ -633,7 +540,7 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
 # ----------------------------------------------------
 elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)":
     st.subheader("📄 ศูนย์รวมออกเอกสารและใบสำคัญทางธุรกิจ (ขนาด A4)")
-    doc_type = st.selectbox("เลือกประเภทเอกสาร", ["ใบรับซ่อม (A4 ปะรอยฉีก)", "ใบเสนอราคา", "ใบกำกับภาษี", "ใบเสร็จรับเงิน"])
+    doc_type = st.selectbox("เลือกประเภทเอกสาร", ["ใบรับซ่อม", "ใบเสนอราคา", "ใบกำกับภาษี", "ใบเสร็จรับเงิน"])
     shop = get_shop_info()
     rep_list = pd.read_sql("SELECT job_no, customer, device_model FROM repairs", conn)
     if not rep_list.empty:
@@ -641,36 +548,43 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
         j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{target_job}'", conn).iloc[0]
         
         st.markdown("""
-            <button onclick="window.print()" class="no-print" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin-bottom:15px;">
-                🖨️ สั่งพิมพ์เอกสารนี้ (Print)
-            </button>
+            <div class="no-print">
+                <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin-bottom:15px;">
+                    🖨️ สั่งพิมพ์เอกสารนี้ (Print)
+                </button>
+            </div>
         """, unsafe_allow_html=True)
         
         st.markdown(f"""
-        <div class="printable-area" style="border: 1px solid #222; padding: 35px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
-            <div style="display:flex; justify-content:space-between;">
-                <div>
-                    <h2 style="margin:0;">{shop['shop_name']}</h2>
-                    <p style="font-size:12px; margin:0;">{shop['address']}<br>โทร: {shop['phone']} | Tax ID: {shop['tax_id']}</p>
-                </div>
-                <div style="text-align:right;">
-                    <h2 style="color:#1E3A8A; margin:0;">{doc_type.upper()}</h2>
-                    <p style="font-size:12px; margin:0;"><b>เลขที่:</b> DOC-{j_data['job_no']}<br><b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
-                </div>
-            </div>
+        <div style="border: 1px solid #222; padding: 35px; font-family: 'Kanit', sans-serif; background: #fff; color: #000; width: 100%; max-width: 800px; margin: auto;">
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td>
+                        <h2 style="margin:0;">{shop['shop_name']}</h2>
+                        <p style="font-size:12px; margin:0;">{shop['address']}<br>โทร: {shop['phone']} | Tax ID: {shop['tax_id']}</p>
+                    </td>
+                    <td style="text-align:right; vertical-align:top;">
+                        <h2 style="color:#1E3A8A; margin:0;">{doc_type.upper()}</h2>
+                        <p style="font-size:12px; margin:0;"><b>เลขที่:</b> DOC-{j_data['job_no']}<br><b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
+                    </td>
+                </tr>
+            </table>
             <hr style="margin:15px 0;">
-            <p style="font-size:14px;"><b>ลูกค้า:</b> {j_data['customer']} (โทร: {j_data['phone']})</p>
+            <p style="font-size:14px;"><b>นามลูกค้า:</b> {j_data['customer']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>เบอร์โทร:</b> {j_data['phone']}</p>
+            
             <table style="width:100%; border-collapse: collapse; margin-top: 20px; font-size:14px;" border="1">
                 <tr style="background:#f2f2f2;">
-                    <th style="padding:10px; text-align:left;">ลำดับ</th>
-                    <th style="padding:10px; text-align:left;">รายการ</th>
-                    <th style="padding:10px; text-align:center;">จำนวน</th>
-                    <th style="padding:10px; text-align:right;">ราคา</th>
+                    <th style="padding:10px; text-align:left; width:10%;">ลำดับ</th>
+                    <th style="padding:10px; text-align:left; width:50%;">รายการ</th>
+                    <th style="padding:10px; text-align:center; width:10%;">จำนวน</th>
+                    <th style="padding:10px; text-align:right; width:15%;">ราคาต่อหน่วย</th>
+                    <th style="padding:10px; text-align:right; width:15%;">จำนวนเงิน</th>
                 </tr>
                 <tr>
                     <td style="padding:10px;">1</td>
                     <td style="padding:10px;">ค่าบริการตรวจเช็คและซ่อมอุปกรณ์ ({j_data['device_model']} - S/N: {j_data['serial_no']})</td>
                     <td style="padding:10px; text-align:center;">1</td>
+                    <td style="padding:10px; text-align:right;">{j_data['total_price']:,.2f}</td>
                     <td style="padding:10px; text-align:right;">{j_data['total_price']:,.2f}</td>
                 </tr>
             </table>
@@ -678,6 +592,13 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
             <div style="text-align:right; font-size:16px;">
                 <p><b>ยอดรวมทั้งสิ้น:</b> {j_data['total_price']:,.2f} บาท</p>
             </div>
+            <br><br>
+            <table style="width:100%; font-size:14px; margin-top:30px; border-collapse:collapse;">
+                <tr>
+                    <td style="text-align:center; width:50%;">___________________________________<br>ผู้มีอำนาจลงนาม / ผู้ออกเอกสาร</td>
+                    <td style="text-align:center; width:50%;">___________________________________<br>ผู้รับสินค้า / ลูกค้า</td>
+                </tr>
+            </table>
         </div>
         """, unsafe_allow_html=True)
 
