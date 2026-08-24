@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 import sqlite3
@@ -331,82 +332,95 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
 
             vat_row_html = f"<tr><td><b>VAT 7%:</b></td><td style='text-align: right;'>{vat_amount:,.2f} บาท</td></tr>" if include_vat else ""
 
-            # สร้าง HTML พร้อมระบบจัดการการพิมพ์ (@media print)
+            # ใช้ st.components.v1.html เพื่อให้ปุ่ม Print ทำงานได้จริง 100%
             doc_html_content = f"""
-            <style>
-            @media print {{
-                body * {{ visibility: hidden; }}
-                #printable-doc, #printable-doc * {{ visibility: visible; }}
-                #printable-doc {{ position: absolute; left: 0; top: 0; width: 100%; }}
-                .no-print {{ display: none; }}
-            }}
-            </style>
-            <div style="text-align: right; margin-bottom: 10px;" class="no-print">
-                <button onclick="window.print()" style="background-color: #ff4b4b; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">🖨️ พิมพ์เอกสาร (Print)</button>
-            </div>
-            <div id="printable-doc" style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
-                <div style="text-align: center;">
-                    {logo_html}
-                    <h2 style="margin: 0;">{shop_name}</h2>
-                    <p style="font-size: 13px; color: #555; margin: 2px 0;">{shop_address} | โทร. {shop_promptpay} | เลขประจำตัวผู้เสียภาษี: {shop_tax_id}</p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: sans-serif; background: #fff; color: #000; margin: 0; padding: 15px; }}
+                    .print-btn {{
+                        background-color: #ff4b4b; color: white; padding: 12px 25px;
+                        border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold;
+                        margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                    }}
+                    .print-btn:hover {{ background-color: #ff2a2a; }}
+                    @media print {{
+                        .no-print {{ display: none; }}
+                        body {{ padding: 0; }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="no-print" style="text-align: right;">
+                    <button class="print-btn" onclick="window.print()">🖨️ คลิกเพื่อพิมพ์เอกสาร (Print)</button>
                 </div>
-                <hr style="border: 1px solid #333; margin: 15px 0;">
-                <h3 style="text-align: center; background-color: #eee; padding: 5px;">{doc_type.upper()}</h3>
-                
-                <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
-                    <tr>
-                        <td style="width: 60%;"><b>นามลูกค้า:</b> {c_name}<br><b>ที่อยู่:</b> {c_address}<br><b>เลขประจำตัวผู้เสียภาษี:</b> {c_tax_id}</td>
-                        <td style="width: 40%; text-align: right;"><b>เลขที่เอกสาร:</b> {doc_no}<br><b>วันที่:</b> {doc_date}</td>
-                    </tr>
-                </table>
-                
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-                    <thead>
-                        <tr style="background-color: #333; color: #fff;">
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ลำดับ</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">รายการสินค้า / บริการ</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">จำนวน</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">ราคาต่อหน่วย</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">จำนวนเงิน</th>
+                <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
+                    <div style="text-align: center;">
+                        {logo_html}
+                        <h2 style="margin: 0;">{shop_name}</h2>
+                        <p style="font-size: 13px; color: #555; margin: 2px 0;">{shop_address} | โทร. {shop_promptpay} | เลขประจำตัวผู้เสียภาษี: {shop_tax_id}</p>
+                    </div>
+                    <hr style="border: 1px solid #333; margin: 15px 0;">
+                    <h3 style="text-align: center; background-color: #eee; padding: 5px;">{doc_type.upper()}</h3>
+                    
+                    <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
+                        <tr>
+                            <td style="width: 60%;"><b>นามลูกค้า:</b> {c_name}<br><b>ที่อยู่:</b> {c_address}<br><b>เลขประจำตัวผู้เสียภาษี:</b> {c_tax_id}</td>
+                            <td style="width: 40%; text-align: right;"><b>เลขที่เอกสาร:</b> {doc_no}<br><b>วันที่:</b> {doc_date}</td>
                         </tr>
-                    </thead>
-                    <tbody>
+                    </table>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                        <thead>
+                            <tr style="background-color: #333; color: #fff;">
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ลำดับ</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">รายการสินค้า / บริการ</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">จำนวน</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">ราคาต่อหน่วย</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">จำนวนเงิน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             """
             
             for idx, row in df_items_display.iterrows():
                 doc_html_content += f"""
-                    <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;">{idx+1}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">{row['name']}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{row['qty']}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['price']:,.2f}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['total']:,.2f}</td>
-                    </tr>
+                            <tr>
+                                <td style="border: 1px solid #ddd; padding: 8px;">{idx+1}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">{row['name']}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{row['qty']}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['price']:,.2f}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['total']:,.2f}</td>
+                            </tr>
                 """
                 
             doc_html_content += f"""
-                    </tbody>
-                </table>
-                
-                <div style="float: right; width: 350px; font-size: 14px;">
-                    <table style="width: 100%;">
-                        <tr><td><b>รวมเป็นเงิน:</b></td><td style="text-align: right;">{sub_sum:,.2f} บาท</td></tr>
-                        {vat_row_html}
-                        <tr style="font-size: 16px; border-top: 1px solid #333;"><td><b>ยอดรวมสุทธิ:</b></td><td style="text-align: right;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="float: right; width: 350px; font-size: 14px;">
+                        <table style="width: 100%;">
+                            <tr><td><b>รวมเป็นเงิน:</b></td><td style="text-align: right;">{sub_sum:,.2f} บาท</td></tr>
+                            {vat_row_html}
+                            <tr style="font-size: 16px; border-top: 1px solid #333;"><td><b>ยอดรวมสุทธิ:</b></td><td style="text-align: right;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                        </table>
+                    </div>
+                    <div style="clear: both;"></div>
+                    
+                    <br><br>
+                    <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 40px;">
+                        <tr>
+                            <td>____________________________________<br>ผู้จัดทำ / Authorized Signature</td>
+                            <td>____________________________________<br>ผู้รับสินค้า / Received By</td>
+                        </tr>
                     </table>
                 </div>
-                <div style="clear: both;"></div>
-                
-                <br><br>
-                <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 40px;">
-                    <tr>
-                        <td>____________________________________<br>ผู้จัดทำ / Authorized Signature</td>
-                        <td>____________________________________<br>ผู้รับสินค้า / Received By</td>
-                    </tr>
-                </table>
-            </div>
+            </body>
+            </html>
             """
-            st.markdown(doc_html_content, unsafe_allow_html=True)
+            components.html(doc_html_content, height=800, scrolling=True)
 
 # ----------------------------------------------------
 # 3. จัดการสต็อกสินค้า
@@ -499,101 +513,127 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
 
             if paper_size == "กระดาษ A4 (ฉบับเต็ม)":
                 ticket_html_content = f"""
-                <style>
-                @media print {{
-                    body * {{ visibility: hidden; }}
-                    #printable-ticket, #printable-ticket * {{ visibility: visible; }}
-                    #printable-ticket {{ position: absolute; left: 0; top: 0; width: 100%; }}
-                    .no-print {{ display: none; }}
-                }}
-                </style>
-                <div style="text-align: right; margin-bottom: 10px;" class="no-print">
-                    <button onclick="window.print()" style="background-color: #ff4b4b; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">🖨️ พิมพ์ใบรับซ่อม (Print)</button>
-                </div>
-                <div id="printable-ticket" style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000; font-family: sans-serif;">
-                    <div style="text-align: center;">
-                        {logo_html}
-                        <h2 style="margin: 0;">{shop_name}</h2>
-                        <p style="font-size: 13px; color: #555; margin: 2px 0;">{shop_address} | โทร. {shop_promptpay}</p>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body {{ font-family: sans-serif; background: #fff; color: #000; margin: 0; padding: 15px; }}
+                        .print-btn {{
+                            background-color: #ff4b4b; color: white; padding: 12px 25px;
+                            border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold;
+                            margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        }}
+                        .print-btn:hover {{ background-color: #ff2a2a; }}
+                        @media print {{
+                            .no-print {{ display: none; }}
+                            body {{ padding: 0; }}
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="no-print" style="text-align: right;">
+                        <button class="print-btn" onclick="window.print()">🖨️ คลิกเพื่อพิมพ์ใบรับซ่อม (Print)</button>
                     </div>
-                    <hr style="border: 1px solid #333; margin: 15px 0;">
-                    <div style="float: right; background: #333; color: #fff; padding: 3px 10px; font-weight: bold; font-size: 14px; border-radius: 4px;">{copy_type.upper()}</div>
-                    <h3 style="margin: 0 0 10px 0;">ใบรับเครื่องซ่อม (Repair Ticket)</h3>
-                    
-                    <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
-                        <tr>
-                            <td style="width: 60%;"><b>ชื่อลูกค้า:</b> {p_info['customer']}<br><b>เบอร์โทรศัพท์:</b> {p_info['phone']}</td>
-                            <td style="width: 40%;"><b>เลขที่ใบซ่อม:</b> REP-{p_info['id']:04d}<br><b>วันที่รับเครื่อง:</b> {p_info['date']}</td>
-                        </tr>
-                    </table>
-                    
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-                        <tr style="background-color: #333; color: #fff;">
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">รุ่นอุปกรณ์ / คอมพิวเตอร์</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">อาการเสีย / ตำหนิภายนอก</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">ราคาประเมิน</th>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #ddd; padding: 8px; vertical-align: top;">{p_info['model']}</td>
-                            <td style="border: 1px solid #ddd; padding: 8px; vertical-align: top;">{p_info['issue']}</td>
-                            <td style="border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: top;">{p_info['price']:,.2f} บาท</td>
-                        </tr>
-                    </table>
-                    
-                    <div style="font-size: 12px; background: #f9f9f9; padding: 10px; border: 1px dashed #ccc; margin-bottom: 20px;">
-                        <b>เงื่อนไขการให้บริการ:</b><br>
-                        1. กรุณานำใบรับซ่อมนี้มาแสดงทุกครั้งเมื่อมารับเครื่องคืน<br>
-                        2. ทางร้านจะไม่รับผิดชอบต่อข้อมูลที่สูญหาย ลูกค้าควรสำรองข้อมูลมาก่อนทุกครั้ง<br>
-                        3. หากไม่มารับเครื่องภายใน 90 วันหลังจากวันที่แจ้งซ่อมเสร็จ ทางร้านขอสงวนสิทธิ์ในการคิดค่าฝากรักษา
+                    <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
+                        <div style="text-align: center;">
+                            {logo_html}
+                            <h2 style="margin: 0;">{shop_name}</h2>
+                            <p style="font-size: 13px; color: #555; margin: 2px 0;">{shop_address} | โทร. {shop_promptpay}</p>
+                        </div>
+                        <hr style="border: 1px solid #333; margin: 15px 0;">
+                        <div style="float: right; background: #333; color: #fff; padding: 3px 10px; font-weight: bold; font-size: 14px; border-radius: 4px;">{copy_type.upper()}</div>
+                        <h3 style="margin: 0 0 10px 0;">ใบรับเครื่องซ่อม (Repair Ticket)</h3>
+                        
+                        <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
+                            <tr>
+                                <td style="width: 60%;"><b>ชื่อลูกค้า:</b> {p_info['customer']}<br><b>เบอร์โทรศัพท์:</b> {p_info['phone']}</td>
+                                <td style="width: 40%;"><b>เลขที่ใบซ่อม:</b> REP-{p_info['id']:04d}<br><b>วันที่รับเครื่อง:</b> {p_info['date']}</td>
+                            </tr>
+                        </table>
+                        
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                            <tr style="background-color: #333; color: #fff;">
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">รุ่นอุปกรณ์ / คอมพิวเตอร์</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">อาการเสีย / ตำหนิภายนอก</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">ราคาประเมิน</th>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #ddd; padding: 8px; vertical-align: top;">{p_info['model']}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; vertical-align: top;">{p_info['issue']}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: top;">{p_info['price']:,.2f} บาท</td>
+                            </tr>
+                        </table>
+                        
+                        <div style="font-size: 12px; background: #f9f9f9; padding: 10px; border: 1px dashed #ccc; margin-bottom: 20px;">
+                            <b>เงื่อนไขการให้บริการ:</b><br>
+                            1. กรุณานำใบรับซ่อมนี้มาแสดงทุกครั้งเมื่อมารับเครื่องคืน<br>
+                            2. ทางร้านจะไม่รับผิดชอบต่อข้อมูลที่สูญหาย ลูกค้าควรสำรองข้อมูลมาก่อนทุกครั้ง<br>
+                            3. หากไม่มารับเครื่องภายใน 90 วันหลังจากวันที่แจ้งซ่อมเสร็จ ทางร้านขอสงวนสิทธิ์ในการคิดค่าฝากรักษา
+                        </div>
+                        
+                        <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 30px;">
+                            <tr>
+                                <td>____________________________________<br>พนักงานผู้รับเครื่อง / Authorized</td>
+                                <td>____________________________________<br>ลูกค้าผู้ส่งซ่อม / Customer Signature</td>
+                            </tr>
+                        </table>
                     </div>
-                    
-                    <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 30px;">
-                        <tr>
-                            <td>____________________________________<br>พนักงานผู้รับเครื่อง / Authorized</td>
-                            <td>____________________________________<br>ลูกค้าผู้ส่งซ่อม / Customer Signature</td>
-                        </tr>
-                    </table>
-                </div>
+                </body>
+                </html>
                 """
             else:
                 ticket_html_content = f"""
-                <style>
-                @media print {{
-                    body * {{ visibility: hidden; }}
-                    #printable-slip, #printable-slip * {{ visibility: visible; }}
-                    #printable-slip {{ position: absolute; left: 0; top: 0; width: 100%; }}
-                    .no-print {{ display: none; }}
-                }}
-                </style>
-                <div style="text-align: left; margin-bottom: 10px;" class="no-print">
-                    <button onclick="window.print()" style="background-color: #ff4b4b; color: white; padding: 8px 15px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; font-weight: bold;">🖨️ พิมพ์สลิป (Print)</button>
-                </div>
-                <div id="printable-slip" style="max-width: 350px; border: 1px dashed #333; padding: 15px; background-color: #fff; color: #000; font-family: monospace; font-size: 12px;">
-                    <div style="text-align: center;">
-                        <b>{shop_name}</b><br>
-                        <span style="font-size: 10px;">โทร. {shop_promptpay}</span><br>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body {{ font-family: monospace; background: #fff; color: #000; margin: 0; padding: 10px; }}
+                        .print-btn {{
+                            background-color: #ff4b4b; color: white; padding: 8px 15px;
+                            border: none; border-radius: 5px; font-size: 14px; cursor: pointer; font-weight: bold;
+                            margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        }}
+                        .print-btn:hover {{ background-color: #ff2a2a; }}
+                        @media print {{
+                            .no-print {{ display: none; }}
+                            body {{ padding: 0; }}
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="no-print" style="text-align: left;">
+                        <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สลิป (Print)</button>
+                    </div>
+                    <div style="max-width: 320px; border: 1px dashed #333; padding: 15px; background-color: #fff; color: #000; font-size: 12px;">
+                        <div style="text-align: center;">
+                            <b>{shop_name}</b><br>
+                            <span style="font-size: 10px;">โทร. {shop_promptpay}</span><br>
+                            <hr style="border-top: 1px dashed #000; margin: 5px 0;">
+                            <b>=== ใบรับซ่อมสินค้า ===</b><br>
+                            <span style="background: #000; color: #fff; padding: 2px 5px; font-size: 11px;"><b>{copy_type}</b></span>
+                        </div>
+                        <p style="margin: 5px 0;">
+                        <b>เลขที่:</b> REP-{p_info['id']:04d}<br>
+                        <b>วันที่:</b> {p_info['date']}<br>
+                        <b>ลูกค้า:</b> {p_info['customer']}<br>
+                        <b>โทร:</b> {p_info['phone']}<br>
+                        <b>รุ่น:</b> {p_info['model']}<br>
+                        <b>อาการ:</b> {p_info['issue']}<br>
+                        <b>ราคาประเมิน:</b> {p_info['price']:,.2f} บาท<br>
+                        <b>สถานะ:</b> {p_info['status']}
+                        </p>
                         <hr style="border-top: 1px dashed #000; margin: 5px 0;">
-                        <b>=== ใบรับซ่อมสินค้า ===</b><br>
-                        <span style="background: #000; color: #fff; padding: 2px 5px; font-size: 11px;"><b>{copy_type}</b></span>
+                        <div style="font-size: 10px; text-align: center;">
+                            *กรุณาแสดงใบนี้เมื่อมารับเครื่อง*<br>
+                            ขอบคุณที่ใช้บริการครับ
+                        </div>
                     </div>
-                    <p style="margin: 5px 0;">
-                    <b>เลขที่:</b> REP-{p_info['id']:04d}<br>
-                    <b>วันที่:</b> {p_info['date']}<br>
-                    <b>ลูกค้า:</b> {p_info['customer']}<br>
-                    <b>โทร:</b> {p_info['phone']}<br>
-                    <b>รุ่น:</b> {p_info['model']}<br>
-                    <b>อาการ:</b> {p_info['issue']}<br>
-                    <b>ราคาประเมิน:</b> {p_info['price']:,.2f} บาท<br>
-                    <b>สถานะ:</b> {p_info['status']}
-                    </p>
-                    <hr style="border-top: 1px dashed #000; margin: 5px 0;">
-                    <div style="font-size: 10px; text-align: center;">
-                        *กรุณาแสดงใบนี้เมื่อมารับเครื่อง*<br>
-                        ขอบคุณที่ใช้บริการครับ
-                    </div>
-                </div>
+                </body>
+                </html>
                 """
-            st.markdown(ticket_html_content, unsafe_allow_html=True)
+            components.html(ticket_html_content, height=750, scrolling=True)
         else:
             st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ กรุณารับเครื่องซ่อมที่แท็บแรกก่อน")
 
