@@ -145,7 +145,7 @@ menu = st.sidebar.selectbox(
         "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)", 
         "📄 ระบบออกเอกสารทางการ",
         "📦 จัดการสต็อกสินค้า",
-        "📝 ระบบรับและติดตามงานซ่อม",
+        "📝 ระบบรับและพิมพ์ใบรับซ่อม",
         "📊 สรุปยอดขายรายวัน",
         "⚙️ ระบบหลังบ้าน (Admin & ตั้งค่าระบบ)"
     ]
@@ -231,7 +231,7 @@ if menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำ�
             st.success("✅ บันทึกการขายและตัดสต็อกอัตโนมัติสำเร็จ!")
 
 # ----------------------------------------------------
-# 2. ระบบออกเอกสารทางการ (แยกประเภทเอกสารชัดเจน)
+# 2. ระบบออกเอกสารทางการ
 # ----------------------------------------------------
 elif menu == "📄 ระบบออกเอกสารทางการ":
     st.subheader("📄 ระบบออกเอกสารทางการ (ใบเสนอราคา / ใบส่งสินค้า / ใบกำกับภาษี / ใบเสร็จรับเงิน)")
@@ -255,7 +255,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
         c_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษีลูกค้า (ถ้ามี)", value="0105555555555")
         doc_date = st.date_input("วันที่เอกสาร", datetime.now())
         
-        # กำหนด Prefix เลขที่เอกสารตามประเภทที่เลือก
         prefix_dict = {
             "ใบเสนอราคา (Quotation)": "QT",
             "ใบส่งสินค้า / ใบส่งของ (Delivery Note)": "DL",
@@ -299,8 +298,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
             st.rerun()
             
         sub_sum = df_items_display["total"].sum()
-        
-        # ตั้งค่าคำนวณ VAT 7% เป็นค่าเริ่มต้นเฉพาะกรณี "ใบกำกับภาษี"
         default_vat_status = True if doc_type == "ใบกำกับภาษี (Tax Invoice)" else False
         include_vat = st.checkbox("คำนวณ VAT 7% (ภาษีมูลค่าเพิ่ม)", value=default_vat_status)
         
@@ -425,14 +422,19 @@ elif menu == "📦 จัดการสต็อกสินค้า":
                 st.rerun()
 
 # ----------------------------------------------------
-# 4. ระบบรับและติดตามงานซ่อม
+# 4. ระบบรับและพิมพ์ใบรับซ่อม (รองรับเลือกรูปแบบกระดาษ & ฉบับลูกค้า/ร้านค้า)
 # ----------------------------------------------------
-elif menu == "📝 ระบบรับและติดตามงานซ่อม":
-    st.subheader("📝 ระบบจัดการงานซ่อม (รับเครื่อง & ติดตามสถานะ)")
+elif menu == "📝 ระบบรับและพิมพ์ใบรับซ่อม":
+    st.subheader("📝 ระบบจัดการงานซ่อม & พิมพ์ใบรับซ่อม (เลือกรูปแบบกระดาษได้)")
     
-    tab1, tab2 = st.tabs(["รับเครื่องเข้าซ่อม & ออก QR Code", "รายการและอัปเดตสถานะงานซ่อม"])
+    r_tab1, r_tab2, r_tab3 = st.tabs([
+        "➕ รับเครื่องเข้าซ่อมใหม่", 
+        "🖨️ พิมพ์ใบรับซ่อม (เลือกกระดาษ & ฉบับ)", 
+        "⚙️ รายการและอัปเดตสถานะงานซ่อม"
+    ])
     
-    with tab1:
+    # --- Tab 1: รับเครื่องเข้าซ่อมใหม่ ---
+    with r_tab1:
         c1, c2 = st.columns(2)
         with c1:
             r_name = st.text_input("ชื่อ-นามสกุลลูกค้า")
@@ -452,24 +454,124 @@ elif menu == "📝 ระบบรับและติดตามงานซ�
                     (r_date, r_name, r_phone, r_model, r_issue, r_price, initial_status)
                 )
                 conn.commit()
-                st.success(f"✅ บันทึกรับเครื่องของคุณ {r_name} เรียบร้อยแล้ว")
-                
-                st.markdown("---")
-                st.markdown("### 🖨️ QR Code ใบรับเครื่องซ่อม (สำหรับให้ลูกค้าสแกน)")
-                ticket_info = f"{shop_name}\nชื่อลูกค้า: {r_name}\nเบอร์โทร: {r_phone}\nรุ่น: {r_model}\nอาการ: {r_issue}\nสถานะ: รอตรวจสอบ"
-                
-                qr = qrcode.QRCode(version=1, box_size=8, border=2)
-                qr.add_data(ticket_info)
-                qr.make(fit=True)
-                img = qr.make_image(fill_color="black", back_color="white")
-                
-                buf = BytesIO()
-                img.save(buf, format="PNG")
-                st.image(buf.getvalue(), width=200, caption=f"QR Code ข้อมูลงานซ่อม: {r_name}")
+                st.success(f"✅ บันทึกรับเครื่องของคุณ {r_name} เรียบร้อยแล้ว! สามารถไปที่แท็บ 'พิมพ์ใบรับซ่อม' เพื่อพิมพ์เอกสารได้ทันที")
             else:
                 st.error("กรุณากรอกชื่อและเบอร์โทรศัพท์ลูกค้าให้ครบถ้วน")
+
+    # --- Tab 2: พิมพ์ใบรับซ่อม (เลือกกระดาษ & ฉบับ) ---
+    with r_tab2:
+        st.markdown("### 🖨️ เลือกรายการซ่อมเพื่อพิมพ์ใบรับเครื่อง")
+        repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
+        
+        if not repairs_df.empty:
+            # เลือกรายการซ่อมจาก Dropdown
+            rep_print_list = [f"ID: {row['id']} | ลูกค้า: {row['customer']} | รุ่น: {row['model']} | วันที่: {row['date']}" for index, row in repairs_df.iterrows()]
+            selected_print_str = st.selectbox("เลือกรหัสงานซ่อมที่ต้องการพิมพ์", rep_print_list)
+            
+            p_rep_id = int(selected_print_str.split(" | ")[0].replace("ID: ", ""))
+            p_info = repairs_df[repairs_df["id"] == p_rep_id].iloc[0]
+            
+            st.markdown("---")
+            
+            # เลือกรูปแบบการพิมพ์
+            p_col1, p_col2 = st.columns(2)
+            with p_col1:
+                paper_size = st.selectbox("เลือกขนาดกระดาษพิมพ์", ["กระดาษ A4 (ฉบับเต็ม)", "สลิปความร้อน (Thermal 80มม.)"])
+            with p_col2:
+                copy_type = st.selectbox("เลือกประเภทฉบับเอกสาร", ["ฉบับสำหรับลูกค้า (Customer Copy)", "ฉบับสำหรับร้านค้า (Shop Copy)"])
                 
-    with tab2:
+            st.markdown("---")
+            st.markdown(f"### 📄 ตัวอย่างการพิมพ์: [{paper_size}] - [{copy_type}]")
+            
+            # โค้ดแสดงผลรูปแบบเอกสารตามที่เลือก
+            logo_html = ""
+            if shop_logo_path and os.path.exists(shop_logo_path):
+                with open(shop_logo_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode()
+                logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="max-height: 50px; margin-bottom: 5px;"><br>'
+
+            if paper_size == "กระดาษ A4 (ฉบับเต็ม)":
+                st.markdown(f"""
+                <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000; font-family: sans-serif;">
+                    <div style="text-align: center;">
+                        {logo_html}
+                        <h2 style="margin: 0;">{shop_name}</h2>
+                        <p style="font-size: 13px; color: #555; margin: 2px 0;">{shop_address} | โทร. {shop_promptpay}</p>
+                    </div>
+                    <hr style="border: 1px solid #333; margin: 15px 0;">
+                    <div style="float: right; background: #333; color: #fff; padding: 3px 10px; font-weight: bold; font-size: 14px; border-radius: 4px;">{copy_type.upper()}</div>
+                    <h3 style="margin: 0 0 10px 0;">ใบรับเครื่องซ่อม (Repair Ticket)</h3>
+                    
+                    <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
+                        <tr>
+                            <td style="width: 60%;"><b>ชื่อลูกค้า:</b> {p_info['customer']}<br><b>เบอร์โทรศัพท์:</b> {p_info['phone']}</td>
+                            <td style="width: 40%;"><b>เลขที่ใบซ่อม:</b> REP-{p_info['id']:04d}<br><b>วันที่รับเครื่อง:</b> {p_info['date']}</td>
+                        </tr>
+                    </table>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                        <tr style="background-color: #333; color: #fff;">
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">รุ่นอุปกรณ์ / คอมพิวเตอร์</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">อาการเสีย / ตำหนิภายนอก</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">ราคาประเมิน</th>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px; vertical-align: top;">{p_info['model']}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px; vertical-align: top;">{p_info['issue']}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: top;">{p_info['price']:,.2f} บาท</td>
+                        </tr>
+                    </table>
+                    
+                    <div style="font-size: 12px; background: #f9f9f9; padding: 10px; border: 1px dashed #ccc; margin-bottom: 20px;">
+                        <b>เงื่อนไขการให้บริการ:</b><br>
+                        1. กรุณานำใบรับซ่อมนี้มาแสดงทุกครั้งเมื่อมารับเครื่องคืน<br>
+                        2. ทางร้านจะไม่รับผิดชอบต่อข้อมูลที่สูญหาย ลูกค้าควรสำรองข้อมูลมาก่อนทุกครั้ง<br>
+                        3. หากไม่มารับเครื่องภายใน 90 วันหลังจากวันที่แจ้งซ่อมเสร็จ ทางร้านขอสงวนสิทธิ์ในการคิดค่าฝากรักษา
+                    </div>
+                    
+                    <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 30px;">
+                        <tr>
+                            <td>____________________________________<br>พนักงานผู้รับเครื่อง / Authorized</td>
+                            <td>____________________________________<br>กลูกค้าผู้ส่งซ่อม / Customer Signature</td>
+                        </tr>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # สลิปความร้อน (Thermal 80มม.)
+                st.markdown(f"""
+                <div style="max-width: 350px; border: 1px dashed #333; padding: 15px; background-color: #fff; color: #000; font-family: monospace; font-size: 12px;">
+                    <div style="text-align: center;">
+                        <b>{shop_name}</b><br>
+                        <span style="font-size: 10px;">โทร. {shop_promptpay}</span><br>
+                        <hr style="border-top: 1px dashed #000; margin: 5px 0;">
+                        <b>=== ใบรับซ่อมสินค้า ===</b><br>
+                        <span style="background: #000; color: #fff; padding: 2px 5px; font-size: 11px;"><b>{copy_type}</b></span>
+                    </div>
+                    <p style="margin: 5px 0;">
+                    <b>เลขที่:</b> REP-{p_info['id']:04d}<br>
+                    <b>วันที่:</b> {p_info['date']}<br>
+                    <b>ลูกค้า:</b> {p_info['customer']}<br>
+                    <b>โทร:</b> {p_info['phone']}<br>
+                    <b>รุ่น:</b> {p_info['model']}<br>
+                    <b>อาการ:</b> {p_info['issue']}<br>
+                    <b>ราคาประเมิน:</b> {p_info['price']:,.2f} บาท<br>
+                    <b>สถานะ:</b> {p_info['status']}
+                    </p>
+                    <hr style="border-top: 1px dashed #000; margin: 5px 0;">
+                    <div style="font-size: 10px; text-align: center;">
+                        *กรุณาแสดงใบนี้เมื่อมารับเครื่อง*<br>
+                        ขอบคุณที่ใช้บริการครับ
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            st.info("💡 สามารถกดสั่งพิมพ์ (Print) หน้านี้ผ่านเบราว์เซอร์ (Ctrl+P หรือ Cmd+P) เพื่อพิมพ์ออกเครื่องพิมพ์กระดาษ A4 หรือเครื่องพิมพ์สลิปความร้อนได้ทันที")
+        else:
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ กรุณารับเครื่องซ่อมที่แท็บแรกก่อน")
+
+    # --- Tab 3: รายการและอัปเดตสถานะงานซ่อม ---
+    with r_tab3:
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         if not repairs_df.empty:
             st.dataframe(repairs_df, use_container_width=True)
@@ -487,6 +589,8 @@ elif menu == "📝 ระบบรับและติดตามงานซ�
                 conn.commit()
                 st.success("อัปเดตสถานะสำเร็จ!")
                 st.rerun()
+        else:
+            st.info("ยังไม่มีประวัติงานซ่อมในระบบ")
 
 # ----------------------------------------------------
 # 5. สรุปยอดขายรายวัน
@@ -521,7 +625,6 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin & ตั้ง�
         "👥 จัดการพนักงาน"
     ])
     
-    # --- Tab 1: ตั้งค่าร้านค้า & โลโก้ ---
     with b_tab1:
         st.markdown("### 🏪 ตั้งค่าชื่อร้าน ที่อยู่ โลโก้ และช่องทางชำระเงิน")
         col_l1, col_l2 = st.columns([1, 2])
@@ -559,7 +662,6 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin & ตั้ง�
                     st.success("บันทึกข้อมูลร้านค้าและโลโก้สำเร็จ! กำลังรีเฟรช...")
                     st.rerun()
 
-    # --- Tab 2: จัดการสต็อกสินค้า ---
     with b_tab2:
         st.markdown("### 📦 แก้ไข หรือ ลบรายการสินค้าในคลัง")
         inv_df = pd.read_sql("SELECT * FROM inventory", conn)
@@ -591,7 +693,6 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin & ตั้ง�
         else:
             st.info("ไม่มีสินค้าในคลัง")
 
-    # --- Tab 3: จัดการงานซ่อม ---
     with b_tab3:
         st.markdown("### 📝 แก้ไขรายละเอียด หรือ ลบประวัติงานซ่อม")
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
@@ -626,10 +727,8 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin & ตั้ง�
         else:
             st.info("ยังไม่มีประวัติงานซ่อมในระบบ")
 
-    # --- Tab 4: จัดการพนักงาน ---
     with b_tab4:
         st.markdown("### 👥 ระบบจัดการข้อมูลพนักงานในร้าน")
-        
         staff_df = pd.read_sql("SELECT * FROM staff", conn)
         st.dataframe(staff_df, use_container_width=True)
         
