@@ -6,6 +6,7 @@ import qrcode
 from promptpay import qrcode as pp_qrcode
 from io import BytesIO
 from PIL import Image
+import json
 
 st.set_page_config(page_title="Zone Computer & Service", layout="wide")
 
@@ -14,6 +15,7 @@ def init_db():
     conn = sqlite3.connect('computer_shop.db', check_same_thread=False)
     cursor = conn.cursor()
     
+    # ตารางสต็อกสินค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS inventory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +27,7 @@ def init_db():
         )
     ''')
     
+    # ตารางประวัติการขาย POS
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,6 +41,7 @@ def init_db():
         )
     ''')
     
+    # ตารางงานซ่อม
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,6 +54,21 @@ def init_db():
             status TEXT
         )
     ''')
+
+    # ตารางเก็บบันทึกเอกสารทางการ (ใบเสนอราคา, ใบกำกับภาษี ฯลฯ)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doc_type TEXT,
+            doc_no TEXT,
+            date TEXT,
+            customer TEXT,
+            address TEXT,
+            tax_id TEXT,
+            grand_total REAL
+        )
+    ''')
+    
     conn.commit()
     return conn
 
@@ -69,18 +88,22 @@ if cursor.fetchone()[0] == 0:
     cursor.executemany("INSERT INTO inventory (code, name, category, qty, price) VALUES (?, ?, ?, ?, ?)", default_items)
     conn.commit()
 
-st.title("💻 ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (Online POS & Repair)")
+st.title("💻 ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (Online POS & Document System)")
 
-# ตั้งค่าเบอร์ PromptPay สำหรับรับเงินของร้านที่ Sidebar
-st.sidebar.markdown("### ⚙️ ตั้งค่าร้านค้า")
-shop_promptpay = st.sidebar.text_input("เบอร์โทรพร้อมเพย์ (รับเงิน)", value="0812345678")
+# ข้อมูลร้านค้าหลัก (สำหรับออกเอกสาร)
+st.sidebar.markdown("### ⚙️ ตั้งค่าร้านค้า & ออกเอกสาร")
+shop_name = st.sidebar.text_input("ชื่อร้านค้า", value="ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส")
+shop_address = st.sidebar.text_area("ที่อยู่ร้าน", value="123/4 ถ.อุปราช ต.ในเมือง อ.เมือง จ.อุบลราชธานี 34000")
+shop_tax_id = st.sidebar.text_input("เลขประจำตัวผู้เสียภาษีร้าน", value="1340999999999")
+shop_promptpay = st.sidebar.text_input("เบอร์พร้อมเพย์ (รับเงิน)", value="0812345678")
 
 menu = st.sidebar.selectbox(
     "เลือกเมนูการทำงาน", 
     [
         "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)", 
+        "📄 ระบบออกเอกสารทางการ (ใบเสนอราคา/ใบกำกับภาษี)",
         "📦 จัดการสต็อกสินค้า",
-        "📝 ระบบรับและติดตามงานซ่อม (พร้อม QR ลูกค้า)",
+        "📝 ระบบรับและติดตามงานซ่อม",
         "📊 สรุปยอดขายรายวัน",
         "⚙️ ระบบหลังบ้าน (Admin / แก้ไขข้อมูล)"
     ]
@@ -166,7 +189,164 @@ if menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำ�
             st.success("✅ บันทึกการขายและตัดสต็อกอัตโนมัติสำเร็จ!")
 
 # ----------------------------------------------------
-# 2. จัดการสต็อกสินค้า
+# 2. ระบบออกเอกสารทางการ (ใบเสนอราคา / ใบส่งสินค้า / ใบกำกับภาษี / ใบเสร็จรับเงิน)
+# ----------------------------------------------------
+elif menu == "📄 ระบบออกเอกสารทางการ (ใบเสนอราคา/ใบกำกับภาษี)":
+    st.subheader("📄 ระบบออกเอกสารทางการ (Quotation / Delivery / Tax Invoice / Receipt)")
+    
+    doc_type = st.selectbox(
+        "เลือกประเภทเอกสารที่ต้องการออก",
+        [
+            "ใบเสนอราคา (Quotation)",
+            "ใบส่งสินค้า / ใบส่งของ (Delivery Note)",
+            "ใบกำกับภาษี / ใบเสร็จรับเงิน (Tax Invoice & Receipt)"
+        ]
+    )
+    
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        c_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด")
+        c_address = st.text_area("ที่อยู่ลูกค้า", value="99/9 ถ.สุขุมวิท กรุงเทพฯ")
+    with col2:
+        c_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษีลูกค้า (ถ้ามี)", value="0105555555555")
+        doc_date = st.date_input("วันที่เอกสาร", datetime.now())
+        
+        # สร้างเลขที่เอกสารอัตโนมัติจากปีเดือนและเวลาปัจจุบัน
+        prefix_dict = {
+            "ใบเสนอราคา (Quotation)": "QT",
+            "ใบส่งสินค้า / ใบส่งของ (Delivery Note)": "DL",
+            "ใบกำกับภาษี / ใบเสร็จรับเงิน (Tax Invoice & Receipt)": "IV"
+        }
+        default_doc_no = f"{prefix_dict[doc_type]}-{datetime.now().strftime('%Y%m%d%H%M')}"
+        doc_no = st.text_input("เลขที่เอกสาร", value=default_doc_no)
+
+    st.markdown("### 🛒 รายการสินค้าในเอกสาร")
+    
+    inv_df = pd.read_sql("SELECT * FROM inventory", conn)
+    item_options = inv_df["name"].tolist()
+    
+    # จำลองการกรอกหลายรายการด้วยช่องกรอกแบบง่าย
+    selected_doc_item = st.selectbox("เลือกสินค้าจากคลัง", item_options, key="doc_item_sel")
+    item_row = inv_df[inv_df["name"] == selected_doc_item].iloc[0]
+    
+    doc_price = st.number_input("ราคาต่อหน่วย (บาท)", min_value=0.0, value=float(item_row["price"]), key="doc_p")
+    doc_qty = st.number_input("จำนวน", min_value=1, value=1, key="doc_q")
+    
+    item_total = doc_price * doc_qty
+    
+    # เก็บรายการไว้ใน Session State เพื่อให้กดเพิ่มหลายรายการได้
+    if 'doc_items' not in st.session_state:
+        st.session_state.doc_items = []
+        
+    if st.button("➕ เพิ่มรายการนี้ลงในเอกสาร"):
+        st.session_state.doc_items.append({
+            "name": selected_doc_item,
+            "price": doc_price,
+            "qty": doc_qty,
+            "total": item_total
+        })
+        st.success("เพิ่มรายการสำเร็จ!")
+        
+    if len(st.session_state.doc_items) > 0:
+        df_items_display = pd.DataFrame(st.session_state.doc_items)
+        st.dataframe(df_items_display, use_container_width=True)
+        
+        if st.button("🗑️ ล้างรายการทั้งหมด"):
+            st.session_state.doc_items = []
+            st.rerun()
+            
+        sub_sum = df_items_display["total"].sum()
+        
+        # คำนวณ VAT 7% เฉพาะใบกำกับภาษี หรือเลือกเปิด/ปิดได้
+        include_vat = st.checkbox("คำนวณ VAT 7% (ภาษีมูลค่าเพิ่ม)", value=True if "ใบกำกับภาษี" in doc_type else False)
+        
+        if include_vat:
+            vat_amount = sub_sum * 0.07
+            grand_total = sub_sum + vat_amount
+        else:
+            vat_amount = 0.0
+            grand_total = sub_sum
+            
+        st.markdown(f"**รวมเป็นเงิน (Subtotal):** {sub_sum:,.2f} บาท")
+        if include_vat:
+            st.markdown(f"**ภาษีมูลค่าเพิ่ม VAT 7%:** {vat_amount:,.2f} บาท")
+        st.markdown(f"### **ยอดรวมสุทธิทั้งสิ้น (Grand Total): {grand_total:,.2f} บาท**")
+        
+        if st.button("💾 บันทึกและแสดงตัวอย่างเอกสารทางการ"):
+            cursor.execute(
+                "INSERT INTO documents (doc_type, doc_no, date, customer, address, tax_id, grand_total) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (doc_type, doc_no, str(doc_date), c_name, c_address, c_tax_id, grand_total)
+            )
+            conn.commit()
+            st.success("บันทึกเอกสารเข้าระบบเรียบร้อย!")
+            
+            # แสดงรูปแบบเอกสารทางการ (พิมพ์ / Print View)
+            st.markdown("---")
+            st.markdown(f"""
+            <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
+                <h2 style="text-align: center; margin-bottom: 0;">{shop_name}</h2>
+                <p style="text-align: center; font-size: 13px; color: #555;">{shop_address} | โทร. {shop_promptpay} | เลขประจำตัวผู้เสียภาษี: {shop_tax_id}</p>
+                <hr style="border: 1px solid #333;">
+                <h3 style="text-align: center; background-color: #eee; padding: 5px;">{doc_type.upper()}</h3>
+                
+                <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
+                    <tr>
+                        <td style="width: 60%;"><b>นามลูกค้า:</b> {c_name}<br><b>ที่อยู่:</b> {c_address}<br><b>เลขประจำตัวผู้เสียภาษี:</b> {c_tax_id}</td>
+                        <td style="width: 40%; text-align: right;"><b>เลขที่เอกสาร:</b> {doc_no}<br><b>วันที่:</b> {doc_date}</td>
+                    </tr>
+                </table>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #333; color: #fff;">
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ลำดับ</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">รายการสินค้า / บริการ</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">จำนวน</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">ราคาต่อหน่วย</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">จำนวนเงิน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """, unsafe_allow_html=True)
+            
+            for idx, row in df_items_display.iterrows():
+                st.markdown(f"""
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{idx+1}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{row['name']}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{row['qty']}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['price']:,.2f}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['total']:,.2f}</td>
+                    </tr>
+                """, unsafe_allow_html=True)
+                
+            st.markdown(f"""
+                    </tbody>
+                </table>
+                
+                <div style="float: right; width: 350px; font-size: 14px;">
+                    <table style="width: 100%;">
+                        <tr><td><b>รวมเป็นเงิน:</b></td><td style="text-align: right;">{sub_sum:,.2f} บาท</td></tr>
+                        {f"<tr><td><b>VAT 7%:</b></td><td style="text-align: right;">{vat_amount:,.2f} บาท</td></tr>" if include_vat else ""}
+                        <tr style="font-size: 16px; border-top: 1px solid #333;"><td><b>ยอดรวมสุทธิ:</b></td><td style="text-align: right;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                    </table>
+                </div>
+                <div style="clear: both;"></div>
+                
+                <br><br>
+                <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 40px;">
+                    <tr>
+                        <td>____________________________________<br>ผู้จัดทำ / Authorized Signature</td>
+                        <td>____________________________________<br>ผู้รับสินค้า / Received By</td>
+                    </tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+            st.info("💡 สามารถกดสั่งพิมพ์ (Print) หน้านี้ผ่านเบราว์เซอร์เพื่อพิมพ์ออกเครื่องพิมพ์ A4 ได้ทันทีครับ")
+
+# ----------------------------------------------------
+# 3. จัดการสต็อกสินค้า
 # ----------------------------------------------------
 elif menu == "📦 จัดการสต็อกสินค้า":
     st.subheader("📦 คลังสินค้าและอะไหล่")
@@ -191,10 +371,10 @@ elif menu == "📦 จัดการสต็อกสินค้า":
                 st.rerun()
 
 # ----------------------------------------------------
-# 3. ระบบรับและติดตามงานซ่อม + QR Code ลูกค้า
+# 4. ระบบรับและติดตามงานซ่อม
 # ----------------------------------------------------
-elif menu == "📝 ระบบรับและติดตามงานซ่อม (พร้อม QR ลูกค้า)":
-    st.subheader("📝 ระบบจัดการงานซ่อม & สร้าง QR Code สำหรับลูกค้า")
+elif menu == "📝 ระบบรับและติดตามงานซ่อม":
+    st.subheader("📝 ระบบจัดการงานซ่อม (รับเครื่อง & ติดตามสถานะ)")
     
     tab1, tab2 = st.tabs(["รับเครื่องเข้าซ่อม & ออก QR Code", "รายการและอัปเดตสถานะงานซ่อม"])
     
@@ -222,7 +402,7 @@ elif menu == "📝 ระบบรับและติดตามงานซ�
                 
                 st.markdown("---")
                 st.markdown("### 🖨️ QR Code ใบรับเครื่องซ่อม (สำหรับให้ลูกค้าสแกน)")
-                ticket_info = f"ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส\nชื่อลูกค้า: {r_name}\nเบอร์โทร: {r_phone}\nรุ่น: {r_model}\nอาการ: {r_issue}\nสถานะ: รอตรวจสอบ"
+                ticket_info = f"{shop_name}\nชื่อลูกค้า: {r_name}\nเบอร์โทร: {r_phone}\nรุ่น: {r_model}\nอาการ: {r_issue}\nสถานะ: รอตรวจสอบ"
                 
                 qr = qrcode.QRCode(version=1, box_size=8, border=2)
                 qr.add_data(ticket_info)
@@ -240,7 +420,7 @@ elif menu == "📝 ระบบรับและติดตามงานซ�
         if not repairs_df.empty:
             st.dataframe(repairs_df, use_container_width=True)
             
-            st.markdown("### ⚙️ อัปเดตสถานะงานซ่อมด่วน")
+            st.markdown("### ⚙️ อัปเดตสถานะงานซ่อม")
             repair_ids = repairs_df["id"].tolist()
             selected_repair_id = st.selectbox("เลือกรหัสงานซ่อมที่ต้องการอัปเดต", repair_ids)
             
@@ -255,7 +435,7 @@ elif menu == "📝 ระบบรับและติดตามงานซ�
                 st.rerun()
 
 # ----------------------------------------------------
-# 4. สรุปยอดขายรายวัน
+# 5. สรุปยอดขายรายวัน
 # ----------------------------------------------------
 elif menu == "📊 สรุปยอดขายรายวัน":
     st.subheader("📊 รายงานสรุปยอดขายและบริการ")
@@ -275,18 +455,15 @@ elif menu == "📊 สรุปยอดขายรายวัน":
         st.info("ยังไม่มีประวัติการขายในระบบ")
 
 # ----------------------------------------------------
-# 5. ระบบหลังบ้าน (Admin / แก้ไขและจัดการข้อมูล)
+# 6. ระบบหลังบ้าน (Admin)
 # ----------------------------------------------------
 elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไขข้อมูล)":
     st.subheader("⚙️ ระบบหลังบ้าน - บริหารจัดการและแก้ไขข้อมูล")
     
     admin_tab1, admin_tab2 = st.tabs(["📦 แก้ไข/ลบ ข้อมูลสินค้าในสต็อก", "📝 แก้ไข/ลบ ข้อมูลงานซ่อม"])
     
-    # --- Tab 1: จัดการสต็อกสินค้า ---
     with admin_tab1:
-        st.markdown("### ✏️ แก้ไขข้อมูล หรือ ลบสินค้าในคลัง")
         inv_df = pd.read_sql("SELECT * FROM inventory", conn)
-        
         if not inv_df.empty:
             selected_item_name = st.selectbox("เลือกสินค้าที่ต้องการจัดการ", inv_df["name"].tolist(), key="admin_inv_select")
             item_info = inv_df[inv_df["name"] == selected_item_name].iloc[0]
@@ -303,32 +480,23 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไ�
                 delete_btn = col_btn2.form_submit_button("🗑️ ลบสินค้านี้ออกจากระบบ")
                 
                 if update_btn:
-                    cursor.execute(
-                        "UPDATE inventory SET code=?, name=?, category=?, qty=?, price=? WHERE id=?",
-                        (ed_code, ed_name, ed_category, ed_qty, ed_price, item_info["id"])
-                    )
+                    cursor.execute("UPDATE inventory SET code=?, name=?, category=?, qty=?, price=? WHERE id=?", (ed_code, ed_name, ed_category, ed_qty, ed_price, item_info["id"]))
                     conn.commit()
-                    st.success(f"อัปเดตข้อมูลสินค้า '{ed_name}' สำเร็จ!")
+                    st.success("อัปเดตข้อมูลสินค้าสำเร็จ!")
                     st.rerun()
-                    
                 if delete_btn:
                     cursor.execute("DELETE FROM inventory WHERE id=?", (item_info["id"],))
                     conn.commit()
-                    st.warning(f"ลบสินค้า '{item_info['name']}' ออกจากระบบเรียบร้อยแล้ว!")
+                    st.warning("ลบสินค้าเรียบร้อยแล้ว!")
                     st.rerun()
         else:
             st.info("ไม่มีสินค้าในคลัง")
 
-    # --- Tab 2: จัดการงานซ่อม ---
     with admin_tab2:
-        st.markdown("### ✏️ แก้ไขข้อมูลรายละเอียดงานซ่อม หรือ ลบรายการซ่อม")
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
-        
         if not repairs_df.empty:
             repair_display_list = [f"ID: {row['id']} | ลูกค้า: {row['customer']} | รุ่น: {row['model']}" for index, row in repairs_df.iterrows()]
             selected_rep_str = st.selectbox("เลือกรายการซ่อมที่ต้องการจัดการ", repair_display_list, key="admin_rep_select")
-            
-            # ดึง ID ออกมาจากข้อความที่เลือก
             rep_id = int(selected_rep_str.split(" | ")[0].replace("ID: ", ""))
             rep_info = repairs_df[repairs_df["id"] == rep_id].iloc[0]
             
@@ -338,21 +506,17 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไ�
                 ed_model = st.text_input("รุ่นคอมพิวเตอร์", value=rep_info["model"])
                 ed_issue = st.text_area("อาการเสีย", value=rep_info["issue"])
                 ed_price = st.number_input("ราคาประเมินซ่อม (บาท)", min_value=0.0, value=float(rep_info["price"]))
-                ed_status = st.selectbox("สถานะงานซ่อม", ["รอตรวจสอบ", "กำลังดำเนินการซ่อม", "ซ่อมเสร็จรอรับเครื่อง", "ส่งมอบเรียบร้อย"], index=["รอตรวจสอบ", "กำลังดำเนินการซ่อม", "ซ่อมเสร็จรอรับเครื่อง", "ส่งมอบเรียบร้อย"].index(rep_info["status"]) if rep_info["status"] in ["รอตรวจสอบ", "กำลังดำเนินการซ่อม", "ซ่อมเสร็จรอรับเครื่อง", "ส่งมอบเรียบร้อย"] else 0)
+                ed_status = st.selectbox("สถานะงานซ่อม", ["รอตรวจสอบ", "กำลังดำเนินการซ่อม", "ซ่อมเสร็จรอรับเครื่อง", "ส่งมอบเรียบร้อย"])
                 
                 col_r1, col_r2 = st.columns(2)
                 update_rep_btn = col_r1.form_submit_button("💾 บันทึกการแก้ไขงานซ่อม")
                 delete_rep_btn = col_r2.form_submit_button("🗑️ ลบประวัติงานซ่อมนี้")
                 
                 if update_rep_btn:
-                    cursor.execute(
-                        "UPDATE repairs SET customer=?, phone=?, model=?, issue=?, price=?, status=? WHERE id=?",
-                        (ed_cust, ed_phone, ed_model, ed_issue, ed_price, ed_status, rep_id)
-                    )
+                    cursor.execute("UPDATE repairs SET customer=?, phone=?, model=?, issue=?, price=?, status=? WHERE id=?", (ed_cust, ed_phone, ed_model, ed_issue, ed_price, ed_status, rep_id))
                     conn.commit()
-                    st.success("อัปเดตข้อมูลงานซ่อมสำเร็จ!")
+                    st.success("อัปเดตงานซ่อมสำเร็จ!")
                     st.rerun()
-                    
                 if delete_rep_btn:
                     cursor.execute("DELETE FROM repairs WHERE id=?", (rep_id,))
                     conn.commit()
