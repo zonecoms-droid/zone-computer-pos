@@ -27,27 +27,12 @@ st.markdown("""
         margin-bottom: 24px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    
-    .metric-card {
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border-left: 5px solid #3B82F6;
-        text-align: center;
-    }
-    
-    .badge-pending { background-color: #FEF3C7; color: #D97706; padding: 4px 10px; border-radius: 20px; font-weight: 500; font-size: 12px; }
-    .badge-approve { background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 20px; font-weight: 500; font-size: 12px; }
-    .badge-progress { background-color: #E0E7FF; color: #4338CA; padding: 4px 10px; border-radius: 20px; font-weight: 500; font-size: 12px; }
-    .badge-success { background-color: #D1FAE5; color: #065F46; padding: 4px 10px; border-radius: 20px; font-weight: 500; font-size: 12px; }
-    .badge-cancel { background-color: #FEE2E2; color: #991B1B; padding: 4px 10px; border-radius: 20px; font-weight: 500; font-size: 12px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. DATABASE SETUP (SQLite) ---
+# --- 2. DATABASE SETUP (SQLite - v2) ---
 def init_db():
-    conn = sqlite3.connect('repair_system.db', check_same_thread=False)
+    conn = sqlite3.connect('repair_v2.db', check_same_thread=False)
     cursor = conn.cursor()
     
     # Table 1: Users
@@ -101,11 +86,11 @@ cursor = conn.cursor()
 cursor.execute('SELECT COUNT(*) FROM users')
 if cursor.fetchone()[0] == 0:
     default_users = [
-        ('admin', '1234', 'ผู้ดูแลระบบ ระบบ (Admin)', 'Admin', 'ศูนย์คอมพิวเตอร์'),
-        ('officer', '1234', 'เจ้าหน้าที่ พัสดุ (Officer)', 'Officer', 'งานพัสดุและซ่อมบำรุง'),
-        ('tech', '1234', 'ช่าง สมชาย (Technician)', 'Technician', 'ฝ่ายช่างเทคนิค'),
-        ('director', '1234', 'ผอ. สมเกียรติ (Director)', 'Director', 'ฝ่ายบริหาร'),
-        ('user', '1234', 'พนักงาน ทั่วไป (Reporter)', 'Reporter', 'ฝ่ายบัญชี')
+        ('admin', '1234', 'ผู้ดูแลระบบ (Admin)', 'Admin', 'ศูนย์คอมพิวเตอร์'),
+        ('officer', '1234', 'เจ้าหน้าที่พัสดุ (Officer)', 'Officer', 'งานพัสดุและซ่อมบำรุง'),
+        ('tech', '1234', 'ช่างสมชาย (Technician)', 'Technician', 'ฝ่ายช่างเทคนิค'),
+        ('director', '1234', 'ผอ.สมเกียรติ (Director)', 'Director', 'ฝ่ายบริหาร'),
+        ('user', '1234', 'พนักงานทั่วไป (Reporter)', 'Reporter', 'ฝ่ายบัญชี')
     ]
     cursor.executemany("INSERT INTO users (username, password, fullname, role, department) VALUES (?, ?, ?, ?, ?)", default_users)
     conn.commit()
@@ -165,17 +150,7 @@ if not st.session_state.logged_in:
 # --- 4. MAIN SPA INTERFACE (LOGGED IN) ---
 current_user = st.session_state.user
 
-# Header & Profile Bar
-st.markdown(f"""
-    <div class='main-header' style='display: flex; justify-content: space-between; align-items: center;'>
-        <div>
-            <h2>🛠️ ระบบบริหารจัดการงานแจ้งซ่อม</h2>
-            <p>ยินดีต้อนรับคุณ <b>{current_user['fullname']}</b> | สิทธิ์ผู้ใช้งาน: <b>{current_user['role']}</b> ({current_user['department']})</p>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# Logout Button in Sidebar
+# Header & Sidebar Logout
 with st.sidebar:
     st.markdown(f"### 👤 บัญชีผู้ใช้")
     st.write(f"**ชื่อ:** {current_user['fullname']}")
@@ -187,15 +162,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📌 เมนูนำทาง")
 
-# --- 5. ROLE-BASED NAVIGATION ---
 role = current_user['role']
 
+# --- 5. ROLE-BASED NAVIGATION ---
 if role in ['Admin', 'Officer']:
     menu = st.sidebar.radio("เลือกเมนู", ["📊 แดชบอร์ด (Dashboard)", "👥 จัดการผู้ใช้งาน (Users)", "📂 จัดการหมวดหมู่ (Categories)", "📋 รายการแจ้งซ่อมทั้งหมด (All Repairs)"])
     
-    # ----------------------------------------------------
-    # 5.1 ADMIN / OFFICER DASHBOARD
-    # ----------------------------------------------------
     if menu == "📊 แดชบอร์ด (Dashboard)":
         st.subheader("📊 สรุปภาพรวมสถานะงานซ่อม")
         
@@ -223,7 +195,7 @@ if role in ['Admin', 'Officer']:
             else:
                 st.info("ยังไม่มีข้อมูลสถิติ")
         with c2:
-            st.markdown("#### 📈 สถิติจำนวนงานซ่อมย้อนหลัง")
+            st.markdown("#### 📈 สถิติจำนวนงานซ่อม")
             if not repairs_df.empty:
                 repairs_df['month'] = pd.to_datetime(repairs_df['date']).dt.strftime('%Y-%m')
                 month_counts = repairs_df['month'].value_counts().sort_index()
@@ -231,9 +203,6 @@ if role in ['Admin', 'Officer']:
             else:
                 st.info("ยังไม่มีข้อมูลสถิติเชิงเวลา")
 
-    # ----------------------------------------------------
-    # 5.2 USER MANAGEMENT
-    # ----------------------------------------------------
     elif menu == "👥 จัดการผู้ใช้งาน (Users)":
         st.subheader("👥 ระบบจัดการข้อมูลผู้ใช้งาน")
         
@@ -254,14 +223,11 @@ if role in ['Admin', 'Officer']:
                         st.success("เพิ่มผู้ใช้สำเร็จ!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
+                        st.error(f"เกิดข้อผิดพลาด (Username อาจซ้ำ): {e}")
                         
         users_df = pd.read_sql("SELECT id, username, fullname, role, department FROM users", conn)
         st.dataframe(users_df, use_container_width=True)
 
-    # ----------------------------------------------------
-    # 5.3 CATEGORIES MANAGEMENT
-    # ----------------------------------------------------
     elif menu == "📂 จัดการหมวดหมู่งาน (Categories)":
         st.subheader("📂 จัดการหมวดหมู่งานแจ้งซ่อม")
         
@@ -269,7 +235,7 @@ if role in ['Admin', 'Officer']:
             with st.form("add_cat_form"):
                 cat_name = st.text_input("ชื่อหมวดหมู่")
                 cat_color = st.color_picker("เลือกสีป้ายกำกับ", "#3B82F6")
-                cat_icon = st.text_input("FontAwesome Icon Class (เช่น fas fa-laptop)", "fas fa-tools")
+                cat_icon = st.text_input("FontAwesome Icon Class", "fas fa-tools")
                 submit_cat = st.form_submit_button("บันทึกหมวดหมู่")
                 
                 if submit_cat and cat_name:
@@ -284,16 +250,12 @@ if role in ['Admin', 'Officer']:
         cat_df = pd.read_sql("SELECT * FROM categories", conn)
         st.dataframe(cat_df, use_container_width=True)
 
-    # ----------------------------------------------------
-    # 5.4 ALL REPAIRS MANAGEMENT
-    # ----------------------------------------------------
     elif menu == "📋 รายการแจ้งซ่อมทั้งหมด (All Repairs)":
         st.subheader("📋 รายการแจ้งซ่อมทั้งหมดในระบบ")
         
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         
         if not repairs_df.empty:
-            # Filters
             col_f1, col_f2, col_f3 = st.columns(3)
             with col_f1:
                 search_query = st.text_input("🔍 ค้นหา (เลขที่/อาการ/ผู้แจ้ง)")
@@ -314,7 +276,7 @@ if role in ['Admin', 'Officer']:
             st.dataframe(filtered_df[['running_no', 'date', 'issue', 'category', 'location', 'status', 'reporter', 'total_price']], use_container_width=True)
             
             st.markdown("---")
-            st.markdown("### ⚙️ ดำเนินการอัปเดตสถานะและบันทึกค่าใช้จ่าย")
+            st.markdown("### ⚙️ อัปเดตสถานะและบันทึกค่าใช้จ่าย")
             repair_ids = filtered_df['id'].tolist()
             if repair_ids:
                 selected_id = st.selectbox("เลือกรหัสแจ้งซ่อม (ID)", repair_ids)
@@ -322,8 +284,12 @@ if role in ['Admin', 'Officer']:
                 
                 st.info(f"**เลขที่:** {selected_row['running_no']} | **อาการ:** {selected_row['issue']} | **สถานที่:** {selected_row['location']}")
                 
+                status_list = ["รอประเมิน", "รออนุมัติ", "กำลังซ่อม", "เสร็จสิ้น", "ยกเลิก"]
+                current_status = selected_row['status']
+                default_idx = status_list.index(current_status) if current_status in status_list else 0
+                
                 with st.form("update_repair_form"):
-                    new_status = st.selectbox("เปลี่ยนสถานะ", ["รอประเมิน", "รออนุมัติ", "กำลังซ่อม", "เสร็จสิ้น", "ยกเลิก"], index=["รอประเมิน", "รออนุมัติ", "กำลังซ่อม", "เสร็จสิ้น", "ยกเลิก"].index(selected_row['status']) if selected_row['status'] in ["รอประเมิน", "รออนุมัติ", "กำลังซ่อม", "เสร็จสิ้น", "ยกเลิก"] else 0)
+                    new_status = st.selectbox("เปลี่ยนสถานะ", status_list, index=default_idx)
                     parts_fee = st.number_input("ค่าอะไหล่ (บาท)", min_value=0.0, value=float(selected_row['parts_fee'] if selected_row['parts_fee'] else 0))
                     labor_fee = st.number_input("ค่าบริการ/ค่าแรง (บาท)", min_value=0.0, value=float(selected_row['labor_fee'] if selected_row['labor_fee'] else 0))
                     technician = st.text_input("ช่างผู้รับผิดชอบ", value=str(selected_row['technician'] if selected_row['technician'] else ''))
@@ -342,9 +308,6 @@ if role in ['Admin', 'Officer']:
 elif role in ['Reporter', 'User']:
     menu = st.sidebar.radio("เลือกเมนู", ["📊 แดชบอร์ดของฉัน (Dashboard)", "➕ แจ้งซ่อมใหม่ (New Request)", "📂 ติดตามสถานะ (My Repairs)"])
     
-    # ----------------------------------------------------
-    # 5.5 USER DASHBOARD & REQUEST PORTAL
-    # ----------------------------------------------------
     if menu == "📊 แดชบอร์ดของฉัน (Dashboard)":
         st.subheader("📊 แดชบอร์ดสรุปรายการแจ้งซ่อมของคุณ")
         my_repairs = pd.read_sql(f"SELECT * FROM repairs WHERE reporter = '{current_user['fullname']}'", conn)
@@ -372,7 +335,7 @@ elif role in ['Reporter', 'User']:
         
         with st.form("new_request_form"):
             issue = st.text_input("อาการ / ปัญหาที่พบ (หัวข้อสั้นๆ)")
-            category = st.selectbox("หมวดหมู่งานซ่อม", cats)
+            category = st.selectbox("หมวดหมู่งานซ่อม", cats if cats else ["ทั่วไป"])
             location = st.text_input("สถานที่ / ห้อง / อาคาร")
             details = st.text_area("รายละเอียดเพิ่มเติม / อาการเสียโดยละเอียด")
             uploaded_files = st.file_uploader("อัพโหลดรูปภาพประกอบ (ก่อนซ่อม)", accept_multiple_files=True)
@@ -381,10 +344,9 @@ elif role in ['Reporter', 'User']:
             
             if submit_req:
                 if issue and location:
-                    # Generate Running Number (e.g., RE-69/001)
                     cursor.execute("SELECT COUNT(*) FROM repairs")
                     count = cursor.fetchone()[0] + 1
-                    year_code = datetime.now().year + 543 - 2500 # พ.ศ. สองตัวท้าย
+                    year_code = datetime.now().year + 543 - 2500
                     running_no = f"RE-{year_code}/{str(count).zfill(3)}"
                     date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                     
@@ -396,6 +358,7 @@ elif role in ['Reporter', 'User']:
                     """, (running_no, date_str, issue, category, location, details, file_names, current_user['fullname'], 'รอประเมิน'))
                     conn.commit()
                     st.success(f"🎉 ส่งใบแจ้งซ่อมสำเร็จ! เลขที่ใบแจ้งซ่อมของคุณคือ: **{running_no}**")
+                    st.rerun()
                 else:
                     st.error("กรุณากรอกอาการและสถานที่ให้ครบถ้วน")
 
@@ -406,7 +369,6 @@ elif role in ['Reporter', 'User']:
         if not my_repairs.empty:
             st.dataframe(my_repairs[['running_no', 'date', 'issue', 'category', 'status', 'total_price', 'technician']], use_container_width=True)
             
-            # Cancel option for pending items
             pending_items = my_repairs[my_repairs['status'] == 'รอประเมิน']
             if not pending_items.empty:
                 st.markdown("---")
