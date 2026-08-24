@@ -6,16 +6,23 @@ import qrcode
 from io import BytesIO
 
 st.set_page_config(
-    page_title="ServiceTicker Pro - Ultimate Back-office Edition",
+    page_title="ServiceTicker Pro - Enterprise Edition",
     layout="wide",
     page_icon="💻"
 )
 
 # --- 1. DATABASE SETUP ---
 def init_db():
-    conn = sqlite3.connect('serviceticker_ultimate_v2.db', check_same_thread=False)
+    conn = sqlite3.connect('serviceticker_enterprise.db', check_same_thread=False)
     cursor = conn.cursor()
     
+    # Shop Settings Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS shop_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shop_name TEXT, tax_id TEXT, address TEXT, phone TEXT, email TEXT, footer_message TEXT
+        )
+    ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,7 +71,16 @@ def init_db():
 conn = init_db()
 cursor = conn.cursor()
 
-# Seed default data
+# Seed default shop info if empty
+cursor.execute('SELECT COUNT(*) FROM shop_settings')
+if cursor.fetchone()[0] == 0:
+    cursor.execute('''
+        INSERT INTO shop_settings (shop_name, tax_id, address, phone, email, footer_message)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '0123456789000', '123/45 ถนนพหลโยธิน กรุงเทพฯ 10900', '02-xxx-xxxx', 'zonecomputer@email.com', '*ขอบคุณที่ใช้บริการครับ*'))
+    conn.commit()
+
+# Seed default users & stock
 cursor.execute('SELECT COUNT(*) FROM users')
 if cursor.fetchone()[0] == 0:
     default_users = [
@@ -85,6 +101,20 @@ if cursor.fetchone()[0] == 0:
     cursor.executemany("INSERT INTO inventory (code, name, serial_no, category, buy_price, sell_price, qty, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", default_stock)
     conn.commit()
 
+# Helper: Get Shop Profile
+def get_shop_info():
+    df = pd.read_sql("SELECT * FROM shop_settings WHERE id=1", conn)
+    if not df.empty:
+        return df.iloc[0]
+    return {
+        "shop_name": "ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส",
+        "tax_id": "0123456789000",
+        "address": "123/45 ถนนพหลโยธิน กรุงเทพฯ",
+        "phone": "02-xxx-xxxx",
+        "email": "zone@email.com",
+        "footer_message": "*ขอบคุณที่ใช้บริการครับ*"
+    }
+
 # Helper: QR Code Generator
 def make_qr(url):
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
@@ -97,13 +127,14 @@ def make_qr(url):
 
 # Check Query Params for Customer Portal Mode
 query_params = st.query_params
+shop_info = get_shop_info()
 mode = query_params.get("mode", "")
 
 # ====================================================
 # 📱 MOBILE PORTAL: ลูกค้าสแกนลงทะเบียนซ่อมเอง
 # ====================================================
 if mode == "register":
-    st.title("🛠️ ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส")
+    st.title(f"🛠️ {shop_info['shop_name']}")
     st.subheader("📝 ลงทะเบียนแจ้งซ่อมด้วยตนเอง")
     st.write("กรุณากรอกข้อมูลอุปกรณ์และอาการเสียเพื่อให้ช่างตรวจสอบเบื้องต้นครับ")
     
@@ -148,7 +179,7 @@ if not st.session_state.logged_in:
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align: center;'>💻 ServiceTicker Pro Ultimate</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center;'>💻 {shop_info['shop_name']}</h2>", unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
@@ -186,6 +217,7 @@ with st.sidebar:
     
     menu = st.sidebar.radio("เลือกเมนูการทำงาน", [
         "🛠️ ระบบรับ-ส่งงานซ่อม",
+        "⚙️ จัดการข้อมูลร้านค้า (Shop Admin)",
         "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)",
         "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)",
         "📱 QR Code สำหรับลูกค้าสแกนซ่อม",
@@ -258,7 +290,33 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
             st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
 
 # ----------------------------------------------------
-# 2. ระบบจัดการหลังบ้าน (Master Back-office Management)
+# 2. จัดการข้อมูลร้านค้า (Shop Admin)
+# ----------------------------------------------------
+elif menu == "⚙️ จัดการข้อมูลร้านค้า (Shop Admin)":
+    st.subheader("⚙️ ระบบจัดการข้อมูลร้านค้า (Administrator Shop Profile)")
+    st.write("ตั้งค่าชื่อร้าน ที่อยู่ เบอร์โทรศัพท์ เลขประจำตัวผู้เสียภาษี และข้อความท้ายใบเสร็จ ข้อมูลนี้จะเชื่อมโยงไปแสดงผลบนเอกสารทางธุรกิจทั้งหมดโดยอัตโนมัติ")
+    
+    current_shop = get_shop_info()
+    with st.form("shop_admin_form"):
+        s_name = st.text_input("ชื่อร้านค้า / ชื่อบริษัท", value=current_shop['shop_name'])
+        s_tax = st.text_input("เลขประจำตัวผู้เสียภาษี (Tax ID)", value=current_shop['tax_id'])
+        s_addr = st.text_area("ที่อยู่ร้านค้า", value=current_shop['address'])
+        s_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value=current_shop['phone'])
+        s_email = st.text_input("อีเมลติดต่อ", value=current_shop['email'])
+        s_footer = st.text_input("ข้อความท้ายใบเสร็จ (Footer Message)", value=current_shop['footer_message'])
+        
+        if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงข้อมูลร้าน"):
+            cursor.execute("""
+                UPDATE shop_settings 
+                SET shop_name=?, tax_id=?, address=?, phone=?, email=?, footer_message=? 
+                WHERE id=1
+            """, (s_name, s_tax, s_addr, s_phone, s_email, s_footer))
+            conn.commit()
+            st.success("บันทึกข้อมูลร้านค้าสำเร็จ! ข้อมูลถูกอัปเดตลงในเอกสารทั้งหมดเรียบร้อยแล้ว")
+            st.rerun()
+
+# ----------------------------------------------------
+# 3. ระบบจัดการหลังบ้าน (Master Back-office)
 # ----------------------------------------------------
 elif menu == "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)":
     st.subheader("⚙️ ระบบจัดการและแก้ไขข้อมูลหลังบ้าน (Master Management)")
@@ -272,7 +330,6 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
         "🔄 จัดการรายการเคลม"
     ])
     
-    # --- Tab 1: Users Management ---
     with bo_tab1:
         st.markdown("### 👥 แก้ไข / ลบข้อมูลผู้ใช้งานในระบบ")
         users_df = pd.read_sql("SELECT * FROM users", conn)
@@ -305,7 +362,6 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
                     st.warning("ลบผู้ใช้งานสำเร็จ!")
                     st.rerun()
 
-    # --- Tab 2: Inventory Management ---
     with bo_tab2:
         st.markdown("### 📦 แก้ไข / ลบข้อมูลคลังสินค้าและอะไหล่")
         inv_df = pd.read_sql("SELECT * FROM inventory", conn)
@@ -342,7 +398,6 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
                     st.warning("ลบสินค้าสำเร็จ!")
                     st.rerun()
 
-    # --- Tab 3: Repairs Management ---
     with bo_tab3:
         st.markdown("### 🛠️ แก้ไข / ลบข้อมูลงานซ่อมทั้งหมดในระบบ")
         rep_df = pd.read_sql("SELECT * FROM repairs", conn)
@@ -382,7 +437,6 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
                     st.warning("ลบใบงานซ่อมสำเร็จ!")
                     st.rerun()
 
-    # --- Tab 4: Sales Management ---
     with bo_tab4:
         st.markdown("### 🛒 แก้ไข / ลบประวัติการขายหน้าร้าน (POS)")
         sales_df = pd.read_sql("SELECT * FROM sales", conn)
@@ -416,7 +470,6 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
                     st.warning("ลบรายการขายสำเร็จ!")
                     st.rerun()
 
-    # --- Tab 5: Claims Management ---
     with bo_tab5:
         st.markdown("### 🔄 แก้ไข / ลบรายการเคลมสินค้า")
         claim_df = pd.read_sql("SELECT * FROM claims", conn)
@@ -451,7 +504,7 @@ elif menu == "⚙️ ระบบจัดการหลังบ้าน (Mas
                     st.rerun()
 
 # ----------------------------------------------------
-# 3. ออกเอกสาร & ฟอร์มทางธุรกิจ (A4 ปะรอยฉีก & ฟอร์มครบชุด)
+# 4. ออกเอกสาร & ฟอร์มทางธุรกิจ (A4 ปะรอยฉีก & ฟอร์มครบชุด)
 # ----------------------------------------------------
 elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)":
     st.subheader("📄 ศูนย์รวมออกเอกสารและใบสำคัญทางธุรกิจ (ขนาด A4)")
@@ -466,6 +519,7 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
         "ใบเสร็จรับเงิน (Receipt)"
     ])
     
+    shop = get_shop_info()
     rep_list = pd.read_sql("SELECT job_no, customer, device_model FROM repairs", conn)
     if not rep_list.empty:
         target_job = st.selectbox("เลือกใบงานซ่อมที่เกี่ยวข้อง", rep_list['job_no'].tolist())
@@ -475,8 +529,8 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
             st.markdown("### 🖨️ ตัวอย่างเอกสาร A4 (ต้นฉบับร้าน + สำเนาลูกค้า ปะรอยฉีก)")
             st.markdown(f"""
             <div style="border: 2px solid #333; padding: 20px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
-                <h3 style="text-align:center; margin:0;">ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (ต้นฉบับสำหรับร้าน)</h3>
-                <p style="text-align:center; font-size:12px; margin:2px;">โทร. 02-xxx-xxxx | Tax ID: 0123456789000</p>
+                <h3 style="text-align:center; margin:0;">{shop['shop_name']} (ต้นฉบับสำหรับร้าน)</h3>
+                <p style="text-align:center; font-size:12px; margin:2px;">ที่อยู่: {shop['address']} | โทร. {shop['phone']} | Tax ID: {shop['tax_id']}</p>
                 <hr>
                 <table style="width:100%; font-size:14px;">
                     <tr><td><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td><b>วันที่รับ:</b> {j_data['date']}</td></tr>
@@ -497,8 +551,8 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
             </div>
 
             <div style="border: 2px solid #333; padding: 20px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
-                <h3 style="text-align:center; margin:0;">ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (สำเนาสำหรับลูกค้า)</h3>
-                <p style="text-align:center; font-size:12px; margin:2px;">โทร. 02-xxx-xxxx | กรุณานำใบนี้มารับเครื่องคืน</p>
+                <h3 style="text-align:center; margin:0;">{shop['shop_name']} (สำเนาสำหรับลูกค้า)</h3>
+                <p style="text-align:center; font-size:12px; margin:2px;">โทร. {shop['phone']} | {shop['footer_message']}</p>
                 <hr>
                 <table style="width:100%; font-size:14px;">
                     <tr><td><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td><b>วันที่รับ:</b> {j_data['date']}</td></tr>
@@ -515,8 +569,8 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
             <div style="border: 2px solid #222; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
                 <div style="display:flex; justify-content:space-between;">
                     <div>
-                        <h2>ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส</h2>
-                        <p style="font-size:12px; margin:0;">123/45 ถนนพหลโยธิน กรุงเทพฯ 10900<br>โทร: 02-xxx-xxxx | เลขประจำตัวผู้เสียภาษี: 0123456789000</p>
+                        <h2>{shop['shop_name']}</h2>
+                        <p style="font-size:12px; margin:0;">{shop['address']}<br>โทร: {shop['phone']} | เลขประจำตัวผู้เสียภาษี: {shop['tax_id']}</p>
                     </div>
                     <div style="text-align:right;">
                         <h2 style="color:#1E3A8A; margin:0;">{doc_type.upper()}</h2>
@@ -556,7 +610,7 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
         st.info("ยังไม่มีข้อมูลใบงานซ่อมในระบบสำหรับออกเอกสาร")
 
 # ----------------------------------------------------
-# 4. QR Code สำหรับลูกค้าสแกนซ่อม
+# 5. QR Code สำหรับลูกค้าสแกนซ่อม
 # ----------------------------------------------------
 elif menu == "📱 QR Code สำหรับลูกค้าสแกนซ่อม":
     st.subheader("📱 สร้าง QR Code ตั้งหน้าร้าน (ให้ลูกค้าสแกนลงทะเบียนซ่อมเอง)")
@@ -571,11 +625,11 @@ elif menu == "📱 QR Code สำหรับลูกค้าสแกนซ�
     st.info(f"🔗 ลิงก์สำหรับสแกน: `{target_url}`")
     
     qr_img = make_qr(target_url)
-    st.image(qr_img, caption="สแกนเพื่อลงทะเบียนแจ้งซ่อม ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส", width=300)
+    st.image(qr_img, caption=f"สแกนเพื่อลงทะเบียนแจ้งซ่อม {shop_info['shop_name']}", width=300)
     st.success("✅ สร้าง QR Code สำเร็จ! คลิกขวาที่รูปเพื่อบันทึกไปปริ้นท์ใช้งานได้เลยครับ")
 
 # ----------------------------------------------------
-# 5. สต็อกสินค้า & Serial Number (S/N)
+# 6. สต็อกสินค้า & Serial Number (S/N)
 # ----------------------------------------------------
 elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
     st.subheader("📦 จัดการสต็อกสินค้าและติดตาม Serial Number (S/N)")
@@ -600,7 +654,7 @@ elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
                 st.rerun()
 
 # ----------------------------------------------------
-# 6. ระบบเคลมสินค้า (Claims)
+# 7. ระบบเคลมสินค้า (Claims)
 # ----------------------------------------------------
 elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
     st.subheader("🔄 ระบบรับเคลมสินค้าและอุปกรณ์จากลูกค้า")
@@ -626,7 +680,7 @@ elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
         st.info("ยังไม่มีรายการเคลมสินค้า")
 
 # ----------------------------------------------------
-# 7. ระบบขายหน้าร้าน (POS)
+# 8. ระบบขายหน้าร้าน (POS)
 # ----------------------------------------------------
 elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
     st.subheader("🛒 ระบบขายหน้าร้าน & ตัดสต็อกอัตโนมัติ")
@@ -657,7 +711,7 @@ elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
                 st.success("ขายสินค้าสำเร็จ! ตัดสต็อกอัตโนมัติเรียบร้อย")
                 st.code(f"""
 ========================================
-         ใบเสร็จรับเงิน / Tax Invoice          
+       {shop_info['shop_name']}       
 ========================================
 เลขที่: {sale_no} | วันที่: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 ลูกค้า: {customer}
@@ -666,13 +720,13 @@ elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
 ยอดรวมสุทธิ: {total:,.2f} บาท
 ชำระผ่าน: {payment}
 ========================================
-        *ขอบคุณที่ใช้บริการครับ*
+    {shop_info['footer_message']}
                 """, language="text")
     else:
         st.warning("สินค้าในสต็อกหมดเกลี้ยง")
 
 # ----------------------------------------------------
-# 8. งานบัญชี & ลูกหนี้คงค้าง
+# 9. งานบัญชี & ลูกหนี้คงค้าง
 # ----------------------------------------------------
 elif menu == "💰 งานบัญชี & ลูกหนี้คงค้าง":
     st.subheader("💰 ตรวจสอบลูกหนี้คงค้างและรายรับ")
@@ -692,7 +746,7 @@ elif menu == "💰 งานบัญชี & ลูกหนี้คงค้�
         st.success("ยอดเยี่ยม! ไม่มีลูกหนี้คงค้างในระบบขณะนี้")
 
 # ----------------------------------------------------
-# 9. รายงานสรุปผล (Reports)
+# 10. รายงานสรุปผล (Reports)
 # ----------------------------------------------------
 elif menu == "📊 รายงานสรุปผล (Reports)":
     st.subheader("📊 รายงานสรุปยอดขาย กำไร และงานซ่อม")
@@ -720,7 +774,7 @@ elif menu == "📊 รายงานสรุปผล (Reports)":
         st.dataframe(pd.read_sql("SELECT * FROM inventory", conn), use_container_width=True)
 
 # ----------------------------------------------------
-# 10. Audit Log
+# 11. Audit Log
 # ----------------------------------------------------
 elif menu == "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)":
     st.subheader("📋 ประวัติการใช้งานระบบ (Audit Log)")
