@@ -2,10 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import sqlite3
-import base64
 from io import BytesIO
 
-# พยายามโหลด qrcode ถ้าไม่มีให้ข้ามเพื่อป้องกันหน้าขาว
 try:
     import qrcode
     HAS_QR = True
@@ -13,18 +11,21 @@ except ImportError:
     HAS_QR = False
 
 st.set_page_config(
-    page_title="ServiceTicker Pro - Enterprise Edition",
+    page_title="ServiceTicker Pro - Same Page Print Edition",
     layout="wide",
     page_icon="💻"
 )
 
-# --- CSS สำหรับจัดการการพิมพ์ ---
+# --- CSS สำหรับพิมพ์และจัดหน้ากระดาษ A4 แบ่งครึ่ง ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+    
     html, body, [class*="css"] {
         font-family: 'Kanit', sans-serif;
     }
+
+    /* สไตล์สำหรับการพิมพ์จริง */
     @media print {
         header, footer, [data-testid="stSidebar"], .stButton, .stSelectbox, .stRadio, .no-print {
             display: none !important;
@@ -32,77 +33,97 @@ st.markdown("""
         body {
             background-color: white !important;
         }
+        .receipt-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            box-shadow: none !important;
+        }
+    }
+
+    .receipt-box {
+        border: 1px solid #333;
+        padding: 20px;
+        background: #fff;
+        color: #000;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    .cut-line {
+        text-align: center;
+        border-top: 2px dashed #666;
+        margin: 20px 0;
+        padding-top: 5px;
+        font-size: 14px;
+        color: #666;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 1. DATABASE SETUP ---
 def init_db():
-    try:
-        conn = sqlite3.connect('serviceticker_v8.db', check_same_thread=False)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS shop_settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                shop_name TEXT, tax_id TEXT, address TEXT, phone TEXT, email TEXT, footer_message TEXT, promptpay TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE, password TEXT, fullname TEXT, role TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS inventory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code TEXT, name TEXT, serial_no TEXT, category TEXT, 
-                buy_price REAL, sell_price REAL, qty INTEGER, status TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS repairs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                job_no TEXT UNIQUE, date TEXT, customer TEXT, phone TEXT, 
-                device_model TEXT, serial_no TEXT, issue TEXT, 
-                parts_cost REAL, labor_cost REAL, total_price REAL, 
-                status TEXT, technician TEXT, payment_status TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS sales (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sale_no TEXT, date TEXT, customer TEXT, item TEXT, 
-                qty INTEGER, total REAL, profit REAL, payment_method TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS claims (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                claim_no TEXT, date TEXT, customer TEXT, item TEXT, 
-                serial_no TEXT, issue TEXT, status TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS audit_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT, username TEXT, action TEXT
-            )
-        ''')
-        conn.commit()
-        return conn
-    except Exception as e:
-        st.error(f"Database Error: {e}")
-        return None
+    conn = sqlite3.connect('serviceticker_v9.db', check_same_thread=False)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS shop_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shop_name TEXT, tax_id TEXT, address TEXT, phone TEXT, email TEXT, footer_message TEXT, promptpay TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE, password TEXT, fullname TEXT, role TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT, name TEXT, serial_no TEXT, category TEXT, 
+            buy_price REAL, sell_price REAL, qty INTEGER, status TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS repairs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_no TEXT UNIQUE, date TEXT, customer TEXT, phone TEXT, 
+            device_model TEXT, serial_no TEXT, issue TEXT, 
+            parts_cost REAL, labor_cost REAL, total_price REAL, 
+            status TEXT, technician TEXT, payment_status TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sale_no TEXT, date TEXT, customer TEXT, item TEXT, 
+            qty INTEGER, total REAL, profit REAL, payment_method TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            claim_no TEXT, date TEXT, customer TEXT, item TEXT, 
+            serial_no TEXT, issue TEXT, status TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT, username TEXT, action TEXT
+        )
+    ''')
+    conn.commit()
+    return conn
 
 conn = init_db()
-if conn is None:
-    st.stop()
-
 cursor = conn.cursor()
 
-# Seed default data
+# Seed default shop info if empty
 cursor.execute('SELECT COUNT(*) FROM shop_settings')
 if cursor.fetchone()[0] == 0:
     cursor.execute('''
@@ -121,16 +142,6 @@ if cursor.fetchone()[0] == 0:
     cursor.executemany("INSERT INTO users (username, password, fullname, role) VALUES (?, ?, ?, ?)", default_users)
     conn.commit()
 
-cursor.execute('SELECT COUNT(*) FROM inventory')
-if cursor.fetchone()[0] == 0:
-    default_stock = [
-        ('P001', 'SSD 500GB M.2 NVMe', 'SN-SSD500-001', 'อะไหล่', 1100, 1550, 10, 'In Stock'),
-        ('P002', 'RAM DDR4 16GB', 'SN-RAM16-002', 'อะไหล่', 1000, 1450, 8, 'In Stock'),
-        ('P003', 'Thermal Paste MX-4', 'N/A', 'อุปกรณ์เสริม', 80, 150, 25, 'In Stock')
-    ]
-    cursor.executemany("INSERT INTO inventory (code, name, serial_no, category, buy_price, sell_price, qty, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", default_stock)
-    conn.commit()
-
 def get_shop_info():
     df = pd.read_sql("SELECT * FROM shop_settings WHERE id=1", conn)
     if not df.empty:
@@ -145,29 +156,8 @@ def get_shop_info():
         "promptpay": "0812345678"
     }
 
-def make_qr(url):
-    if not HAS_QR:
-        return None
-    qr = qrcode.QRCode(version=1, box_size=10, border=2)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
-
-def render_print_button(html_content, label="🖨️ เปิดหน้าต่างพิมพ์เอกสาร (Print)"):
-    b64 = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
-    href = f'''
-        <a href="data:text/html;charset=utf-8;base64,{b64}" target="_blank" style="display:inline-block; background-color:#1E3A8A; color:white; padding:10px 20px; border-radius:5px; text-decoration:none; font-weight:bold; font-family:'Kanit',sans-serif; margin: 10px 0;">
-            {label}
-        </a>
-    '''
-    st.markdown(href, unsafe_allow_html=True)
-
 shop_info = get_shop_info()
 
-# Safe Query Params
 try:
     mode = st.query_params.get("mode", "")
 except:
@@ -250,16 +240,55 @@ with st.sidebar:
         "🛠️ ระบบรับ-ส่งงานซ่อม",
         "🧾 ออกใบเสร็จรับเงิน (Dynamic Items & QR)",
         "⚙️ จัดการข้อมูลร้านค้า (Shop Admin)",
-        "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)",
-        "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)",
-        "📱 QR Code สำหรับลูกค้าสแกนซ่อม",
-        "📦 สต็อกสินค้า & Serial Number (S/N)",
-        "🔄 ระบบเคลมสินค้า (Claims)",
-        "🛒 ระบบขายหน้าร้าน (POS)",
-        "💰 งานบัญชี & ลูกหนี้คงค้าง",
-        "📊 รายงานสรุปผล (Reports)",
-        "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)"
+        "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)"
     ])
+
+# Helper Function: สร้าง HTML ใบรับซ่อม A4 แบ่งครึ่ง (สำหรับร้านค้า + สำหรับลูกค้า)
+def generate_a4_split_receipt(j):
+    return f"""
+    <div class="receipt-container">
+        <!-- ส่วนที่ 1: สำหรับร้านค้า (Top Half) -->
+        <div class="receipt-box">
+            <h3 style="text-align:center; margin:0;">{shop_info['shop_name']}</h3>
+            <p style="text-align:center; font-size:11px; margin:2px;">ที่อยู่: {shop_info['address']} | โทร. {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
+            <h4 style="text-align:center; margin: 8px 0; border-bottom: 1.5px solid #000; padding-bottom: 3px;">ใบรับซ่อมสินค้า (ต้นฉบับสำหรับร้านค้า)</h4>
+            
+            <table style="width:100%; font-size:13px; border-collapse: collapse;">
+                <tr><td style="padding: 3px;"><b>เลขที่ใบงาน:</b> {j['job_no']}</td><td style="padding: 3px;"><b>วันที่รับ:</b> {j['date']}</td></tr>
+                <tr><td style="padding: 3px;"><b>ชื่อลูกค้า:</b> {j['customer']}</td><td style="padding: 3px;"><b>เบอร์โทร:</b> {j['phone']}</td></tr>
+                <tr><td style="padding: 3px;"><b>รุ่นอุปกรณ์:</b> {j['device_model']}</td><td style="padding: 3px;"><b>Serial No:</b> {j['serial_no']}</td></tr>
+                <tr><td colspan="2" style="padding: 3px;"><b>อาการเสีย / ตำหนิ:</b> {j['issue']}</td></tr>
+                <tr><td style="padding: 3px;"><b>ช่างผู้รับผิดชอบ:</b> {j['technician']}</td><td style="padding: 3px;"><b>สถานะ:</b> {j['status']}</td></tr>
+            </table>
+            <br>
+            <table style="width:100%; font-size:12px; margin-top:10px;">
+                <tr>
+                    <td style="text-align:center; width:50%;">___________________________________<br>ลงชื่อ ผู้รับเครื่อง (ร้านค้า)</td>
+                    <td style="text-align:center; width:50%;">___________________________________<br>ลงชื่อ ลูกค้าผู้ส่งซ่อม</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- รอยปะตัดครึ่ง -->
+        <div class="cut-line">✂️ ------------------------------------ ตัดตามรอยปะสำหรับลูกค้า (นำมารับเครื่องคืน) ------------------------------------ ✂️</div>
+
+        <!-- ส่วนที่ 2: สำหรับลูกค้า (Bottom Half) -->
+        <div class="receipt-box">
+            <h3 style="text-align:center; margin:0;">{shop_info['shop_name']}</h3>
+            <p style="text-align:center; font-size:11px; margin:2px;">โทร. {shop_info['phone']} | {shop_info['footer_message']}</p>
+            <h4 style="text-align:center; margin: 8px 0; border-bottom: 1.5px solid #000; padding-bottom: 3px;">ใบรับซ่อมสินค้า (สำเนาสำหรับลูกค้า)</h4>
+            
+            <table style="width:100%; font-size:13px; border-collapse: collapse;">
+                <tr><td style="padding: 3px;"><b>เลขที่ใบงาน:</b> {j['job_no']}</td><td style="padding: 3px;"><b>วันที่รับ:</b> {j['date']}</td></tr>
+                <tr><td style="padding: 3px;"><b>ชื่อลูกค้า:</b> {j['customer']}</td><td style="padding: 3px;"><b>เบอร์โทร:</b> {j['phone']}</td></tr>
+                <tr><td style="padding: 3px;"><b>รุ่นอุปกรณ์:</b> {j['device_model']}</td><td style="padding: 3px;"><b>Serial No:</b> {j['serial_no']}</td></tr>
+                <tr><td colspan="2" style="padding: 3px;"><b>อาการเสีย / ตำหนิ:</b> {j['issue']}</td></tr>
+                <tr><td style="padding: 3px;"><b>ช่างผู้รับผิดชอบ:</b> {j['technician']}</td><td style="padding: 3px;"><b>สถานะ:</b> {j['status']}</td></tr>
+            </table>
+            <p style="font-size:11px; text-align:center; color:#555; margin-top: 10px;">*กรุณานำใบรับซ่อมนี้มาแสดงทุกครั้งเมื่อมารับอุปกรณ์คืนจากทางร้าน</p>
+        </div>
+    </div>
+    """
 
 # ----------------------------------------------------
 # 1. ระบบรับ-ส่งงานซ่อม
@@ -267,7 +296,7 @@ with st.sidebar:
 if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
     st.subheader("🛠️ ระบบบริหารจัดการงานซ่อมคอมพิวเตอร์")
     
-    tab1, tab2 = st.tabs(["รับเครื่องเข้าซ่อม (หน้าร้าน)", "ติดตาม & จัดการสถานะซ่อม"])
+    tab1, tab2 = st.tabs(["รับเครื่องเข้าซ่อม (หน้าร้าน)", "ติดตาม & จัดการสถานะซ่อม (พร้อมแสดงตัวอย่างก่อนพิมพ์)"])
     
     with tab1:
         with st.form("new_repair"):
@@ -297,77 +326,41 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
                 st.session_state['last_saved_job'] = job_no
                 st.success(f"บันทึกรับซ่อมสำเร็จ! เลขที่ใบงาน: **{job_no}**")
 
+        # แสดงตัวอย่างใบรับซ่อมบนหน้าเดียวกันทันที
         if 'last_saved_job' in st.session_state:
             st.markdown("---")
-            st.markdown(f"### 🖨️ พิมพ์ใบรับซ่อมสำหรับใบงานล่าสุด: `{st.session_state['last_saved_job']}`")
+            st.markdown(f"### 🖨️ ตัวอย่างก่อนพิมพ์ A4 (แบ่งครึ่ง ฉีกได้) สำหรับใบงาน: `{st.session_state['last_saved_job']}`")
             j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{st.session_state['last_saved_job']}'", conn).iloc[0]
             
-            html_print = f"""
-            <!DOCTYPE html>
-            <html>
-            <head><meta charset="utf-8"><title>Print Job {j_data['job_no']}</title>
-            <style>body{{font-family:'Kanit',sans-serif; padding:20px; color:#000;}} table{{width:100%; border-collapse:collapse; margin-top:10px;}} td, th{{border:1px solid #333; padding:8px; font-size:14px;}} .no-border td{{border:none;}}</style>
-            </head>
-            <body onload="window.print()">
-                <h2 style="text-align:center; margin:0;">{shop_info['shop_name']}</h2>
-                <p style="text-align:center; font-size:12px;">ที่อยู่: {shop_info['address']} | โทร. {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
-                <h3 style="text-align:center; border-bottom:2px solid #000; padding-bottom:5px;">ใบรับซ่อมสินค้า / SERVICE RECEIPT</h3>
-                <table class="no-border" style="margin-top:15px;">
-                    <tr><td><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td><b>วันที่รับ:</b> {j_data['date']}</td></tr>
-                    <tr><td><b>ชื่อลูกค้า:</b> {j_data['customer']}</td><td><b>เบอร์โทร:</b> {j_data['phone']}</td></tr>
-                    <tr><td><b>รุ่นอุปกรณ์:</b> {j_data['device_model']}</td><td><b>Serial No:</b> {j_data['serial_no']}</td></tr>
-                    <tr><td colspan="2"><b>อาการเสีย:</b> {j_data['issue']}</td></tr>
-                    <tr><td><b>ช่างผู้รับผิดชอบ:</b> {j_data['technician']}</td><td><b>สถานะ:</b> {j_data['status']}</td></tr>
-                </table>
-                <br><br><br>
-                <table class="no-border" style="text-align:center; margin-top:30px;">
-                    <tr><td>___________________________________<br>ลงชื่อ ผู้รับเครื่อง (ร้าน)</td><td>___________________________________<br>ลงชื่อ ลูกค้าผู้ส่งซ่อม</td></tr>
-                </table>
-            </body>
-            </html>
-            """
-            render_print_button(html_print, "🖨️ เปิดหน้าต่างพิมพ์ใบรับซ่อม (Print)")
+            st.markdown("""
+                <div class="no-print">
+                    <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin-bottom:15px;">
+                        🖨️ สั่งพิมพ์เอกสารนี้ (Print)
+                    </button>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(generate_a4_split_receipt(j_data), unsafe_allow_html=True)
                 
     with tab2:
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         if not repairs_df.empty:
             st.dataframe(repairs_df[['job_no', 'date', 'customer', 'device_model', 'serial_no', 'status', 'technician', 'total_price']], use_container_width=True)
             
+            st.markdown("### 🖨️ เลือกใบงานเพื่อดูตัวอย่างและสั่งพิมพ์")
             selected_job = st.selectbox("เลือกเลขที่ใบงานซ่อม", repairs_df['job_no'].tolist(), key="sel_job_print")
             row = repairs_df[repairs_df['job_no'] == selected_job].iloc[0]
             
-            shortcut_doc = st.selectbox("เลือกประเภทเอกสารที่ต้องการพิมพ์", [
-                "ใบรับซ่อม", "ใบประเมินราคา", "ใบเสนอราคา", "ใบส่งของ", "ใบกำกับภาษี", "บิลเงินสด", "ใบเสร็จรับเงิน"
-            ])
+            st.markdown("""
+                <div class="no-print">
+                    <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin: 10px 0;">
+                        🖨️ สั่งพิมพ์เอกสารนี้ (Print)
+                    </button>
+                </div>
+            """, unsafe_allow_html=True)
             
-            html_doc = f"""
-            <!DOCTYPE html>
-            <html>
-            <head><meta charset="utf-8"><title>{shortcut_doc} - {row['job_no']}</title>
-            <style>body{{font-family:'Kanit',sans-serif; padding:30px; color:#000;}} table{{width:100%; border-collapse:collapse; margin-top:15px;}} th, td{{border:1px solid #333; padding:10px; font-size:14px;}} .no-border td{{border:none;}}</style>
-            </head>
-            <body onload="window.print()">
-                <table class="no-border">
-                    <tr>
-                        <td><h2 style="margin:0;">{shop_info['shop_name']}</h2><p style="font-size:12px; margin:0;">{shop_info['address']}<br>โทร: {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p></td>
-                        <td style="text-align:right;"><h2 style="color:#1E3A8A; margin:0;">{shortcut_doc.upper()}</h2><p style="font-size:12px; margin:0;"><b>เลขที่:</b> DOC-{row['job_no']}<br><b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d')}</p></td>
-                    </tr>
-                </table>
-                <hr style="margin:15px 0;">
-                <p style="font-size:14px;"><b>นามลูกค้า:</b> {row['customer']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>เบอร์โทร:</b> {row['phone']}</p>
-                <table>
-                    <tr style="background:#f2f2f2;"><th style="text-align:left; width:10%;">ลำดับ</th><th style="text-align:left; width:50%;">รายการ</th><th style="text-align:center; width:10%;">จำนวน</th><th style="text-align:right; width:15%;">ราคาต่อหน่วย</th><th style="text-align:right; width:15%;">จำนวนเงิน</th></tr>
-                    <tr><td>1</td><td>ค่าบริการตรวจเช็คและซ่อมอุปกรณ์ ({row['device_model']} - S/N: {row['serial_no']})</td><td style="text-align:center;">1</td><td style="text-align:right;">{row['total_price']:,.2f}</td><td style="text-align:right;">{row['total_price']:,.2f}</td></tr>
-                </table>
-                <br><div style="text-align:right; font-size:16px;"><p><b>ยอดรวมทั้งสิ้น:</b> {row['total_price']:,.2f} บาท</p></div>
-                <br><br>
-                <table class="no-border" style="margin-top:30px; text-align:center;">
-                    <tr><td>___________________________________<br>ผู้มีอำนาจลงนาม / ผู้ออกเอกสาร</td><td>___________________________________<br>ผู้รับสินค้า / ลูกค้า</td></tr>
-                </table>
-            </body>
-            </html>
-            """
-            render_print_button(html_doc, f"🖨️ เปิดหน้าต่างพิมพ์ {shortcut_doc} (Print)")
+            # พรีวิวบนหน้าเดียวกัน
+            st.markdown(generate_a4_split_receipt(row), unsafe_allow_html=True)
             
             st.markdown("---")
             st.markdown("### ⚙️ อัปเดตสถานะและค่าบริการ")
@@ -419,35 +412,32 @@ elif menu == "🧾 ออกใบเสร็จรับเงิน (Dynamic 
         
         st.markdown(f"### 💰 ยอดชำระสุทธิ: **{net_total:,.2f} บาท** (รวม VAT 7%)")
         
-        qr_bytes = make_qr(f"PromptPay:{shop_info['promptpay']}|Amount:{net_total:.2f}")
+        st.markdown("""
+            <div class="no-print">
+                <button onclick="window.print()" style="background-color:#1E3A8A; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-family:'Kanit',sans-serif; font-size:16px; margin: 10px 0;">
+                    🖨️ สั่งพิมพ์ใบเสร็จรับเงิน (Print)
+                </button>
+            </div>
+        """, unsafe_allow_html=True)
         
-        rows_html = "".join([f"<tr><td>{i['item']}</td><td style='text-align:center;'>{i['qty']}</td><td style='text-align:right;'>{(i['qty']*i['price']):,.2f}</td></tr>" for i in st.session_state.receipt_items])
-        html_receipt = f"""
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><title>Receipt</title>
-        <style>body{{font-family:'Kanit',sans-serif; padding:30px; color:#000;}} table{{width:100%; border-collapse:collapse; margin-top:10px;}} th, td{{border:1px solid #333; padding:8px; font-size:13px;}}</style>
-        </head>
-        <body onload="window.print()">
+        rows_html = "".join([f"<tr><td style='padding:5px;'>{i['item']}</td><td style='padding:5px; text-align:center;'>{i['qty']}</td><td style='padding:5px; text-align:right;'>{(i['qty']*i['price']):,.2f}</td></tr>" for i in st.session_state.receipt_items])
+        
+        st.markdown(f"""
+        <div class="receipt-container" style="border: 1px solid #333; padding: 25px; background: #fff; color: #000; max-width: 800px; margin: auto;">
             <h3 style="text-align:center; margin:0;">{shop_info['shop_name']}</h3>
             <p style="text-align:center; font-size:12px; margin:2px;">{shop_info['address']}<br>โทร: {shop_info['phone']} | Tax ID: {shop_info['tax_id']}</p>
             <h3 style="text-align:center; margin: 10px 0; border-bottom: 2px solid #000; padding-bottom: 3px;">ใบเสร็จรับเงิน / RECEIPT</h3>
             <p><b>ลูกค้า:</b> {c_name_input} &nbsp;&nbsp;|&nbsp;&nbsp; <b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
-            <table>
-                <tr style="background:#eee;"><th style="text-align:left;">รายการ</th><th style="text-align:center;">จำนวน</th><th style="text-align:right;">ราคา</th></tr>
+            <table style="width:100%; font-size:13px; border-collapse:collapse; margin-top:10px;" border="1">
+                <tr style="background:#eee;"><th style="padding:5px; text-align:left;">รายการ</th><th style="padding:5px; text-align:center;">จำนวน</th><th style="padding:5px; text-align:right;">ราคา</th></tr>
                 {rows_html}
             </table>
             <p style="text-align:right; margin-top:10px; font-size:14px;">
                 <b>รวมเป็นเงิน:</b> {sub_total:,.2f} บาท<br><b>ภาษีมูลค่าเพิ่ม (7%):</b> {vat_7:,.2f} บาท<br><b style="font-size:16px;">ยอดสุทธิ: {net_total:,.2f} บาท</b>
             </p>
             <center><p style="font-size:12px; color:#555;">{shop_info['footer_message']}</p></center>
-        </body>
-        </html>
-        """
-        render_print_button(html_receipt, "🖨️ เปิดหน้าต่างพิมพ์ใบเสร็จ (Print)")
-        
-        if qr_bytes:
-            st.image(qr_bytes, caption=f"PromptPay: {shop_info['promptpay']}", width=200)
+        </div>
+        """, unsafe_allow_html=True)
 
 # ----------------------------------------------------
 # 3. Shop Admin & Back-office อื่นๆ
@@ -474,40 +464,3 @@ elif menu == "⚙️ จัดการข้อมูลร้านค้า (
 elif menu == "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)":
     st.subheader("⚙️ ระบบจัดการหลังบ้าน")
     st.dataframe(pd.read_sql("SELECT * FROM repairs", conn), use_container_width=True)
-
-elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)":
-    st.subheader("📄 ออกเอกสาร A4")
-    rep_list = pd.read_sql("SELECT job_no, customer FROM repairs", conn)
-    if not rep_list.empty:
-        target_job = st.selectbox("เลือกใบงาน", rep_list['job_no'].tolist())
-        j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{target_job}'", conn).iloc[0]
-        html_a4 = f"<h3>{shop_info['shop_name']} - {j_data['customer']}</h3><p>ยอดเงิน: {j_data['total_price']:,.2f} บาท</p>"
-        render_print_button(html_a4, "🖨️ พิมพ์เอกสาร A4")
-
-elif menu == "📱 QR Code สำหรับลูกค้าสแกนซ่อม":
-    st.subheader("📱 QR Code ลงทะเบียนซ่อม")
-    try:
-        current_url = st.context.url.split("?")[0].strip('/')
-    except:
-        current_url = "http://localhost:8501"
-    qr_b = make_qr(f"{current_url}/?mode=register")
-    if qr_b:
-        st.image(qr_b, width=250)
-
-elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
-    st.dataframe(pd.read_sql("SELECT * FROM inventory", conn), use_container_width=True)
-
-elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
-    st.dataframe(pd.read_sql("SELECT * FROM claims", conn), use_container_width=True)
-
-elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
-    st.dataframe(pd.read_sql("SELECT * FROM sales", conn), use_container_width=True)
-
-elif menu == "💰 งานบัญชี & ลูกหนี้คงค้าง":
-    st.dataframe(pd.read_sql("SELECT * FROM repairs WHERE payment_status='ค้างชำระ (ลูกหนี้)'", conn), use_container_width=True)
-
-elif menu == "📊 รายงานสรุปผล (Reports)":
-    st.dataframe(pd.read_sql("SELECT * FROM sales", conn), use_container_width=True)
-
-elif menu == "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)":
-    st.dataframe(pd.read_sql("SELECT * FROM audit_logs ORDER BY id DESC", conn), use_container_width=True)
