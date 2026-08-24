@@ -2,27 +2,26 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import sqlite3
+import qrcode
+from io import BytesIO
 
 st.set_page_config(
-    page_title="ServiceTicker Pro - Computer & Repair Management",
+    page_title="ServiceTicker Pro - Ultimate Edition",
     layout="wide",
     page_icon="💻"
 )
 
-# --- 1. DATABASE SETUP & INITIALIZATION ---
+# --- 1. DATABASE SETUP ---
 def init_db():
-    conn = sqlite3.connect('serviceticker_pro.db', check_same_thread=False)
+    conn = sqlite3.connect('serviceticker_pro_ultimate.db', check_same_thread=False)
     cursor = conn.cursor()
     
-    # 1. Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE, password TEXT, fullname TEXT, role TEXT
         )
     ''')
-    
-    # 2. Inventory & Serial Number Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS inventory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,8 +29,6 @@ def init_db():
             buy_price REAL, sell_price REAL, qty INTEGER, status TEXT
         )
     ''')
-    
-    # 3. Repairs Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,8 +38,6 @@ def init_db():
             status TEXT, technician TEXT, payment_status TEXT
         )
     ''')
-    
-    # 4. Sales Table (POS)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,8 +45,6 @@ def init_db():
             qty INTEGER, total REAL, profit REAL, payment_method TEXT
         )
     ''')
-    
-    # 5. Claims Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS claims (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,15 +52,12 @@ def init_db():
             serial_no TEXT, issue TEXT, status TEXT
         )
     ''')
-    
-    # 6. Audit Log Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS audit_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT, username TEXT, action TEXT
         )
     ''')
-    
     conn.commit()
     return conn
 
@@ -88,14 +78,68 @@ if cursor.fetchone()[0] == 0:
 cursor.execute('SELECT COUNT(*) FROM inventory')
 if cursor.fetchone()[0] == 0:
     default_stock = [
-        ('P001', 'SSD 500GB M.2 NVMe', 'SN-SSD500-001', 'อะไหล่', 1100, 1550, 1, 'In Stock'),
-        ('P002', 'RAM DDR4 16GB', 'SN-RAM16-002', 'อะไหล่', 1000, 1450, 1, 'In Stock'),
+        ('P001', 'SSD 500GB M.2 NVMe', 'SN-SSD500-001', 'อะไหล่', 1100, 1550, 10, 'In Stock'),
+        ('P002', 'RAM DDR4 16GB', 'SN-RAM16-002', 'อะไหล่', 1000, 1450, 8, 'In Stock'),
         ('P003', 'Thermal Paste MX-4', 'N/A', 'อุปกรณ์เสริม', 80, 150, 25, 'In Stock')
     ]
     cursor.executemany("INSERT INTO inventory (code, name, serial_no, category, buy_price, sell_price, qty, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", default_stock)
     conn.commit()
 
-# --- 2. AUTHENTICATION ---
+# Helper: QR Code Generator
+def make_qr(url):
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+# Check Query Params for Customer Portal Mode
+query_params = st.query_params
+mode = query_params.get("mode", "")
+
+# ====================================================
+# 📱 MOBILE PORTAL: ลูกค้าสแกนลงทะเบียนซ่อมเอง
+# ====================================================
+if mode == "register":
+    st.title("🛠️ ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส")
+    st.subheader("📝 ลงทะเบียนแจ้งซ่อมด้วยตนเอง")
+    st.write("กรุณากรอกข้อมูลอุปกรณ์และอาการเสียเพื่อให้ช่างตรวจสอบเบื้องต้นครับ")
+    
+    with st.form("cust_reg_form"):
+        c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
+        c_phone = st.text_input("เบอร์โทรศัพท์มือถือ")
+        c_model = st.text_input("รุ่นคอมพิวเตอร์ / โน้ตบุ๊ก (เช่น ASUS TUF)")
+        c_sn = st.text_input("Serial Number (ถ้ามี)")
+        c_issue = st.text_area("อาการเสีย / ปัญหาที่พบ")
+        
+        submitted = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อม")
+        if submitted:
+            if c_name and c_phone and c_model:
+                cursor.execute("SELECT COUNT(*) FROM repairs")
+                cnt = cursor.fetchone()[0] + 1
+                j_no = f"JOB-{datetime.now().strftime('%y%m')}-{str(cnt).zfill(3)}"
+                d_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
+                cursor.execute("""
+                    INSERT INTO repairs (job_no, date, customer, phone, device_model, serial_no, issue, parts_cost, labor_cost, total_price, status, technician, payment_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'รอตรวจสอบ', 'รอมอบหมายช่าง', 'ยังไม่ชำระ')
+                """, (j_no, d_str, c_name, c_phone, c_model, c_sn, c_issue))
+                conn.commit()
+                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{j_no}** (สามารถนำเครื่องมาส่งที่ร้านได้เลยครับ)")
+            else:
+                st.error("❌ กรุณากรอกชื่อ เบอร์โทร และรุ่นคอมพิวเตอร์ให้ครบถ้วน")
+    
+    st.markdown("---")
+    if st.button("🔐 สำหรับเจ้าของร้าน: กลับสู่ระบบหลังบ้าน"):
+        st.query_params.clear()
+        st.rerun()
+    st.stop()
+
+# ====================================================
+# 🔐 LOGIN SYSTEM FOR ADMIN / STAFF
+# ====================================================
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user = None
@@ -104,7 +148,7 @@ if not st.session_state.logged_in:
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align: center;'>💻 ServiceTicker Pro Login</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center;'>💻 ServiceTicker Pro Ultimate</h2>", unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
@@ -125,7 +169,9 @@ if not st.session_state.logged_in:
         st.info("💡 **ทดสอบระบบ:** Admin: `admin`/`1234` | ช่าง: `tech1`/`1234` | แคชเชียร์: `cashier`/`1234`")
     st.stop()
 
-# --- 3. MAIN APP LAYOUT & NAVIGATION ---
+# ====================================================
+# 🛠️ MAIN APP LAYOUT & SIDEBAR NAVIGATION
+# ====================================================
 current_user = st.session_state.user
 
 with st.sidebar:
@@ -136,10 +182,12 @@ with st.sidebar:
         st.session_state.user = None
         st.rerun()
     st.markdown("---")
-    st.markdown("### 🛠️ เมนูระบบหลัก (ServiceTicker)")
+    st.markdown("### 🛠️ เมนูระบบหลัก")
     
     menu = st.sidebar.radio("เลือกเมนูการทำงาน", [
-        "🛠️ ระบบรับ-ส่งงานซ่อม (Repair)",
+        "🛠️ ระบบรับ-ส่งงานซ่อม",
+        "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)",
+        "📱 QR Code สำหรับลูกค้าสแกนซ่อม",
         "📦 สต็อกสินค้า & Serial Number (S/N)",
         "🔄 ระบบเคลมสินค้า (Claims)",
         "🛒 ระบบขายหน้าร้าน (POS)",
@@ -148,13 +196,13 @@ with st.sidebar:
         "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)"
     ])
 
-# ====================================================
-# 1. ระบบรับ-ส่งงานซ่อม (Repair Management)
-# ====================================================
-if menu == "🛠️ ระบบรับ-ส่งงานซ่อม (Repair)":
+# ----------------------------------------------------
+# 1. ระบบรับ-ส่งงานซ่อม
+# ----------------------------------------------------
+if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
     st.subheader("🛠️ ระบบบริหารจัดการงานซ่อมคอมพิวเตอร์")
     
-    tab1, tab2, tab3 = st.tabs(["รับเครื่องเข้าซ่อม", "ติดตาม & จัดการสถานะซ่อม", "พิมพ์ใบรับ/ใบส่งซ่อม"])
+    tab1, tab2 = st.tabs(["รับเครื่องเข้าซ่อม (หน้าร้าน)", "ติดตาม & จัดการสถานะซ่อม"])
     
     with tab1:
         with st.form("new_repair"):
@@ -164,7 +212,7 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม (Repair
                 cust_phone = st.text_input("เบอร์โทรศัพท์")
                 device_model = st.text_input("รุ่นอุปกรณ์ (เช่น ASUS TUF Gaming)")
             with col2:
-                serial_no = st.text_input("Serial Number (S/N) อุปกรณ์")
+                serial_no = st.text_input("Serial Number (S/N) อุปกรณ์", value="N/A")
                 technician = st.selectbox("มอบหมายช่างผู้รับผิดชอบ", [u[3] for u in cursor.execute("SELECT * FROM users WHERE role='Technician'").fetchall()] or ["ช่างทั่วไป"])
                 issue = st.text_area("อาการเสีย / ตำหนิภายนอก")
                 
@@ -207,37 +255,135 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม (Repair
                     st.rerun()
         else:
             st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
-            
-    with tab3:
-        st.markdown("### 📄 พิมพ์เอกสารใบรับซ่อม / ใบเสร็จ")
-        rep_list = pd.read_sql("SELECT job_no, customer, device_model FROM repairs", conn)
-        if not rep_list.empty:
-            target_job = st.selectbox("เลือกใบงานเพื่อพิมพ์เอกสาร", rep_list['job_no'].tolist())
-            j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{target_job}'", conn).iloc[0]
-            
-            if st.button("🖨️ แสดงตัวอย่างเอกสารอย่างย่อย"):
-                st.code(f"""
-========================================
-       SERVICE TICKER PRO - ใบรับซ่อม       
-   โทร. 02-xxx-xxxx | ร้านโซนคอมพิวเตอร์     
-========================================
-เลขที่ใบงาน: {j_data['job_no']}
-วันที่รับ: {j_data['date']}
-ลูกค้า: {j_data['customer']} | โทร: {j_data['phone']}
-อุปกรณ์: {j_data['device_model']}
-S/N: {j_data['serial_no']}
-อาการ: {j_data['issue']}
-----------------------------------------
-ค่าบริการรวม: {j_data['total_price']:,.2f} บาท
-สถานะ: {j_data['status']} ({j_data['payment_status']})
-ช่างผู้รับผิดชอบ: {j_data['technician']}
-========================================
-     *กรุณานำใบนี้มาแสดงเมื่อมารับเครื่อง*
-                """, language="text")
 
-# ====================================================
-# 2. สต็อกสินค้า & Serial Number (S/N) Tracking
-# ====================================================
+# ----------------------------------------------------
+# 2. ออกเอกสาร & ฟอร์มทางธุรกิจ (A4 ปะรอยฉีก & ฟอร์มครบชุด)
+# ----------------------------------------------------
+elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)":
+    st.subheader("📄 ศูนย์รวมออกเอกสารและใบสำคัญทางธุรกิจ (ขนาด A4)")
+    
+    doc_type = st.selectbox("เลือกประเภทเอกสารที่ต้องการพิมพ์", [
+        "ใบรับซ่อม (A4 แบบมีรอยฉีกปะ)",
+        "ใบประเมินราคา (Evaluation Sheet)",
+        "ใบเสนอราคา (Quotation)",
+        "ใบส่งของ (Delivery Note)",
+        "ใบกำกับภาษี (Tax Invoice)",
+        "บิลเงินสด (Cash Bill)",
+        "ใบเสร็จรับเงิน (Receipt)"
+    ])
+    
+    rep_list = pd.read_sql("SELECT job_no, customer, device_model FROM repairs", conn)
+    if not rep_list.empty:
+        target_job = st.selectbox("เลือกใบงานซ่อมที่เกี่ยวข้อง", rep_list['job_no'].tolist())
+        j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{target_job}'", conn).iloc[0]
+        
+        if doc_type == "ใบรับซ่อม (A4แบบมีรอยฉีกปะ)":
+            st.markdown("### 🖨️ ตัวอย่างเอกสาร A4 (ต้นฉบับร้าน + สำเนาลูกค้า ปะรอยฉีก)")
+            st.markdown(f"""
+            <div style="border: 2px solid #333; padding: 20px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
+                <h3 style="text-align:center; margin:0;">ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (ต้นฉบับสำหรับร้าน)</h3>
+                <p style="text-align:center; font-size:12px; margin:2px;">โทร. 02-xxx-xxxx | Tax ID: 0123456789000</p>
+                <hr>
+                <table style="width:100%; font-size:14px;">
+                    <tr><td><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td><b>วันที่รับ:</b> {j_data['date']}</td></tr>
+                    <tr><td><b>ชื่อลูกค้า:</b> {j_data['customer']}</td><td><b>เบอร์โทร:</b> {j_data['phone']}</td></tr>
+                    <tr><td><b>รุ่นอุปกรณ์:</b> {j_data['device_model']}</td><td><b>Serial No:</b> {j_data['serial_no']}</td></tr>
+                    <tr><td colspan="2"><b>อาการเสีย:</b> {j_data['issue']}</td></tr>
+                    <tr><td><b>ช่างผู้รับผิดชอบ:</b> {j_data['technician']}</td><td><b>สถานะ:</b> {j_data['status']}</td></tr>
+                </table>
+                <br><br>
+                <div style="display:flex; justify-content:space-between;">
+                    <div style="text-align:center;">____________________<br>ผู้รับเครื่อง (ร้าน)</div>
+                    <div style="text-align:center;">____________________<br>ลูกค้าผู้ส่งซ่อม</div>
+                </div>
+            </div>
+            
+            <div style="border-top: 3px dashed #666; margin: 30px 0; text-align: center; color: #666; font-size:14px;">
+                ✂️ ------------------------------------ ตัดตามรอยปะสำหรับลูกค้า ------------------------------------ ✂️
+            </div>
+
+            <div style="border: 2px solid #333; padding: 20px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
+                <h3 style="text-align:center; margin:0;">ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (สำเนาสำหรับลูกค้า)</h3>
+                <p style="text-align:center; font-size:12px; margin:2px;">โทร. 02-xxx-xxxx | กรุณานำใบนี้มารับเครื่องคืน</p>
+                <hr>
+                <table style="width:100%; font-size:14px;">
+                    <tr><td><b>เลขที่ใบงาน:</b> {j_data['job_no']}</td><td><b>วันที่รับ:</b> {j_data['date']}</td></tr>
+                    <tr><td><b>ชื่อลูกค้า:</b> {j_data['customer']}</td><td><b>เบอร์โทร:</b> {j_data['phone']}</td></tr>
+                    <tr><td><b>รุ่นอุปกรณ์:</b> {j_data['device_model']}</td><td><b>Serial No:</b> {j_data['serial_no']}</td></tr>
+                    <tr><td colspan="2"><b>อาการเสีย:</b> {j_data['issue']}</td></tr>
+                    <tr><td><b>ประเมินค่าใช้จ่าย:</b> {j_data['total_price']:,.2f} บาท</td><td><b>สถานะ:</b> {j_data['status']}</td></tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        else:
+            # Generic A4 Form Template for Quotation, Tax Invoice, etc.
+            st.markdown(f"""
+            <div style="border: 2px solid #222; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
+                <div style="display:flex; justify-content:space-between;">
+                    <div>
+                        <h2>ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส</h2>
+                        <p style="font-size:12px; margin:0;">123/45 ถนนพหลโยธิน กรุงเทพฯ 10900<br>โทร: 02-xxx-xxxx | เลขประจำตัวผู้เสียภาษี: 0123456789000</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <h2 style="color:#1E3A8A; margin:0;">{doc_type.upper()}</h2>
+                        <p style="font-size:12px; margin:0;"><b>เลขที่:</b> DOC-{j_data['job_no']}<br><b>วันที่:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
+                    </div>
+                </div>
+                <hr>
+                <p><b>นามลูกค้า:</b> {j_data['customer']} (โทร: {j_data['phone']})</p>
+                <table style="width:100%; border-collapse: collapse; margin-top: 20px;" border="1">
+                    <tr style="background:#f2f2f2;">
+                        <th style="padding:10px; text-align:left;">ลำดับ</th>
+                        <th style="padding:10px; text-align:left;">รายการสินค้า / บริการซ่อม</th>
+                        <th style="padding:10px; text-align:center;">จำนวน</th>
+                        <th style="padding:10px; text-align:right;">ราคาต่อหน่วย</th>
+                        <th style="padding:10px; text-align:right;">จำนวนเงิน (บาท)</th>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px;">1</td>
+                        <td style="padding:10px;">ค่าบริการซ่อมและตรวจเช็ค ({j_data['device_model']} - S/N: {j_data['serial_no']})</td>
+                        <td style="padding:10px; text-align:center;">1</td>
+                        <td style="padding:10px; text-align:right;">{j_data['total_price']:,.2f}</td>
+                        <td style="padding:10px; text-align:right;">{j_data['total_price']:,.2f}</td>
+                    </tr>
+                </table>
+                <br>
+                <div style="text-align:right; font-size:16px;">
+                    <p><b>ยอดรวมทั้งสิ้น:</b> {j_data['total_price']:,.2f} บาท</p>
+                </div>
+                <br><br>
+                <div style="display:flex; justify-content:space-between; margin-top:50px;">
+                    <div style="text-align:center;">______________________________<br>ผู้มีอำนาจลงนาม / ผู้ออกเอกสาร</div>
+                    <div style="text-align:center;">______________________________<br>ผู้รับสินค้า / ลูกค้า</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("ยังไม่มีข้อมูลใบงานซ่อมในระบบสำหรับออกเอกสาร")
+
+# ----------------------------------------------------
+# 3. QR Code สำหรับลูกค้าสแกนซ่อม
+# ----------------------------------------------------
+elif menu == "📱 QR Code สำหรับลูกค้าสแกนซ่อม":
+    st.subheader("📱 สร้าง QR Code ตั้งหน้าร้าน (ให้ลูกค้าสแกนลงทะเบียนซ่อมเอง)")
+    st.write("คุณสามารถปริ้นท์ป้ายนี้ตั้งไว้ที่เคาน์เตอร์ เพื่อให้ลูกค้าใช้มือถือสแกนกรอกข้อมูลแจ้งซ่อมได้ทันที")
+    
+    try:
+        current_url = st.context.url.split("?")[0].strip('/')
+    except:
+        current_url = "http://localhost:8501"
+        
+    target_url = f"{current_url}/?mode=register"
+    st.info(f"🔗 ลิงก์สำหรับสแกน: `{target_url}`")
+    
+    qr_img = make_qr(target_url)
+    st.image(qr_img, caption="สแกนเพื่อลงทะเบียนแจ้งซ่อม ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส", width=300)
+    st.success("✅ สร้าง QR Code สำเร็จ! คลิกขวาที่รูปเพื่อบันทึกไปปริ้นท์ใช้งานได้เลยครับ")
+
+# ----------------------------------------------------
+# 4. สต็อกสินค้า & Serial Number (S/N)
+# ----------------------------------------------------
 elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
     st.subheader("📦 จัดการสต็อกสินค้าและติดตาม Serial Number (S/N)")
     
@@ -260,9 +406,9 @@ elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
                 st.success("นำเข้าสินค้าและ S/N สำเร็จ!")
                 st.rerun()
 
-# ====================================================
-# 3. ระบบเคลมสินค้า (Warranty Claims)
-# ====================================================
+# ----------------------------------------------------
+# 5. ระบบเคลมสินค้า (Claims)
+# ----------------------------------------------------
 elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
     st.subheader("🔄 ระบบรับเคลมสินค้าและอุปกรณ์จากลูกค้า")
     
@@ -286,9 +432,9 @@ elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
     else:
         st.info("ยังไม่มีรายการเคลมสินค้า")
 
-# ====================================================
-# 4. ระบบขายหน้าร้าน (POS)
-# ====================================================
+# ----------------------------------------------------
+# 6. ระบบขายหน้าร้าน (POS)
+# ----------------------------------------------------
 elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
     st.subheader("🛒 ระบบขายหน้าร้าน & ตัดสต็อกอัตโนมัติ")
     
@@ -330,11 +476,11 @@ elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
         *ขอบคุณที่ใช้บริการครับ*
                 """, language="text")
     else:
-        st.warning("สินค้าในสต็อกหมดเกลบญ")
+        st.warning("สินค้าในสต็อกหมดเกลี้ยง")
 
-# ====================================================
-# 5. งานบัญชี & ลูกหนี้คงค้าง
-# ====================================================
+# ----------------------------------------------------
+# 7. งานบัญชี & ลูกหนี้คงค้าง
+# ----------------------------------------------------
 elif menu == "💰 งานบัญชี & ลูกหนี้คงค้าง":
     st.subheader("💰 ตรวจสอบลูกหนี้คงค้างและรายรับ")
     debtors_df = pd.read_sql("SELECT job_no, date, customer, phone, total_price, payment_status FROM repairs WHERE payment_status = 'ค้างชำระ (ลูกหนี้)'", conn)
@@ -352,9 +498,9 @@ elif menu == "💰 งานบัญชี & ลูกหนี้คงค้�
     else:
         st.success("ยอดเยี่ยม! ไม่มีลูกหนี้คงค้างในระบบขณะนี้")
 
-# ====================================================
-# 6. รายงานสรุปผล (Reports)
-# ====================================================
+# ----------------------------------------------------
+# 8. รายงานสรุปผล (Reports)
+# ----------------------------------------------------
 elif menu == "📊 รายงานสรุปผล (Reports)":
     st.subheader("📊 รายงานสรุปยอดขาย กำไร และงานซ่อม")
     
@@ -380,9 +526,9 @@ elif menu == "📊 รายงานสรุปผล (Reports)":
     with r_tab3:
         st.dataframe(pd.read_sql("SELECT * FROM inventory", conn), use_container_width=True)
 
-# ====================================================
-# 7. ตรวจสอบการเข้าใช้งาน (Audit Log)
-# ====================================================
+# ----------------------------------------------------
+# 9. Audit Log
+# ----------------------------------------------------
 elif menu == "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)":
     st.subheader("📋 ประวัติการใช้งานระบบ (Audit Log)")
     logs_df = pd.read_sql("SELECT * FROM audit_logs ORDER BY id DESC", conn)
