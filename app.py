@@ -6,7 +6,7 @@ import qrcode
 from promptpay import qrcode as pp_qrcode
 from io import BytesIO
 from PIL import Image
-import json
+import os
 
 st.set_page_config(page_title="Zone Computer & Service", layout="wide")
 
@@ -55,7 +55,7 @@ def init_db():
         )
     ''')
 
-    # ตารางเก็บบันทึกเอกสารทางการ (ใบเสนอราคา, ใบกำกับภาษี ฯลฯ)
+    # ตารางเก็บบันทึกเอกสารทางการ
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,6 +68,18 @@ def init_db():
             grand_total REAL
         )
     ''')
+
+    # ตารางตั้งค่าข้อมูลร้านค้าและโลโก้
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS shop_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shop_name TEXT,
+            address TEXT,
+            tax_id TEXT,
+            promptpay TEXT,
+            logo_path TEXT
+        )
+    ''')
     
     conn.commit()
     return conn
@@ -75,7 +87,7 @@ def init_db():
 conn = init_db()
 cursor = conn.cursor()
 
-# เติมข้อมูลตั้งต้นหากว่างเปล่า
+# เติมข้อมูลตั้งต้นสต็อกหากว่างเปล่า
 cursor.execute('SELECT COUNT(*) FROM inventory')
 if cursor.fetchone()[0] == 0:
     default_items = [
@@ -88,18 +100,27 @@ if cursor.fetchone()[0] == 0:
     cursor.executemany("INSERT INTO inventory (code, name, category, qty, price) VALUES (?, ?, ?, ?, ?)", default_items)
     conn.commit()
 
-st.title("💻 ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส (Online POS & Document System)")
+# เติมข้อมูลตั้งต้นร้านค้าหากว่างเปล่า
+cursor.execute('SELECT COUNT(*) FROM shop_settings')
+if cursor.fetchone()[0] == 0:
+    cursor.execute('''
+        INSERT INTO shop_settings (shop_name, address, tax_id, promptpay, logo_path)
+        VALUES (?, ?, ?, ?, ?)
+    ''', ("ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส", "123/4 ถ.อุปราช ต.ในเมือง อ.เมือง จ.อุบลราชธานี 34000", "1340999999999", "0812345678", ""))
+    conn.commit()
 
-# ข้อมูลร้านค้าหลัก (สำหรับออกเอกสาร)
-st.sidebar.markdown("### ⚙️ ตั้งค่าร้านค้า & ออกเอกสาร")
-shop_name = st.sidebar.text_input("ชื่อร้านค้า", value="ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส")
-shop_address = st.sidebar.text_area("ที่อยู่ร้าน", value="123/4 ถ.อุปราช ต.ในเมือง อ.เมือง จ.อุบลราชธานี 34000")
-shop_tax_id = st.sidebar.text_input("เลขประจำตัวผู้เสียภาษีร้าน", value="1340999999999")
-shop_promptpay = st.sidebar.text_input("เบอร์พร้อมเพย์ (รับเงิน)", value="0812345678")
+# ดึงข้อมูลร้านค้าปัจจุบันจากฐานข้อมูล
+cursor.execute('SELECT shop_name, address, tax_id, promptpay, logo_path FROM shop_settings WHERE id=1')
+shop_info = cursor.fetchone()
+shop_name, shop_address, shop_tax_id, shop_promptpay, shop_logo_path = shop_info
 
+st.title(f"💻 {shop_name} (Online POS & Document System)")
+
+# เมนูหลักด้านข้าง
 menu = st.sidebar.selectbox(
     "เลือกเมนูการทำงาน", 
     [
+        "🏪 ตั้งค่าข้อมูลร้านค้า & โลโก้",
         "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)", 
         "📄 ระบบออกเอกสารทางการ (ใบเสนอราคา/ใบกำกับภาษี)",
         "📦 จัดการสต็อกสินค้า",
@@ -110,9 +131,52 @@ menu = st.sidebar.selectbox(
 )
 
 # ----------------------------------------------------
+# 0. ระบบตั้งค่าข้อมูลร้านค้า & โลโก้
+# ----------------------------------------------------
+if menu == "🏪 ตั้งค่าข้อมูลร้านค้า & โลโก้":
+    st.subheader("🏪 ตั้งค่าข้อมูลร้านค้าและอัปโหลดโลโก้")
+    
+    col_l1, col_l2 = st.columns([1, 2])
+    
+    with col_l1:
+        st.markdown("### โลโก้ร้านปัจจุบัน")
+        if shop_logo_path and os.path.exists(shop_logo_path):
+            st.image(shop_logo_path, width=200, caption="โลโก้ร้านค้า")
+        else:
+            st.info("ยังไม่มีการอัปโหลดโลโก้ร้านค้า")
+            
+        uploaded_logo = st.file_uploader("เปลี่ยน/อัปโหลดโลโก้ใหม่ (PNG/JPG)", type=["png", "jpg", "jpeg"])
+        
+    with col_l2:
+        with st.form("shop_setting_form"):
+            new_shop_name = st.text_input("ชื่อร้านค้า", value=shop_name)
+            new_address = st.text_area("ที่อยู่ร้านค้า", value=shop_address)
+            new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี", value=shop_tax_id)
+            new_promptpay = st.text_input("เบอร์พร้อมเพย์ (สำหรับรับเงิน POS)", value=shop_promptpay)
+            
+            save_shop_btn = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงข้อมูลร้าน")
+            
+            if save_shop_btn:
+                saved_path = shop_logo_path
+                if uploaded_logo is not None:
+                    # บันทึกไฟล์โลโก้ลงในโฟลเดอร์โปรเจกต์
+                    saved_path = "shop_logo.png"
+                    img = Image.open(uploaded_logo)
+                    img.save(saved_path)
+                
+                cursor.execute('''
+                    UPDATE shop_settings 
+                    SET shop_name=?, address=?, tax_id=?, promptpay=?, logo_path=? 
+                    WHERE id=1
+                ''', (new_shop_name, new_address, new_tax_id, new_promptpay, saved_path))
+                conn.commit()
+                st.success("บันทึกข้อมูลร้านค้าและโลโก้สำเร็จ! กำลังรีเฟรชหน้าจอ...")
+                st.rerun()
+
+# ----------------------------------------------------
 # 1. ระบบขายหน้าร้าน (POS) + QR Code ชำระเงิน PromptPay
 # ----------------------------------------------------
-if menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)":
+elif menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)":
     st.subheader("🛒 ระบบขายหน้าร้าน & สร้าง QR Code พร้อมเพย์อัตโนมัติ")
     
     inv_df = pd.read_sql("SELECT * FROM inventory", conn)
@@ -169,7 +233,7 @@ if menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำ�
             qr_img.save(buf, format="PNG")
             st.image(buf.getvalue(), width=250, caption=f"พร้อมเพย์: {shop_promptpay} (ยอด {net_total:,.2f} บ.)")
         except Exception as e:
-            st.error(f"ไม่สามารถสร้าง QR Code ได้ กรุณาตรวจสอบเบอร์พร้อมเพย์ (Error: {e})")
+            st.error(f"ไม่สามารถสร้าง QR Code ได้ กรุณาตรวจสอบเบอร์พร้อมเพย์ที่เมนูตั้งค่าร้าน (Error: {e})")
 
     if st.button("💾 ยืนยันการขาย (ตัดสต็อก & บันทึกบิล)"):
         if selected_item != "ค่าบริการซ่อม / ลงโปรแกรม" and current_stock < qty:
@@ -189,7 +253,7 @@ if menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำ�
             st.success("✅ บันทึกการขายและตัดสต็อกอัตโนมัติสำเร็จ!")
 
 # ----------------------------------------------------
-# 2. ระบบออกเอกสารทางการ (ใบเสนอราคา / ใบส่งสินค้า / ใบกำกับภาษี / ใบเสร็จรับเงิน)
+# 2. ระบบออกเอกสารทางการ
 # ----------------------------------------------------
 elif menu == "📄 ระบบออกเอกสารทางการ (ใบเสนอราคา/ใบกำกับภาษี)":
     st.subheader("📄 ระบบออกเอกสารทางการ (Quotation / Delivery / Tax Invoice / Receipt)")
@@ -212,7 +276,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
         c_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษีลูกค้า (ถ้ามี)", value="0105555555555")
         doc_date = st.date_input("วันที่เอกสาร", datetime.now())
         
-        # สร้างเลขที่เอกสารอัตโนมัติจากปีเดือนและเวลาปัจจุบัน
         prefix_dict = {
             "ใบเสนอราคา (Quotation)": "QT",
             "ใบส่งสินค้า / ใบส่งของ (Delivery Note)": "DL",
@@ -226,7 +289,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
     inv_df = pd.read_sql("SELECT * FROM inventory", conn)
     item_options = inv_df["name"].tolist()
     
-    # จำลองการกรอกหลายรายการด้วยช่องกรอกแบบง่าย
     selected_doc_item = st.selectbox("เลือกสินค้าจากคลัง", item_options, key="doc_item_sel")
     item_row = inv_df[inv_df["name"] == selected_doc_item].iloc[0]
     
@@ -235,7 +297,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
     
     item_total = doc_price * doc_qty
     
-    # เก็บรายการไว้ใน Session State เพื่อให้กดเพิ่มหลายรายการได้
     if 'doc_items' not in st.session_state:
         st.session_state.doc_items = []
         
@@ -257,8 +318,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
             st.rerun()
             
         sub_sum = df_items_display["total"].sum()
-        
-        # คำนวณ VAT 7% เฉพาะใบกำกับภาษี หรือเลือกเปิด/ปิดได้
         include_vat = st.checkbox("คำนวณ VAT 7% (ภาษีมูลค่าเพิ่ม)", value=True if "ใบกำกับภาษี" in doc_type else False)
         
         if include_vat:
@@ -281,13 +340,25 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
             conn.commit()
             st.success("บันทึกเอกสารเข้าระบบเรียบร้อย!")
             
-            # แสดงรูปแบบเอกสารทางการ (พิมพ์ / Print View)
+            # โค้ดแสดงผลเอกสาร (Print View) พร้อมโลโก้ร้าน
             st.markdown("---")
+            
+            # แปลงโลโก้เป็น Base64 หรือแสดงรูปภาพ Streamlit
+            logo_html = ""
+            if shop_logo_path and os.path.exists(shop_logo_path):
+                import base64
+                with open(shop_logo_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode()
+                logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="max-height: 70px; margin-bottom: 5px;"><br>'
+
             st.markdown(f"""
             <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
-                <h2 style="text-align: center; margin-bottom: 0;">{shop_name}</h2>
-                <p style="text-align: center; font-size: 13px; color: #555;">{shop_address} | โทร. {shop_promptpay} | เลขประจำตัวผู้เสียภาษี: {shop_tax_id}</p>
-                <hr style="border: 1px solid #333;">
+                <div style="text-align: center;">
+                    {logo_html}
+                    <h2 style="margin: 0;">{shop_name}</h2>
+                    <p style="font-size: 13px; color: #555; margin: 2px 0;">{shop_address} | โทร. {shop_promptpay} | เลขประจำตัวผู้เสียภาษี: {shop_tax_id}</p>
+                </div>
+                <hr style="border: 1px solid #333; margin: 15px 0;">
                 <h3 style="text-align: center; background-color: #eee; padding: 5px;">{doc_type.upper()}</h3>
                 
                 <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
@@ -501,7 +572,7 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไ�
             rep_info = repairs_df[repairs_df["id"] == rep_id].iloc[0]
             
             with st.form("edit_repair_form"):
-                ed_cust = st.text_input("ชื่อลูกค้า", value=rep_info["customer"])
+                ed_cust = st.text_input("ชื่อร้าน/ลูกค้า", value=rep_info["customer"])
                 ed_phone = st.text_input("เบอร์โทรศัพท์", value=rep_info["phone"])
                 ed_model = st.text_input("รุ่นคอมพิวเตอร์", value=rep_info["model"])
                 ed_issue = st.text_area("อาการเสีย", value=rep_info["issue"])
