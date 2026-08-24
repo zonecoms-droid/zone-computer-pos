@@ -6,14 +6,14 @@ import qrcode
 from io import BytesIO
 
 st.set_page_config(
-    page_title="ServiceTicker Pro - Ultimate Edition",
+    page_title="ServiceTicker Pro - Ultimate Back-office Edition",
     layout="wide",
     page_icon="💻"
 )
 
 # --- 1. DATABASE SETUP ---
 def init_db():
-    conn = sqlite3.connect('serviceticker_pro_ultimate.db', check_same_thread=False)
+    conn = sqlite3.connect('serviceticker_ultimate_v2.db', check_same_thread=False)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -127,7 +127,7 @@ if mode == "register":
                     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'รอตรวจสอบ', 'รอมอบหมายช่าง', 'ยังไม่ชำระ')
                 """, (j_no, d_str, c_name, c_phone, c_model, c_sn, c_issue))
                 conn.commit()
-                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{j_no}** (สามารถนำเครื่องมาส่งที่ร้านได้เลยครับ)")
+                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{j_no}**")
             else:
                 st.error("❌ กรุณากรอกชื่อ เบอร์โทร และรุ่นคอมพิวเตอร์ให้ครบถ้วน")
     
@@ -138,7 +138,7 @@ if mode == "register":
     st.stop()
 
 # ====================================================
-# 🔐 LOGIN SYSTEM FOR ADMIN / STAFF
+# 🔐 LOGIN SYSTEM
 # ====================================================
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -170,7 +170,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ====================================================
-# 🛠️ MAIN APP LAYOUT & SIDEBAR NAVIGATION
+# 🛠️ SIDEBAR NAVIGATION
 # ====================================================
 current_user = st.session_state.user
 
@@ -186,6 +186,7 @@ with st.sidebar:
     
     menu = st.sidebar.radio("เลือกเมนูการทำงาน", [
         "🛠️ ระบบรับ-ส่งงานซ่อม",
+        "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)",
         "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)",
         "📱 QR Code สำหรับลูกค้าสแกนซ่อม",
         "📦 สต็อกสินค้า & Serial Number (S/N)",
@@ -257,7 +258,200 @@ if menu == "🛠️ ระบบรับ-ส่งงานซ่อม":
             st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
 
 # ----------------------------------------------------
-# 2. ออกเอกสาร & ฟอร์มทางธุรกิจ (A4 ปะรอยฉีก & ฟอร์มครบชุด)
+# 2. ระบบจัดการหลังบ้าน (Master Back-office Management)
+# ----------------------------------------------------
+elif menu == "⚙️ ระบบจัดการหลังบ้าน (Master Back-office)":
+    st.subheader("⚙️ ระบบจัดการและแก้ไขข้อมูลหลังบ้าน (Master Management)")
+    st.write("โมดูลนี้ช่วยให้คุณสามารถแก้ไข ปรับปรุง หรือลบข้อมูลในทุกฟังก์ชันของระบบได้อย่างอิสระ")
+    
+    bo_tab1, bo_tab2, bo_tab3, bo_tab4, bo_tab5 = st.tabs([
+        "👥 จัดการผู้ใช้งาน", 
+        "📦 จัดการสต็อกสินค้า", 
+        "🛠️ จัดการงานซ่อม", 
+        "🛒 จัดการประวัติการขาย", 
+        "🔄 จัดการรายการเคลม"
+    ])
+    
+    # --- Tab 1: Users Management ---
+    with bo_tab1:
+        st.markdown("### 👥 แก้ไข / ลบข้อมูลผู้ใช้งานในระบบ")
+        users_df = pd.read_sql("SELECT * FROM users", conn)
+        st.dataframe(users_df, use_container_width=True)
+        
+        if not users_df.empty:
+            edit_user_id = st.selectbox("เลือกผู้ใช้ที่ต้องการแก้ไข/ลบ (ID)", users_df['id'].tolist(), key="sel_user")
+            u_row = users_df[users_df['id'] == edit_user_id].iloc[0]
+            
+            with st.form("edit_user_form"):
+                e_user = st.text_input("Username", value=u_row['username'])
+                e_pass = st.text_input("Password", value=u_row['password'])
+                e_name = st.text_input("ชื่อ-นามสกุล", value=u_row['fullname'])
+                e_role = st.selectbox("สิทธิ์การใช้งาน", ["Admin", "Technician", "Cashier"], index=["Admin", "Technician", "Cashier"].index(u_row['role']) if u_row['role'] in ["Admin", "Technician", "Cashier"] else 0)
+                
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1:
+                    save_u = st.form_submit_button("💾 บันทึกการแก้ไข")
+                with c_btn2:
+                    del_u = st.form_submit_button("🗑️ ลบผู้ใช้นี้")
+                    
+                if save_u:
+                    cursor.execute("UPDATE users SET username=?, password=?, fullname=?, role=? WHERE id=?", (e_user, e_pass, e_name, e_role, edit_user_id))
+                    conn.commit()
+                    st.success("แก้ไขข้อมูลผู้ใช้สำเร็จ!")
+                    st.rerun()
+                if del_u:
+                    cursor.execute("DELETE FROM users WHERE id=?", (edit_user_id,))
+                    conn.commit()
+                    st.warning("ลบผู้ใช้งานสำเร็จ!")
+                    st.rerun()
+
+    # --- Tab 2: Inventory Management ---
+    with bo_tab2:
+        st.markdown("### 📦 แก้ไข / ลบข้อมูลคลังสินค้าและอะไหล่")
+        inv_df = pd.read_sql("SELECT * FROM inventory", conn)
+        st.dataframe(inv_df, use_container_width=True)
+        
+        if not inv_df.empty:
+            edit_inv_id = st.selectbox("เลือกสินค้าที่ต้องการแก้ไข/ลบ (ID)", inv_df['id'].tolist(), key="sel_inv")
+            i_row = inv_df[inv_df['id'] == edit_inv_id].iloc[0]
+            
+            with st.form("edit_inv_form"):
+                i_code = st.text_input("รหัสสินค้า", value=i_row['code'])
+                i_name = st.text_input("ชื่อสินค้า", value=i_row['name'])
+                i_sn = st.text_input("Serial Number", value=i_row['serial_no'])
+                i_cat = st.text_input("หมวดหมู่", value=i_row['category'])
+                i_buy = st.number_input("ราคาทุน", value=float(i_row['buy_price']))
+                i_sell = st.number_input("ราคาขาย", value=float(i_row['sell_price']))
+                i_qty = st.number_input("จำนวนคงเหลือ", value=int(i_row['qty']))
+                
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1:
+                    save_i = st.form_submit_button("💾 บันทึกการแก้ไขสต็อก")
+                with c_btn2:
+                    del_i = st.form_submit_button("🗑️ ลบสินค้านี้")
+                    
+                if save_i:
+                    cursor.execute("UPDATE inventory SET code=?, name=?, serial_no=?, category=?, buy_price=?, sell_price=?, qty=? WHERE id=?", 
+                                   (i_code, i_name, i_sn, i_cat, i_buy, i_sell, i_qty, edit_inv_id))
+                    conn.commit()
+                    st.success("แก้ไขข้อมูลสต็อกสำเร็จ!")
+                    st.rerun()
+                if del_i:
+                    cursor.execute("DELETE FROM inventory WHERE id=?", (edit_inv_id,))
+                    conn.commit()
+                    st.warning("ลบสินค้าสำเร็จ!")
+                    st.rerun()
+
+    # --- Tab 3: Repairs Management ---
+    with bo_tab3:
+        st.markdown("### 🛠️ แก้ไข / ลบข้อมูลงานซ่อมทั้งหมดในระบบ")
+        rep_df = pd.read_sql("SELECT * FROM repairs", conn)
+        st.dataframe(rep_df[['job_no', 'customer', 'device_model', 'serial_no', 'status', 'total_price']], use_container_width=True)
+        
+        if not rep_df.empty:
+            edit_job_no = st.selectbox("เลือกเลขที่ใบงานที่ต้องการแก้ไข/ลบ", rep_df['job_no'].tolist(), key="sel_job_bo")
+            r_row = rep_df[rep_df['job_no'] == edit_job_no].iloc[0]
+            
+            with st.form("edit_repair_master"):
+                r_cust = st.text_input("ชื่อลูกค้า", value=r_row['customer'])
+                r_phone = st.text_input("เบอร์โทร", value=r_row['phone'])
+                r_dev = st.text_input("รุ่นอุปกรณ์", value=r_row['device_model'])
+                r_sn = st.text_input("Serial No", value=r_row['serial_no'])
+                r_issue = st.text_area("อาการเสีย", value=r_row['issue'])
+                r_parts = st.number_input("ต้นทุนอะไหล่", value=float(r_row['parts_cost']))
+                r_labor = st.number_input("ค่าแรง", value=float(r_row['labor_cost']))
+                r_tot = r_parts + r_labor
+                r_status = st.text_input("สถานะงาน", value=r_row['status'])
+                r_pay = st.text_input("สถานะชำระเงิน", value=r_row['payment_status'])
+                
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1:
+                    save_r = st.form_submit_button("💾 บันทึกแก้ไขใบงาน")
+                with c_btn2:
+                    del_r = st.form_submit_button("🗑️ ลบใบงานนี้")
+                    
+                if save_r:
+                    cursor.execute("UPDATE repairs SET customer=?, phone=?, device_model=?, serial_no=?, issue=?, parts_cost=?, labor_cost=?, total_price=?, status=?, payment_status=? WHERE job_no=?",
+                                   (r_cust, r_phone, r_dev, r_sn, r_issue, r_parts, r_labor, r_tot, r_status, r_pay, edit_job_no))
+                    conn.commit()
+                    st.success("แก้ไขใบงานซ่อมสำเร็จ!")
+                    st.rerun()
+                if del_r:
+                    cursor.execute("DELETE FROM repairs WHERE job_no=?", (edit_job_no,))
+                    conn.commit()
+                    st.warning("ลบใบงานซ่อมสำเร็จ!")
+                    st.rerun()
+
+    # --- Tab 4: Sales Management ---
+    with bo_tab4:
+        st.markdown("### 🛒 แก้ไข / ลบประวัติการขายหน้าร้าน (POS)")
+        sales_df = pd.read_sql("SELECT * FROM sales", conn)
+        st.dataframe(sales_df, use_container_width=True)
+        
+        if not sales_df.empty:
+            edit_sale_id = st.selectbox("เลือกรายการขายที่ต้องการจัดการ (ID)", sales_df['id'].tolist(), key="sel_sale_bo")
+            s_row = sales_df[sales_df['id'] == edit_sale_id].iloc[0]
+            
+            with st.form("edit_sale_form"):
+                s_cust = st.text_input("ชื่อลูกค้า", value=s_row['customer'])
+                s_item = st.text_input("รายการสินค้า", value=s_row['item'])
+                s_qty = st.number_input("จำนวน", value=int(s_row['qty']))
+                s_tot = st.number_input("ยอดเงินรวม", value=float(s_row['total']))
+                s_prof = st.number_input("กำไร", value=float(s_row['profit']))
+                
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1:
+                    save_s = st.form_submit_button("💾 บันทึกแก้ไขรายการขาย")
+                with c_btn2:
+                    del_s = st.form_submit_button("🗑️ ลบรายการขายนี้")
+                    
+                if save_s:
+                    cursor.execute("UPDATE sales SET customer=?, item=?, qty=?, total=?, profit=? WHERE id=?", (s_cust, s_item, s_qty, s_tot, s_prof, edit_sale_id))
+                    conn.commit()
+                    st.success("แก้ไขรายการขายสำเร็จ!")
+                    st.rerun()
+                if del_s:
+                    cursor.execute("DELETE FROM sales WHERE id=?", (edit_sale_id,))
+                    conn.commit()
+                    st.warning("ลบรายการขายสำเร็จ!")
+                    st.rerun()
+
+    # --- Tab 5: Claims Management ---
+    with bo_tab5:
+        st.markdown("### 🔄 แก้ไข / ลบรายการเคลมสินค้า")
+        claim_df = pd.read_sql("SELECT * FROM claims", conn)
+        st.dataframe(claim_df, use_container_width=True)
+        
+        if not claim_df.empty:
+            edit_claim_id = st.selectbox("เลือกรายการเคลมที่ต้องการจัดการ (ID)", claim_df['id'].tolist(), key="sel_claim_bo")
+            c_row = claim_df[claim_df['id'] == edit_claim_id].iloc[0]
+            
+            with st.form("edit_claim_form"):
+                cl_cust = st.text_input("ชื่อลูกค้า", value=c_row['customer'])
+                cl_item = st.text_input("ชื่อสินค้า", value=c_row['item'])
+                cl_sn = st.text_input("Serial No", value=c_row['serial_no'])
+                cl_issue = st.text_area("อาการเสีย", value=c_row['issue'])
+                cl_stat = st.text_input("สถานะเคลม", value=c_row['status'])
+                
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1:
+                    save_cl = st.form_submit_button("💾 บันทึกแก้ไขรายการเคลม")
+                with c_btn2:
+                    del_cl = st.form_submit_button("🗑️ ลบรายการเคลมนี้")
+                    
+                if save_cl:
+                    cursor.execute("UPDATE claims SET customer=?, item=?, serial_no=?, issue=?, status=? WHERE id=?", (cl_cust, cl_item, cl_sn, cl_issue, cl_stat, edit_claim_id))
+                    conn.commit()
+                    st.success("แก้ไขรายการเคลมสำเร็จ!")
+                    st.rerun()
+                if del_cl:
+                    cursor.execute("DELETE FROM claims WHERE id=?", (edit_claim_id,))
+                    conn.commit()
+                    st.warning("ลบรายการเคลมสำเร็จ!")
+                    st.rerun()
+
+# ----------------------------------------------------
+# 3. ออกเอกสาร & ฟอร์มทางธุรกิจ (A4 ปะรอยฉีก & ฟอร์มครบชุด)
 # ----------------------------------------------------
 elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุรกิจ (A4)":
     st.subheader("📄 ศูนย์รวมออกเอกสารและใบสำคัญทางธุรกิจ (ขนาด A4)")
@@ -317,7 +511,6 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
             """, unsafe_allow_html=True)
             
         else:
-            # Generic A4 Form Template for Quotation, Tax Invoice, etc.
             st.markdown(f"""
             <div style="border: 2px solid #222; padding: 30px; font-family: 'Kanit', sans-serif; background: #fff; color: #000;">
                 <div style="display:flex; justify-content:space-between;">
@@ -363,7 +556,7 @@ elif menu == "📄 ออกเอกสาร & ฟอร์มทางธุ�
         st.info("ยังไม่มีข้อมูลใบงานซ่อมในระบบสำหรับออกเอกสาร")
 
 # ----------------------------------------------------
-# 3. QR Code สำหรับลูกค้าสแกนซ่อม
+# 4. QR Code สำหรับลูกค้าสแกนซ่อม
 # ----------------------------------------------------
 elif menu == "📱 QR Code สำหรับลูกค้าสแกนซ่อม":
     st.subheader("📱 สร้าง QR Code ตั้งหน้าร้าน (ให้ลูกค้าสแกนลงทะเบียนซ่อมเอง)")
@@ -382,7 +575,7 @@ elif menu == "📱 QR Code สำหรับลูกค้าสแกนซ�
     st.success("✅ สร้าง QR Code สำเร็จ! คลิกขวาที่รูปเพื่อบันทึกไปปริ้นท์ใช้งานได้เลยครับ")
 
 # ----------------------------------------------------
-# 4. สต็อกสินค้า & Serial Number (S/N)
+# 5. สต็อกสินค้า & Serial Number (S/N)
 # ----------------------------------------------------
 elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
     st.subheader("📦 จัดการสต็อกสินค้าและติดตาม Serial Number (S/N)")
@@ -407,7 +600,7 @@ elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
                 st.rerun()
 
 # ----------------------------------------------------
-# 5. ระบบเคลมสินค้า (Claims)
+# 6. ระบบเคลมสินค้า (Claims)
 # ----------------------------------------------------
 elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
     st.subheader("🔄 ระบบรับเคลมสินค้าและอุปกรณ์จากลูกค้า")
@@ -433,7 +626,7 @@ elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
         st.info("ยังไม่มีรายการเคลมสินค้า")
 
 # ----------------------------------------------------
-# 6. ระบบขายหน้าร้าน (POS)
+# 7. ระบบขายหน้าร้าน (POS)
 # ----------------------------------------------------
 elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
     st.subheader("🛒 ระบบขายหน้าร้าน & ตัดสต็อกอัตโนมัติ")
@@ -479,7 +672,7 @@ elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
         st.warning("สินค้าในสต็อกหมดเกลี้ยง")
 
 # ----------------------------------------------------
-# 7. งานบัญชี & ลูกหนี้คงค้าง
+# 8. งานบัญชี & ลูกหนี้คงค้าง
 # ----------------------------------------------------
 elif menu == "💰 งานบัญชี & ลูกหนี้คงค้าง":
     st.subheader("💰 ตรวจสอบลูกหนี้คงค้างและรายรับ")
@@ -499,7 +692,7 @@ elif menu == "💰 งานบัญชี & ลูกหนี้คงค้�
         st.success("ยอดเยี่ยม! ไม่มีลูกหนี้คงค้างในระบบขณะนี้")
 
 # ----------------------------------------------------
-# 8. รายงานสรุปผล (Reports)
+# 9. รายงานสรุปผล (Reports)
 # ----------------------------------------------------
 elif menu == "📊 รายงานสรุปผล (Reports)":
     st.subheader("📊 รายงานสรุปยอดขาย กำไร และงานซ่อม")
@@ -527,7 +720,7 @@ elif menu == "📊 รายงานสรุปผล (Reports)":
         st.dataframe(pd.read_sql("SELECT * FROM inventory", conn), use_container_width=True)
 
 # ----------------------------------------------------
-# 9. Audit Log
+# 10. Audit Log
 # ----------------------------------------------------
 elif menu == "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)":
     st.subheader("📋 ประวัติการใช้งานระบบ (Audit Log)")
