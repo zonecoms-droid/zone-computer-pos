@@ -3,403 +3,387 @@ import pandas as pd
 from datetime import datetime
 import sqlite3
 
-# --- 1. CONFIG & UI STYLING ---
 st.set_page_config(
-    page_title="ระบบแจ้งซ่อม (Repair Management System)",
+    page_title="ServiceTicker Pro - Computer & Repair Management",
     layout="wide",
-    page_icon="🛠️"
+    page_icon="💻"
 )
 
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Kanit', sans-serif;
-        background-color: #F3F4F6;
-    }
-    
-    .main-header {
-        background: linear-gradient(135deg, #1E3A8A 0%, #172554 100%);
-        color: white;
-        padding: 24px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- 2. DATABASE SETUP (SQLite - v2) ---
+# --- 1. DATABASE SETUP & INITIALIZATION ---
 def init_db():
-    conn = sqlite3.connect('repair_v2.db', check_same_thread=False)
+    conn = sqlite3.connect('serviceticker_pro.db', check_same_thread=False)
     cursor = conn.cursor()
     
-    # Table 1: Users
+    # 1. Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT,
-            fullname TEXT,
-            role TEXT,
-            department TEXT
+            username TEXT UNIQUE, password TEXT, fullname TEXT, role TEXT
         )
     ''')
     
-    # Table 2: Categories
+    # 2. Inventory & Serial Number Table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS categories (
+        CREATE TABLE IF NOT EXISTS inventory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            color TEXT,
-            icon TEXT
+            code TEXT, name TEXT, serial_no TEXT, category TEXT, 
+            buy_price REAL, sell_price REAL, qty INTEGER, status TEXT
         )
     ''')
     
-    # Table 3: Repairs
+    # 3. Repairs Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            running_no TEXT,
-            date TEXT,
-            issue TEXT,
-            category TEXT,
-            location TEXT,
-            details TEXT,
-            files TEXT,
-            reporter TEXT,
-            status TEXT,
-            parts_fee REAL,
-            labor_fee REAL,
-            total_price REAL,
-            technician TEXT
+            job_no TEXT UNIQUE, date TEXT, customer TEXT, phone TEXT, 
+            device_model TEXT, serial_no TEXT, issue TEXT, 
+            parts_cost REAL, labor_cost REAL, total_price REAL, 
+            status TEXT, technician TEXT, payment_status TEXT
         )
     ''')
+    
+    # 4. Sales Table (POS)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sale_no TEXT, date TEXT, customer TEXT, item TEXT, 
+            qty INTEGER, total REAL, profit REAL, payment_method TEXT
+        )
+    ''')
+    
+    # 5. Claims Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            claim_no TEXT, date TEXT, customer TEXT, item TEXT, 
+            serial_no TEXT, issue TEXT, status TEXT
+        )
+    ''')
+    
+    # 6. Audit Log Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT, username TEXT, action TEXT
+        )
+    ''')
+    
     conn.commit()
     return conn
 
 conn = init_db()
 cursor = conn.cursor()
 
-# Seed default data if empty
+# Seed default data
 cursor.execute('SELECT COUNT(*) FROM users')
 if cursor.fetchone()[0] == 0:
     default_users = [
-        ('admin', '1234', 'ผู้ดูแลระบบ (Admin)', 'Admin', 'ศูนย์คอมพิวเตอร์'),
-        ('officer', '1234', 'เจ้าหน้าที่พัสดุ (Officer)', 'Officer', 'งานพัสดุและซ่อมบำรุง'),
-        ('tech', '1234', 'ช่างสมชาย (Technician)', 'Technician', 'ฝ่ายช่างเทคนิค'),
-        ('director', '1234', 'ผอ.สมเกียรติ (Director)', 'Director', 'ฝ่ายบริหาร'),
-        ('user', '1234', 'พนักงานทั่วไป (Reporter)', 'Reporter', 'ฝ่ายบัญชี')
+        ('admin', '1234', 'ผู้ดูแลระบบสูงสุด (Admin)', 'Admin'),
+        ('tech1', '1234', 'ช่างสมชาย (Technician)', 'Technician'),
+        ('cashier', '1234', 'พนักงานแคชเชียร์ (Cashier)', 'Cashier')
     ]
-    cursor.executemany("INSERT INTO users (username, password, fullname, role, department) VALUES (?, ?, ?, ?, ?)", default_users)
+    cursor.executemany("INSERT INTO users (username, password, fullname, role) VALUES (?, ?, ?, ?)", default_users)
     conn.commit()
 
-cursor.execute('SELECT COUNT(*) FROM categories')
+cursor.execute('SELECT COUNT(*) FROM inventory')
 if cursor.fetchone()[0] == 0:
-    default_cats = [
-        ('1. คอมพิวเตอร์/โน้ตบุ๊ก', '#3B82F6', 'fas fa-laptop'),
-        ('2. เครื่องพิมพ์ (Printer)', '#10B981', 'fas fa-print'),
-        ('3. เครือข่าย/อินเทอร์เน็ต (Network)', '#F59E0B', 'fas fa-wifi'),
-        ('4. อุปกรณ์สำนักงานอื่นๆ', '#EF4444', 'fas fa-tools')
+    default_stock = [
+        ('P001', 'SSD 500GB M.2 NVMe', 'SN-SSD500-001', 'อะไหล่', 1100, 1550, 1, 'In Stock'),
+        ('P002', 'RAM DDR4 16GB', 'SN-RAM16-002', 'อะไหล่', 1000, 1450, 1, 'In Stock'),
+        ('P003', 'Thermal Paste MX-4', 'N/A', 'อุปกรณ์เสริม', 80, 150, 25, 'In Stock')
     ]
-    cursor.executemany("INSERT INTO categories (name, color, icon) VALUES (?, ?, ?)", default_cats)
+    cursor.executemany("INSERT INTO inventory (code, name, serial_no, category, buy_price, sell_price, qty, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", default_stock)
     conn.commit()
 
-# --- 3. AUTHENTICATION (LOGIN STATE) ---
+# --- 2. AUTHENTICATION ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user = None
 
 if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1, 1.2, 1])
-    with col2:
+    c1, c2, c3 = st.columns([1, 1.2, 1])
+    with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("""
-            <div class='main-header' style='text-align: center;'>
-                <h2>🛠️ เข้าสู่ระบบแจ้งซ่อม</h2>
-                <p>Repair Management System (SPA)</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
+        st.markdown("<h2 style='text-align: center;'>💻 ServiceTicker Pro Login</h2>", unsafe_allow_html=True)
         with st.form("login_form"):
-            username = st.text_input("ชื่อผู้ใช้งาน (Username)")
-            password = st.text_input("รหัสผ่าน (Password)", type="password")
-            submit = st.form_submit_button("🔑 เข้าสู่ระบบ", use_container_width=True)
-            
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("เข้าสู่ระบบ", use_container_width=True)
             if submit:
                 cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-                user_data = cursor.fetchone()
-                if user_data:
+                user = cursor.fetchone()
+                if user:
                     st.session_state.logged_in = True
-                    st.session_state.user = {
-                        "id": user_data[0],
-                        "username": user_data[1],
-                        "fullname": user_data[3],
-                        "role": user_data[4],
-                        "department": user_data[5]
-                    }
+                    st.session_state.user = {"id": user[0], "username": user[1], "name": user[3], "role": user[4]}
+                    cursor.execute("INSERT INTO audit_logs (timestamp, username, action) VALUES (?, ?, ?)", 
+                                   (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user[1], "Login เข้าสู่ระบบ"))
+                    conn.commit()
                     st.success("เข้าสู่ระบบสำเร็จ!")
                     st.rerun()
                 else:
-                    st.error("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
-                    
-        st.info("💡 **บัญชีทดสอบระบบ:**\n- Admin: `admin` / `1234`\n- Officer: `officer` / `1234`\n- User: `user` / `1234`\n- Technician: `tech` / `1234`")
+                    st.error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+        st.info("💡 **ทดสอบระบบ:** Admin: `admin`/`1234` | ช่าง: `tech1`/`1234` | แคชเชียร์: `cashier`/`1234`")
     st.stop()
 
-# --- 4. MAIN SPA INTERFACE (LOGGED IN) ---
+# --- 3. MAIN APP LAYOUT & NAVIGATION ---
 current_user = st.session_state.user
 
-# Header & Sidebar Logout
 with st.sidebar:
-    st.markdown(f"### 👤 บัญชีผู้ใช้")
-    st.write(f"**ชื่อ:** {current_user['fullname']}")
-    st.write(f"**บทบาท:** {current_user['role']}")
+    st.markdown(f"### 👤 ผู้ใช้งาน: {current_user['name']}")
+    st.write(f"**สิทธิ์:** {current_user['role']}")
     if st.button("🚪 ออกจากระบบ", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user = None
         st.rerun()
     st.markdown("---")
-    st.markdown("### 📌 เมนูนำทาง")
-
-role = current_user['role']
-
-# --- 5. ROLE-BASED NAVIGATION ---
-if role in ['Admin', 'Officer']:
-    menu = st.sidebar.radio("เลือกเมนู", ["📊 แดชบอร์ด (Dashboard)", "👥 จัดการผู้ใช้งาน (Users)", "📂 จัดการหมวดหมู่ (Categories)", "📋 รายการแจ้งซ่อมทั้งหมด (All Repairs)"])
+    st.markdown("### 🛠️ เมนูระบบหลัก (ServiceTicker)")
     
-    if menu == "📊 แดชบอร์ด (Dashboard)":
-        st.subheader("📊 สรุปภาพรวมสถานะงานซ่อม")
-        
-        repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
-        total_all = len(repairs_df)
-        waiting_assess = len(repairs_df[repairs_df['status'] == 'รอประเมิน']) if total_all > 0 else 0
-        waiting_approve = len(repairs_df[repairs_df['status'] == 'รออนุมัติ']) if total_all > 0 else 0
-        in_progress = len(repairs_df[repairs_df['status'] == 'กำลังซ่อม']) if total_all > 0 else 0
-        completed = len(repairs_df[repairs_df['status'] == 'เสร็จสิ้น']) if total_all > 0 else 0
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("ทั้งหมด", f"{total_all} รายการ")
-        col2.metric("รอประเมิน", f"{waiting_assess} รายการ")
-        col3.metric("รออนุมัติ", f"{waiting_approve} รายการ")
-        col4.metric("กำลังซ่อม", f"{in_progress} รายการ")
-        col5.metric("เสร็จสิ้น", f"{completed} รายการ")
-        
-        st.markdown("---")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("#### 🍩 สัดส่วนงานซ่อมแยกตามหมวดหมู่")
-            if not repairs_df.empty:
-                cat_counts = repairs_df['category'].value_counts()
-                st.bar_chart(cat_counts)
-            else:
-                st.info("ยังไม่มีข้อมูลสถิติ")
-        with c2:
-            st.markdown("#### 📈 สถิติจำนวนงานซ่อม")
-            if not repairs_df.empty:
-                repairs_df['month'] = pd.to_datetime(repairs_df['date']).dt.strftime('%Y-%m')
-                month_counts = repairs_df['month'].value_counts().sort_index()
-                st.line_chart(month_counts)
-            else:
-                st.info("ยังไม่มีข้อมูลสถิติเชิงเวลา")
+    menu = st.sidebar.radio("เลือกเมนูการทำงาน", [
+        "🛠️ ระบบรับ-ส่งงานซ่อม (Repair)",
+        "📦 สต็อกสินค้า & Serial Number (S/N)",
+        "🔄 ระบบเคลมสินค้า (Claims)",
+        "🛒 ระบบขายหน้าร้าน (POS)",
+        "💰 งานบัญชี & ลูกหนี้คงค้าง",
+        "📊 รายงานสรุปผล (Reports)",
+        "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)"
+    ])
 
-    elif menu == "👥 จัดการผู้ใช้งาน (Users)":
-        st.subheader("👥 ระบบจัดการข้อมูลผู้ใช้งาน")
-        
-        with st.expander("➕ เพิ่มผู้ใช้งานใหม่"):
-            with st.form("add_user_form"):
-                new_user = st.text_input("Username")
-                new_pass = st.text_input("Password", type="password")
-                new_name = st.text_input("ชื่อ-นามสกุล")
-                new_role = st.selectbox("บทบาท (Role)", ["Admin", "Officer", "Technician", "Director", "Reporter"])
-                new_dept = st.text_input("หน่วยงาน / แผนก")
-                submit_user = st.form_submit_button("บันทึกผู้ใช้ใหม่")
-                
-                if submit_user and new_user and new_name:
-                    try:
-                        cursor.execute("INSERT INTO users (username, password, fullname, role, department) VALUES (?, ?, ?, ?, ?)",
-                                       (new_user, new_pass, new_name, new_role, new_dept))
-                        conn.commit()
-                        st.success("เพิ่มผู้ใช้สำเร็จ!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด (Username อาจซ้ำ): {e}")
-                        
-        users_df = pd.read_sql("SELECT id, username, fullname, role, department FROM users", conn)
-        st.dataframe(users_df, use_container_width=True)
-
-    elif menu == "📂 จัดการหมวดหมู่งาน (Categories)":
-        st.subheader("📂 จัดการหมวดหมู่งานแจ้งซ่อม")
-        
-        with st.expander("➕ เพิ่มหมวดหมู่ใหม่"):
-            with st.form("add_cat_form"):
-                cat_name = st.text_input("ชื่อหมวดหมู่")
-                cat_color = st.color_picker("เลือกสีป้ายกำกับ", "#3B82F6")
-                cat_icon = st.text_input("FontAwesome Icon Class", "fas fa-tools")
-                submit_cat = st.form_submit_button("บันทึกหมวดหมู่")
-                
-                if submit_cat and cat_name:
-                    try:
-                        cursor.execute("INSERT INTO categories (name, color, icon) VALUES (?, ?, ?)", (cat_name, cat_color, cat_icon))
-                        conn.commit()
-                        st.success("เพิ่มหมวดหมู่สำเร็จ!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
-                        
-        cat_df = pd.read_sql("SELECT * FROM categories", conn)
-        st.dataframe(cat_df, use_container_width=True)
-
-    elif menu == "📋 รายการแจ้งซ่อมทั้งหมด (All Repairs)":
-        st.subheader("📋 รายการแจ้งซ่อมทั้งหมดในระบบ")
-        
-        repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
-        
-        if not repairs_df.empty:
-            col_f1, col_f2, col_f3 = st.columns(3)
-            with col_f1:
-                search_query = st.text_input("🔍 ค้นหา (เลขที่/อาการ/ผู้แจ้ง)")
-            with col_f2:
-                status_filter = st.selectbox("📌 กรองตามสถานะ", ["ทั้งหมด", "รอประเมิน", "รออนุมัติ", "กำลังซ่อม", "เสร็จสิ้น", "ยกเลิก"])
-            with col_f3:
-                cats = ["ทั้งหมด"] + list(pd.read_sql("SELECT name FROM categories", conn)['name'])
-                cat_filter = st.selectbox("📂 กรองตามหมวดหมู่", cats)
-                
-            filtered_df = repairs_df.copy()
-            if search_query:
-                filtered_df = filtered_df[filtered_df['issue'].str.contains(search_query, na=False) | filtered_df['running_no'].str.contains(search_query, na=False) | filtered_df['reporter'].str.contains(search_query, na=False)]
-            if status_filter != "ทั้งหมด":
-                filtered_df = filtered_df[filtered_df['status'] == status_filter]
-            if cat_filter != "ทั้งหมด":
-                filtered_df = filtered_df[filtered_df['category'] == cat_filter]
-                
-            st.dataframe(filtered_df[['running_no', 'date', 'issue', 'category', 'location', 'status', 'reporter', 'total_price']], use_container_width=True)
-            
-            st.markdown("---")
-            st.markdown("### ⚙️ อัปเดตสถานะและบันทึกค่าใช้จ่าย")
-            repair_ids = filtered_df['id'].tolist()
-            if repair_ids:
-                selected_id = st.selectbox("เลือกรหัสแจ้งซ่อม (ID)", repair_ids)
-                selected_row = filtered_df[filtered_df['id'] == selected_id].iloc[0]
-                
-                st.info(f"**เลขที่:** {selected_row['running_no']} | **อาการ:** {selected_row['issue']} | **สถานที่:** {selected_row['location']}")
-                
-                status_list = ["รอประเมิน", "รออนุมัติ", "กำลังซ่อม", "เสร็จสิ้น", "ยกเลิก"]
-                current_status = selected_row['status']
-                default_idx = status_list.index(current_status) if current_status in status_list else 0
-                
-                with st.form("update_repair_form"):
-                    new_status = st.selectbox("เปลี่ยนสถานะ", status_list, index=default_idx)
-                    parts_fee = st.number_input("ค่าอะไหล่ (บาท)", min_value=0.0, value=float(selected_row['parts_fee'] if selected_row['parts_fee'] else 0))
-                    labor_fee = st.number_input("ค่าบริการ/ค่าแรง (บาท)", min_value=0.0, value=float(selected_row['labor_fee'] if selected_row['labor_fee'] else 0))
-                    technician = st.text_input("ช่างผู้รับผิดชอบ", value=str(selected_row['technician'] if selected_row['technician'] else ''))
-                    
-                    submit_update = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลง")
-                    if submit_update:
-                        total_price = parts_fee + labor_fee
-                        cursor.execute("UPDATE repairs SET status = ?, parts_fee = ?, labor_fee = ?, total_price = ?, technician = ? WHERE id = ?",
-                                       (new_status, parts_fee, labor_fee, total_price, technician, selected_id))
-                        conn.commit()
-                        st.success("อัปเดตสถานะและค่าใช้จ่ายเรียบร้อยแล้ว!")
-                        st.rerun()
-        else:
-            st.info("ยังไม่มีรายการแจ้งซ่อมในระบบ")
-
-elif role in ['Reporter', 'User']:
-    menu = st.sidebar.radio("เลือกเมนู", ["📊 แดชบอร์ดของฉัน (Dashboard)", "➕ แจ้งซ่อมใหม่ (New Request)", "📂 ติดตามสถานะ (My Repairs)"])
+# ====================================================
+# 1. ระบบรับ-ส่งงานซ่อม (Repair Management)
+# ====================================================
+if menu == "🛠️ ระบบรับ-ส่งงานซ่อม (Repair)":
+    st.subheader("🛠️ ระบบบริหารจัดการงานซ่อมคอมพิวเตอร์")
     
-    if menu == "📊 แดชบอร์ดของฉัน (Dashboard)":
-        st.subheader("📊 แดชบอร์ดสรุปรายการแจ้งซ่อมของคุณ")
-        my_repairs = pd.read_sql(f"SELECT * FROM repairs WHERE reporter = '{current_user['fullname']}'", conn)
-        
-        t_all = len(my_repairs)
-        t_prog = len(my_repairs[my_repairs['status'].isin(['รอประเมิน', 'รออนุมัติ', 'กำลังซ่อม'])]) if t_all > 0 else 0
-        t_done = len(my_repairs[my_repairs['status'] == 'เสร็จสิ้น']) if t_all > 0 else 0
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("แจ้งซ่อมทั้งหมดของฉัน", f"{t_all} รายการ")
-        c2.metric("กำลังดำเนินการ", f"{t_prog} รายการ")
-        c3.metric("เสร็จสิ้นแล้ว", f"{t_done} รายการ")
-        
-        st.markdown("---")
-        st.markdown("### 📋 รายการล่าสุดของคุณ")
-        if not my_repairs.empty:
-            st.dataframe(my_repairs[['running_no', 'date', 'issue', 'category', 'status']], use_container_width=True)
-        else:
-            st.info("คุณยังไม่เคยมีรายการแจ้งซ่อม")
-
-    elif menu == "➕ แจ้งซ่อมใหม่ (New Request)":
-        st.subheader("➕ ฟอร์มบันทึกแจ้งซ่อมใหม่")
-        
-        cats = pd.read_sql("SELECT name FROM categories", conn)['name'].tolist()
-        
-        with st.form("new_request_form"):
-            issue = st.text_input("อาการ / ปัญหาที่พบ (หัวข้อสั้นๆ)")
-            category = st.selectbox("หมวดหมู่งานซ่อม", cats if cats else ["ทั่วไป"])
-            location = st.text_input("สถานที่ / ห้อง / อาคาร")
-            details = st.text_area("รายละเอียดเพิ่มเติม / อาการเสียโดยละเอียด")
-            uploaded_files = st.file_uploader("อัพโหลดรูปภาพประกอบ (ก่อนซ่อม)", accept_multiple_files=True)
-            
-            submit_req = st.form_submit_button("📤 ส่งใบแจ้งซ่อม")
-            
-            if submit_req:
-                if issue and location:
-                    cursor.execute("SELECT COUNT(*) FROM repairs")
-                    count = cursor.fetchone()[0] + 1
-                    year_code = datetime.now().year + 543 - 2500
-                    running_no = f"RE-{year_code}/{str(count).zfill(3)}"
-                    date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-                    
-                    file_names = ", ".join([f.name for f in uploaded_files]) if uploaded_files else "ไม่มีไฟล์แนบ"
-                    
-                    cursor.execute("""
-                        INSERT INTO repairs (running_no, date, issue, category, location, details, files, reporter, status, parts_fee, labor_fee, total_price, technician)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 0.0, 'รอมอบหมาย')
-                    """, (running_no, date_str, issue, category, location, details, file_names, current_user['fullname'], 'รอประเมิน'))
-                    conn.commit()
-                    st.success(f"🎉 ส่งใบแจ้งซ่อมสำเร็จ! เลขที่ใบแจ้งซ่อมของคุณคือ: **{running_no}**")
-                    st.rerun()
-                else:
-                    st.error("กรุณากรอกอาการและสถานที่ให้ครบถ้วน")
-
-    elif menu == "📂 ติดตามสถานะ (My Repairs)":
-        st.subheader("📂 ติดตามสถานะงานแจ้งซ่อมของคุณ")
-        my_repairs = pd.read_sql(f"SELECT * FROM repairs WHERE reporter = '{current_user['fullname']}'", conn)
-        
-        if not my_repairs.empty:
-            st.dataframe(my_repairs[['running_no', 'date', 'issue', 'category', 'status', 'total_price', 'technician']], use_container_width=True)
-            
-            pending_items = my_repairs[my_repairs['status'] == 'รอประเมิน']
-            if not pending_items.empty:
-                st.markdown("---")
-                st.markdown("### ❌ ยกเลิกคำขอแจ้งซ่อม (เฉพาะสถานะรอประเมิน)")
-                cancel_id = st.selectbox("เลือกเลขที่ใบแจ้งซ่อมที่ต้องการยกเลิก", pending_items['id'].tolist())
-                if st.button("ยืนยันยกเลิกคำขอ"):
-                    cursor.execute("UPDATE repairs SET status = 'ยกเลิก' WHERE id = ?", (cancel_id,))
-                    conn.commit()
-                    st.warning("ยกเลิกคำขอเรียบร้อยแล้ว")
-                    st.rerun()
-        else:
-            st.info("ยังไม่มีประวัติการแจ้งซ่อมของคุณ")
-
-elif role in ['Technician', 'Director']:
-    menu = st.sidebar.radio("เลือกเมนู", ["📋 รายการงานซ่อมทั้งหมด", "📊 รายงานสรุปภาพรวม"])
+    tab1, tab2, tab3 = st.tabs(["รับเครื่องเข้าซ่อม", "ติดตาม & จัดการสถานะซ่อม", "พิมพ์ใบรับ/ใบส่งซ่อม"])
     
-    if menu == "📋 รายการงานซ่อมทั้งหมด":
-        st.subheader("📋 รายการงานซ่อมในระบบ")
+    with tab1:
+        with st.form("new_repair"):
+            col1, col2 = st.columns(2)
+            with col1:
+                cust_name = st.text_input("ชื่อ-นามสกุลลูกค้า")
+                cust_phone = st.text_input("เบอร์โทรศัพท์")
+                device_model = st.text_input("รุ่นอุปกรณ์ (เช่น ASUS TUF Gaming)")
+            with col2:
+                serial_no = st.text_input("Serial Number (S/N) อุปกรณ์")
+                technician = st.selectbox("มอบหมายช่างผู้รับผิดชอบ", [u[3] for u in cursor.execute("SELECT * FROM users WHERE role='Technician'").fetchall()] or ["ช่างทั่วไป"])
+                issue = st.text_area("อาการเสีย / ตำหนิภายนอก")
+                
+            submitted = st.form_submit_button("บันทึกรับเครื่องซ่อม")
+            if submitted and cust_name and cust_phone:
+                cursor.execute("SELECT COUNT(*) FROM repairs")
+                job_count = cursor.fetchone()[0] + 1
+                job_no = f"JOB-{datetime.now().strftime('%y%m')}-{str(job_count).zfill(3)}"
+                date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
+                cursor.execute("""
+                    INSERT INTO repairs (job_no, date, customer, phone, device_model, serial_no, issue, parts_cost, labor_cost, total_price, status, technician, payment_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'รอตรวจสอบ', ?, 'ยังไม่ชำระ')
+                """, (job_no, date_str, cust_name, cust_phone, device_model, serial_no, issue, technician))
+                conn.commit()
+                st.success(f"บันทึกรับซ่อมสำเร็จ! เลขที่ใบงาน: **{job_no}**")
+                
+    with tab2:
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         if not repairs_df.empty:
-            st.dataframe(repairs_df[['running_no', 'date', 'issue', 'category', 'location', 'status', 'technician', 'total_price']], use_container_width=True)
+            st.dataframe(repairs_df[['job_no', 'date', 'customer', 'device_model', 'serial_no', 'status', 'technician', 'total_price']], use_container_width=True)
+            
+            st.markdown("### ⚙️ อัปเดตสถานะและคำนวณค่าบริการ")
+            selected_job = st.selectbox("เลือกเลขที่ใบงานซ่อม", repairs_df['job_no'].tolist())
+            row = repairs_df[repairs_df['job_no'] == selected_job].iloc[0]
+            
+            with st.form("update_repair"):
+                new_status = st.selectbox("สถานะงานซ่อม", ["รอตรวจสอบ", "กำลังซ่อม", "รออะไหล่", "ซ่อมเสร็จรอส่งมอบ", "ส่งมอบแล้วยกเลิก"], 
+                                         index=["รอตรวจสอบ", "กำลังซ่อม", "รออะไหล่", "ซ่อมเสร็จรอส่งมอบ", "ส่งมอบแล้วยกเลิก"].index(row['status']) if row['status'] in ["รอตรวจสอบ", "กำลังซ่อม", "รออะไหล่", "ซ่อมเสร็จรอส่งมอบ", "ส่งมอบแล้วยกเลิก"] else 0)
+                parts_cost = st.number_input("ต้นทุนอะไหล่ (บาท)", min_value=0.0, value=float(row['parts_cost']))
+                labor_cost = st.number_input("ค่าบริการ / ค่าแรง (บาท)", min_value=0.0, value=float(row['labor_cost']))
+                total_price = parts_cost + labor_cost
+                payment_status = st.selectbox("สถานะการชำระเงิน", ["ยังไม่ชำระ", "ชำระแล้ว (เงินสด/โอน)", "ค้างชำระ (ลูกหนี้)"], index=0 if row['payment_status']=='ยังไม่ชำระ' else 1)
+                
+                if st.form_submit_button("บันทึกการอัปเดต"):
+                    cursor.execute("UPDATE repairs SET status=?, parts_cost=?, labor_cost=?, total_price=?, payment_status=? WHERE job_no=?",
+                                   (new_status, parts_cost, labor_cost, total_price, payment_status, selected_job))
+                    conn.commit()
+                    st.success("อัปเดตข้อมูลงานซ่อมสำเร็จ!")
+                    st.rerun()
+        else:
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            
+    with tab3:
+        st.markdown("### 📄 พิมพ์เอกสารใบรับซ่อม / ใบเสร็จ")
+        rep_list = pd.read_sql("SELECT job_no, customer, device_model FROM repairs", conn)
+        if not rep_list.empty:
+            target_job = st.selectbox("เลือกใบงานเพื่อพิมพ์เอกสาร", rep_list['job_no'].tolist())
+            j_data = pd.read_sql(f"SELECT * FROM repairs WHERE job_no='{target_job}'", conn).iloc[0]
+            
+            if st.button("🖨️ แสดงตัวอย่างเอกสารอย่างย่อย"):
+                st.code(f"""
+========================================
+       SERVICE TICKER PRO - ใบรับซ่อม       
+   โทร. 02-xxx-xxxx | ร้านโซนคอมพิวเตอร์     
+========================================
+เลขที่ใบงาน: {j_data['job_no']}
+วันที่รับ: {j_data['date']}
+ลูกค้า: {j_data['customer']} | โทร: {j_data['phone']}
+อุปกรณ์: {j_data['device_model']}
+S/N: {j_data['serial_no']}
+อาการ: {j_data['issue']}
+----------------------------------------
+ค่าบริการรวม: {j_data['total_price']:,.2f} บาท
+สถานะ: {j_data['status']} ({j_data['payment_status']})
+ช่างผู้รับผิดชอบ: {j_data['technician']}
+========================================
+     *กรุณานำใบนี้มาแสดงเมื่อมารับเครื่อง*
+                """, language="text")
+
+# ====================================================
+# 2. สต็อกสินค้า & Serial Number (S/N) Tracking
+# ====================================================
+elif menu == "📦 สต็อกสินค้า & Serial Number (S/N)":
+    st.subheader("📦 จัดการสต็อกสินค้าและติดตาม Serial Number (S/N)")
+    
+    st.dataframe(pd.read_sql("SELECT * FROM inventory", conn), use_container_width=True)
+    
+    with st.expander("➕ นำเข้าสินค้าใหม่ / อะไหล่เข้าระบบ"):
+        with st.form("add_stock"):
+            code = st.text_input("รหัสสินค้า (Code)")
+            name = st.text_input("ชื่อสินค้า / อะไหล่")
+            serial_no = st.text_input("Serial Number (ถ้ามี)", value="N/A")
+            category = st.selectbox("หมวดหมู่", ["อะไหล่", "อุปกรณ์เสริม", "คอมพิวเตอร์ประกอบ"])
+            buy_price = st.number_input("ราคาทุนซื้อเข้า (บาท)", min_value=0.0, value=100.0)
+            sell_price = st.number_input("ราคาขายออก (บาท)", min_value=0.0, value=200.0)
+            qty = st.number_input("จำนวน", min_value=1, value=1)
+            
+            if st.form_submit_button("บันทึกนำเข้าสต็อก"):
+                cursor.execute("INSERT INTO inventory (code, name, serial_no, category, buy_price, sell_price, qty, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'In Stock')",
+                               (code, name, serial_no, category, buy_price, sell_price, qty))
+                conn.commit()
+                st.success("นำเข้าสินค้าและ S/N สำเร็จ!")
+                st.rerun()
+
+# ====================================================
+# 3. ระบบเคลมสินค้า (Warranty Claims)
+# ====================================================
+elif menu == "🔄 ระบบเคลมสินค้า (Claims)":
+    st.subheader("🔄 ระบบรับเคลมสินค้าและอุปกรณ์จากลูกค้า")
+    
+    with st.form("claim_form"):
+        cust = st.text_input("ชื่อลูกค้า / ตัวแทนจำหน่าย")
+        item = st.text_input("ชื่อสินค้าที่ส่งเคลม")
+        sn = st.text_input("Serial Number (S/N) สินค้าเคลม")
+        issue = st.text_area("อาการเสียที่ส่งเคลม")
+        
+        if st.form_submit_button("บันทึกรับเคลม"):
+            claim_no = f"CLM-{datetime.now().strftime('%y%m%d')}-{str(pd.read_sql('SELECT COUNT(*) FROM claims', conn).iloc[0,0]+1).zfill(3)}"
+            cursor.execute("INSERT INTO claims (claim_no, date, customer, item, serial_no, issue, status) VALUES (?, ?, ?, ?, ?, ?, 'รอส่งเคลม Supplier')",
+                           (claim_no, datetime.now().strftime("%Y-%m-%d"), cust, item, sn, issue))
+            conn.commit()
+            st.success(f"บันทึกใบเคลมสำเร็จ! เลขที่เคลม: {claim_no}")
+            
+    st.markdown("### 📋 รายการสินค้าเคลมทั้งหมดในระบบ")
+    claims_df = pd.read_sql("SELECT * FROM claims", conn)
+    if not claims_df.empty:
+        st.dataframe(claims_df, use_container_width=True)
+    else:
+        st.info("ยังไม่มีรายการเคลมสินค้า")
+
+# ====================================================
+# 4. ระบบขายหน้าร้าน (POS)
+# ====================================================
+elif menu == "🛒 ระบบขายหน้าร้าน (POS)":
+    st.subheader("🛒 ระบบขายหน้าร้าน & ตัดสต็อกอัตโนมัติ")
+    
+    stock_df = pd.read_sql("SELECT * FROM inventory WHERE qty > 0", conn)
+    if not stock_df.empty:
+        with st.form("pos_form"):
+            customer = st.text_input("ชื่อลูกค้า", value="ลูกค้าทั่วไป")
+            selected_item = st.selectbox("เลือกสินค้าจากสต็อก", stock_df['name'].tolist())
+            
+            row = stock_df[stock_df['name'] == selected_item].iloc[0]
+            max_q = int(row['qty'])
+            sell_p = float(row['sell_price'])
+            buy_p = float(row['buy_price'])
+            
+            qty = st.number_input("จำนวน", min_value=1, max_value=max_q, value=1)
+            total = sell_p * qty
+            profit = (sell_p - buy_p) * qty
+            
+            payment = st.selectbox("ช่องทางชำระเงิน", ["เงินสด", "QR Code โอนเงิน", "บัตรเครดิต"])
+            
+            if st.form_submit_button("💳 ยืนยันการขาย & ออกใบเสร็จ"):
+                cursor.execute("UPDATE inventory SET qty = qty - ? WHERE id = ?", (qty, int(row['id'])))
+                sale_no = f"POS-{datetime.now().strftime('%y%m%d%H%M')}"
+                cursor.execute("INSERT INTO sales (sale_no, date, customer, item, qty, total, profit, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                               (sale_no, datetime.now().strftime("%Y-%m-%d %H:%M"), customer, selected_item, qty, total, profit, payment))
+                conn.commit()
+                st.success("ขายสินค้าสำเร็จ! ตัดสต็อกอัตโนมัติเรียบร้อย")
+                st.code(f"""
+========================================
+         ใบเสร็จรับเงิน / Tax Invoice          
+========================================
+เลขที่: {sale_no} | วันที่: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+ลูกค้า: {customer}
+----------------------------------------
+รายการ: {selected_item} x {qty}
+ยอดรวมสุทธิ: {total:,.2f} บาท
+ชำระผ่าน: {payment}
+========================================
+        *ขอบคุณที่ใช้บริการครับ*
+                """, language="text")
+    else:
+        st.warning("สินค้าในสต็อกหมดเกลบญ")
+
+# ====================================================
+# 5. งานบัญชี & ลูกหนี้คงค้าง
+# ====================================================
+elif menu == "💰 งานบัญชี & ลูกหนี้คงค้าง":
+    st.subheader("💰 ตรวจสอบลูกหนี้คงค้างและรายรับ")
+    debtors_df = pd.read_sql("SELECT job_no, date, customer, phone, total_price, payment_status FROM repairs WHERE payment_status = 'ค้างชำระ (ลูกหนี้)'", conn)
+    
+    if not debtors_df.empty:
+        st.dataframe(debtors_df, use_container_width=True)
+        st.metric("ยอดลูกหนี้คงค้างรวม", f"{debtors_df['total_price'].sum():,.2f} บาท")
+        
+        pay_job = st.selectbox("เลือกใบงานที่ลูกหนี้มาชำระเงิน", debtors_df['job_no'].tolist())
+        if st.button("บันทึกรับชำระเงินหนี้"):
+            cursor.execute("UPDATE repairs SET payment_status = 'ชำระแล้ว (เงินสด/โอน)' WHERE job_no = ?", (pay_job,))
+            conn.commit()
+            st.success("บันทึกรับชำระเงินเรียบร้อย ยอดลูกหนี้ถูกเคลียร์แล้ว")
+            st.rerun()
+    else:
+        st.success("ยอดเยี่ยม! ไม่มีลูกหนี้คงค้างในระบบขณะนี้")
+
+# ====================================================
+# 6. รายงานสรุปผล (Reports)
+# ====================================================
+elif menu == "📊 รายงานสรุปผล (Reports)":
+    st.subheader("📊 รายงานสรุปยอดขาย กำไร และงานซ่อม")
+    
+    r_tab1, r_tab2, r_tab3 = st.tabs(["รายงานยอดขาย POS", "รายงานกำไรงานซ่อม", "รายงานสต็อกสินค้า"])
+    
+    with r_tab1:
+        sales_data = pd.read_sql("SELECT * FROM sales", conn)
+        if not sales_data.empty:
+            st.dataframe(sales_data, use_container_width=True)
+            st.metric("ยอดขายหน้าร้านรวม", f"{sales_data['total'].sum():,.2f} บาท")
+            st.metric("กำไรขายหน้าร้านรวม", f"{sales_data['profit'].sum():,.2f} บาท")
+        else:
+            st.info("ยังไม่มีข้อมูลการขาย")
+            
+    with r_tab2:
+        repair_data = pd.read_sql("SELECT job_no, date, customer, device_model, total_price, technician FROM repairs", conn)
+        if not repair_data.empty:
+            st.dataframe(repair_data, use_container_width=True)
+            st.metric("รายได้จากงานซ่อมรวม", f"{repair_data['total_price'].sum():,.2f} บาท")
         else:
             st.info("ยังไม่มีข้อมูลงานซ่อม")
-    elif menu == "📊 รายงานสรุปภาพรวม":
-        st.subheader("📊 รายงานสรุปผู้บริหารและช่างเทคนิค")
-        repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
-        total = len(repairs_df)
-        done = len(repairs_df[repairs_df['status'] == 'เสร็จสิ้น']) if total > 0 else 0
-        total_cost = repairs_df['total_price'].sum() if total > 0 else 0
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("งานทั้งหมด", f"{total} รายการ")
-        c2.metric("ซ่อมเสร็จสิ้น", f"{done} รายการ")
-        c3.metric("งบประมาณค่าใช้จ่ายรวม", f"{total_cost:,.2f} บาท")
+            
+    with r_tab3:
+        st.dataframe(pd.read_sql("SELECT * FROM inventory", conn), use_container_width=True)
+
+# ====================================================
+# 7. ตรวจสอบการเข้าใช้งาน (Audit Log)
+# ====================================================
+elif menu == "📋 ตรวจสอบการเข้าใช้งาน (Audit Log)":
+    st.subheader("📋 ประวัติการใช้งานระบบ (Audit Log)")
+    logs_df = pd.read_sql("SELECT * FROM audit_logs ORDER BY id DESC", conn)
+    st.dataframe(logs_df, use_container_width=True)
