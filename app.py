@@ -81,6 +81,17 @@ def init_db():
             logo_path TEXT
         )
     ''')
+
+    # ตารางจัดการข้อมูลพนักงาน
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            role TEXT,
+            phone TEXT,
+            status TEXT
+        )
+    ''')
     
     conn.commit()
     return conn
@@ -110,6 +121,16 @@ if cursor.fetchone()[0] == 0:
     ''', ("ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส", "123/4 ถ.อุปราช ต.ในเมือง อ.เมือง จ.อุบลราชธานี 34000", "1340999999999", "0812345678", ""))
     conn.commit()
 
+# เติมข้อมูลพนักงานตั้งต้นหากว่างเปล่า
+cursor.execute('SELECT COUNT(*) FROM staff')
+if cursor.fetchone()[0] == 0:
+    default_staff = [
+        ("ช่างดิด", "ช่างเทคนิค / เจ้าของร้าน", "0812345678", "ปฏิบัติงาน"),
+        ("คุณแอดมิน", "ฝ่ายขายและบริการหน้าร้าน", "0898765432", "ปฏิบัติงาน")
+    ]
+    cursor.executemany("INSERT INTO staff (name, role, phone, status) VALUES (?, ?, ?, ?)", default_staff)
+    conn.commit()
+
 # ดึงข้อมูลร้านค้าปัจจุบันจากฐานข้อมูล
 cursor.execute('SELECT shop_name, address, tax_id, promptpay, logo_path FROM shop_settings WHERE id=1')
 shop_info = cursor.fetchone()
@@ -121,62 +142,19 @@ st.title(f"💻 {shop_name} (Online POS & Document System)")
 menu = st.sidebar.selectbox(
     "เลือกเมนูการทำงาน", 
     [
-        "🏪 ตั้งค่าข้อมูลร้านค้า & โลโก้",
         "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)", 
-        "📄 ระบบออกเอกสารทางการ (ใบเสนอราคา/ใบกำกับภาษี)",
+        "📄 ระบบออกเอกสารทางการ",
         "📦 จัดการสต็อกสินค้า",
         "📝 ระบบรับและติดตามงานซ่อม",
         "📊 สรุปยอดขายรายวัน",
-        "⚙️ ระบบหลังบ้าน (Admin / แก้ไขข้อมูล)"
+        "⚙️ ระบบหลังบ้าน (Admin & ตั้งค่าระบบ)"
     ]
 )
 
 # ----------------------------------------------------
-# 0. ระบบตั้งค่าข้อมูลร้านค้า & โลโก้
-# ----------------------------------------------------
-if menu == "🏪 ตั้งค่าข้อมูลร้านค้า & โลโก้":
-    st.subheader("🏪 ตั้งค่าข้อมูลร้านค้าและอัปโหลดโลโก้")
-    
-    col_l1, col_l2 = st.columns([1, 2])
-    
-    with col_l1:
-        st.markdown("### โลโก้ร้านปัจจุบัน")
-        if shop_logo_path and os.path.exists(shop_logo_path):
-            st.image(shop_logo_path, width=200, caption="โลโก้ร้านค้า")
-        else:
-            st.info("ยังไม่มีการอัปโหลดโลโก้ร้านค้า")
-            
-        uploaded_logo = st.file_uploader("เปลี่ยน/อัปโหลดโลโก้ใหม่ (PNG/JPG)", type=["png", "jpg", "jpeg"])
-        
-    with col_l2:
-        with st.form("shop_setting_form"):
-            new_shop_name = st.text_input("ชื่อร้านค้า", value=shop_name)
-            new_address = st.text_area("ที่อยู่ร้านค้า", value=shop_address)
-            new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี", value=shop_tax_id)
-            new_promptpay = st.text_input("เบอร์พร้อมเพย์ (สำหรับรับเงิน POS)", value=shop_promptpay)
-            
-            save_shop_btn = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงข้อมูลร้าน")
-            
-            if save_shop_btn:
-                saved_path = shop_logo_path
-                if uploaded_logo is not None:
-                    saved_path = "shop_logo.png"
-                    img = Image.open(uploaded_logo)
-                    img.save(saved_path)
-                
-                cursor.execute('''
-                    UPDATE shop_settings 
-                    SET shop_name=?, address=?, tax_id=?, promptpay=?, logo_path=? 
-                    WHERE id=1
-                ''', (new_shop_name, new_address, new_tax_id, new_promptpay, saved_path))
-                conn.commit()
-                st.success("บันทึกข้อมูลร้านค้าและโลโก้สำเร็จ! กำลังรีเฟรชหน้าจอ...")
-                st.rerun()
-
-# ----------------------------------------------------
 # 1. ระบบขายหน้าร้าน (POS) + QR Code ชำระเงิน PromptPay
 # ----------------------------------------------------
-elif menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)":
+if menu == "🛒 ระบบขายหน้าร้าน (POS & QR ชำระเงิน)":
     st.subheader("🛒 ระบบขายหน้าร้าน & สร้าง QR Code พร้อมเพย์อัตโนมัติ")
     
     inv_df = pd.read_sql("SELECT * FROM inventory", conn)
@@ -233,7 +211,7 @@ elif menu == "🛒 ระบบขายหน้าร้าน (POS & QR ช�
             qr_img.save(buf, format="PNG")
             st.image(buf.getvalue(), width=250, caption=f"พร้อมเพย์: {shop_promptpay} (ยอด {net_total:,.2f} บ.)")
         except Exception as e:
-            st.error(f"ไม่สามารถสร้าง QR Code ได้ กรุณาตรวจสอบเบอร์พร้อมเพย์ที่เมนูตั้งค่าร้าน (Error: {e})")
+            st.error(f"ไม่สามารถสร้าง QR Code ได้ กรุณาตรวจสอบเบอร์พร้อมเพย์ที่ระบบหลังบ้าน (Error: {e})")
 
     if st.button("💾 ยืนยันการขาย (ตัดสต็อก & บันทึกบิล)"):
         if selected_item != "ค่าบริการซ่อม / ลงโปรแกรม" and current_stock < qty:
@@ -253,17 +231,18 @@ elif menu == "🛒 ระบบขายหน้าร้าน (POS & QR ช�
             st.success("✅ บันทึกการขายและตัดสต็อกอัตโนมัติสำเร็จ!")
 
 # ----------------------------------------------------
-# 2. ระบบออกเอกสารทางการ
+# 2. ระบบออกเอกสารทางการ (แยกประเภทเอกสารชัดเจน)
 # ----------------------------------------------------
-elif menu == "📄 ระบบออกเอกสารทางการ (ใบเสนอราคา/ใบกำกับภาษี)":
-    st.subheader("📄 ระบบออกเอกสารทางการ (Quotation / Delivery / Tax Invoice / Receipt)")
+elif menu == "📄 ระบบออกเอกสารทางการ":
+    st.subheader("📄 ระบบออกเอกสารทางการ (ใบเสนอราคา / ใบส่งสินค้า / ใบกำกับภาษี / ใบเสร็จรับเงิน)")
     
     doc_type = st.selectbox(
         "เลือกประเภทเอกสารที่ต้องการออก",
         [
             "ใบเสนอราคา (Quotation)",
             "ใบส่งสินค้า / ใบส่งของ (Delivery Note)",
-            "ใบกำกับภาษี / ใบเสร็จรับเงิน (Tax Invoice & Receipt)"
+            "ใบกำกับภาษี (Tax Invoice)",
+            "ใบเสร็จรับเงิน (Receipt)"
         ]
     )
     
@@ -276,10 +255,12 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
         c_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษีลูกค้า (ถ้ามี)", value="0105555555555")
         doc_date = st.date_input("วันที่เอกสาร", datetime.now())
         
+        # กำหนด Prefix เลขที่เอกสารตามประเภทที่เลือก
         prefix_dict = {
             "ใบเสนอราคา (Quotation)": "QT",
             "ใบส่งสินค้า / ใบส่งของ (Delivery Note)": "DL",
-            "ใบกำกับภาษี / ใบเสร็จรับเงิน (Tax Invoice & Receipt)": "IV"
+            "ใบกำกับภาษี (Tax Invoice)": "TX",
+            "ใบเสร็จรับเงิน (Receipt)": "RC"
         }
         default_doc_no = f"{prefix_dict[doc_type]}-{datetime.now().strftime('%Y%m%d%H%M')}"
         doc_no = st.text_input("เลขที่เอกสาร", value=default_doc_no)
@@ -318,7 +299,10 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
             st.rerun()
             
         sub_sum = df_items_display["total"].sum()
-        include_vat = st.checkbox("คำนวณ VAT 7% (ภาษีมูลค่าเพิ่ม)", value=True if "ใบกำกับภาษี" in doc_type else False)
+        
+        # ตั้งค่าคำนวณ VAT 7% เป็นค่าเริ่มต้นเฉพาะกรณี "ใบกำกับภาษี"
+        default_vat_status = True if doc_type == "ใบกำกับภาษี (Tax Invoice)" else False
+        include_vat = st.checkbox("คำนวณ VAT 7% (ภาษีมูลค่าเพิ่ม)", value=default_vat_status)
         
         if include_vat:
             vat_amount = sub_sum * 0.07
@@ -348,7 +332,6 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
                     encoded_string = base64.b64encode(image_file.read()).decode()
                 logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="max-height: 70px; margin-bottom: 5px;"><br>'
 
-            # แก้ไข SyntaxError โดยแยกตัวแปร HTML ของแถว VAT ออกมากำหนดค่าด้านนอก
             vat_row_html = f"<tr><td><b>VAT 7%:</b></td><td style='text-align: right;'>{vat_amount:,.2f} บาท</td></tr>" if include_vat else ""
 
             st.markdown(f"""
@@ -526,14 +509,59 @@ elif menu == "📊 สรุปยอดขายรายวัน":
         st.info("ยังไม่มีประวัติการขายในระบบ")
 
 # ----------------------------------------------------
-# 6. ระบบหลังบ้าน (Admin)
+# 6. ระบบหลังบ้าน (Admin & Management Hub)
 # ----------------------------------------------------
-elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไขข้อมูล)":
-    st.subheader("⚙️ ระบบหลังบ้าน - บริหารจัดการและแก้ไขข้อมูล")
+elif menu == "⚙️ ระบบหลังบ้าน (Admin & ตั้งค่าระบบ)":
+    st.subheader("⚙️ ระบบหลังบ้าน - จัดการร้านค้า สินค้า งานซ่อม และพนักงาน")
     
-    admin_tab1, admin_tab2 = st.tabs(["📦 แก้ไข/ลบ ข้อมูลสินค้าในสต็อก", "📝 แก้ไข/ลบ ข้อมูลงานซ่อม"])
+    b_tab1, b_tab2, b_tab3, b_tab4 = st.tabs([
+        "🏪 ตั้งค่าข้อมูลร้านค้า & โลโก้", 
+        "📦 จัดการสต็อกสินค้า", 
+        "📝 จัดการงานซ่อม", 
+        "👥 จัดการพนักงาน"
+    ])
     
-    with admin_tab1:
+    # --- Tab 1: ตั้งค่าร้านค้า & โลโก้ ---
+    with b_tab1:
+        st.markdown("### 🏪 ตั้งค่าชื่อร้าน ที่อยู่ โลโก้ และช่องทางชำระเงิน")
+        col_l1, col_l2 = st.columns([1, 2])
+        
+        with col_l1:
+            st.markdown("#### โลโก้ร้านปัจจุบัน")
+            if shop_logo_path and os.path.exists(shop_logo_path):
+                st.image(shop_logo_path, width=200, caption="โลโก้ร้านค้า")
+            else:
+                st.info("ยังไม่มีการอัปโหลดโลโก้ร้านค้า")
+            uploaded_logo = st.file_uploader("อัปโหลดโลโก้ใหม่ (PNG/JPG)", type=["png", "jpg", "jpeg"], key="admin_logo_up")
+            
+        with col_l2:
+            with st.form("shop_setting_form"):
+                new_shop_name = st.text_input("ชื่อร้านค้า", value=shop_name)
+                new_address = st.text_area("ที่อยู่ร้านค้า", value=shop_address)
+                new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี", value=shop_tax_id)
+                new_promptpay = st.text_input("เบอร์พร้อมเพย์ (สำหรับรับเงิน POS)", value=shop_promptpay)
+                
+                save_shop_btn = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงข้อมูลร้าน")
+                
+                if save_shop_btn:
+                    saved_path = shop_logo_path
+                    if uploaded_logo is not None:
+                        saved_path = "shop_logo.png"
+                        img = Image.open(uploaded_logo)
+                        img.save(saved_path)
+                    
+                    cursor.execute('''
+                        UPDATE shop_settings 
+                        SET shop_name=?, address=?, tax_id=?, promptpay=?, logo_path=? 
+                        WHERE id=1
+                    ''', (new_shop_name, new_address, new_tax_id, new_promptpay, saved_path))
+                    conn.commit()
+                    st.success("บันทึกข้อมูลร้านค้าและโลโก้สำเร็จ! กำลังรีเฟรช...")
+                    st.rerun()
+
+    # --- Tab 2: จัดการสต็อกสินค้า ---
+    with b_tab2:
+        st.markdown("### 📦 แก้ไข หรือ ลบรายการสินค้าในคลัง")
         inv_df = pd.read_sql("SELECT * FROM inventory", conn)
         if not inv_df.empty:
             selected_item_name = st.selectbox("เลือกสินค้าที่ต้องการจัดการ", inv_df["name"].tolist(), key="admin_inv_select")
@@ -563,7 +591,9 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไ�
         else:
             st.info("ไม่มีสินค้าในคลัง")
 
-    with admin_tab2:
+    # --- Tab 3: จัดการงานซ่อม ---
+    with b_tab3:
+        st.markdown("### 📝 แก้ไขรายละเอียด หรือ ลบประวัติงานซ่อม")
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         if not repairs_df.empty:
             repair_display_list = [f"ID: {row['id']} | ลูกค้า: {row['customer']} | รุ่น: {row['model']}" for index, row in repairs_df.iterrows()]
@@ -595,3 +625,61 @@ elif menu == "⚙️ ระบบหลังบ้าน (Admin / แก้ไ�
                     st.rerun()
         else:
             st.info("ยังไม่มีประวัติงานซ่อมในระบบ")
+
+    # --- Tab 4: จัดการพนักงาน ---
+    with b_tab4:
+        st.markdown("### 👥 ระบบจัดการข้อมูลพนักงานในร้าน")
+        
+        staff_df = pd.read_sql("SELECT * FROM staff", conn)
+        st.dataframe(staff_df, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("#### ➕ เพิ่มพนักงานใหม่ / ✏️ แก้ไขข้อมูลพนักงาน")
+        
+        staff_action = st.radio("เลือกการทำงาน", ["เพิ่มพนักงานใหม่", "แก้ไข/ลบ พนักงานที่มีอยู่"], horizontal=True)
+        
+        if staff_action == "เพิ่มพนักงานใหม่":
+            with st.form("add_staff_form"):
+                st_name = st.text_input("ชื่อ-นามสกุลพนักงาน")
+                st_role = st.text_input("ตำแหน่ง (เช่น ช่างเทคนิค, ฝ่ายขาย)")
+                st_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ")
+                st_status = st.selectbox("สถานะการทำงาน", ["ปฏิบัติงาน", "ลาพักผ่อน", "ลาออก"])
+                
+                add_staff_btn = st.form_submit_button("💾 บันทึกเพิ่มพนักงานใหม่")
+                if add_staff_btn:
+                    if st_name and st_phone:
+                        cursor.execute("INSERT INTO staff (name, role, phone, status) VALUES (?, ?, ?, ?)", (st_name, st_role, st_phone, st_status))
+                        conn.commit()
+                        st.success(f"เพิ่มพนักงาน '{st_name}' สำเร็จ!")
+                        st.rerun()
+                    else:
+                        st.error("กรุณากรอกชื่อและเบอร์โทรศัพท์ให้ครบถ้วน")
+        else:
+            if not staff_df.empty:
+                st_list = [f"ID: {row['id']} | ชื่อ: {row['name']} ({row['role']})" for index, row in staff_df.iterrows()]
+                selected_st_str = st.selectbox("เลือกพนักงานที่ต้องการจัดการ", st_list)
+                st_id = int(selected_st_str.split(" | ")[0].replace("ID: ", ""))
+                st_info = staff_df[staff_df["id"] == st_id].iloc[0]
+                
+                with st.form("edit_staff_form"):
+                    ed_st_name = st.text_input("ชื่อ-นามสกุลพนักงาน", value=st_info["name"])
+                    ed_st_role = st.text_input("ตำแหน่ง", value=st_info["role"])
+                    ed_st_phone = st.text_input("เบอร์โทรศัพท์", value=st_info["phone"])
+                    ed_st_status = st.selectbox("สถานะการทำงาน", ["ปฏิบัติงาน", "ลาพักผ่อน", "ลาออก"], index=["ปฏิบัติงาน", "ลาพักผ่อน", "ลาออก"].index(st_info["status"]) if st_info["status"] in ["ปฏิบัติงาน", "ลาพักผ่อน", "ลาออก"] else 0)
+                    
+                    col_s1, col_s2 = st.columns(2)
+                    up_staff_btn = col_s1.form_submit_button("💾 บันทึกการแก้ไขข้อมูลพนักงาน")
+                    del_staff_btn = col_s2.form_submit_button("🗑️ ลบพนักงานนี้ออกจากระบบ")
+                    
+                    if up_staff_btn:
+                        cursor.execute("UPDATE staff SET name=?, role=?, phone=?, status=? WHERE id=?", (ed_st_name, ed_st_role, ed_st_phone, ed_st_status, st_id))
+                        conn.commit()
+                        st.success("อัปเดตข้อมูลพนักงานสำเร็จ!")
+                        st.rerun()
+                    if del_staff_btn:
+                        cursor.execute("DELETE FROM staff WHERE id=?", (st_id,))
+                        conn.commit()
+                        st.warning("ลบข้อมูลพนักงานเรียบร้อยแล้ว!")
+                        st.rerun()
+            else:
+                st.info("ยังไม่มีข้อมูลพนักงานในระบบ")
