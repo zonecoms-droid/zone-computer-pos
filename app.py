@@ -331,8 +331,20 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
 
             vat_row_html = f"<tr><td><b>VAT 7%:</b></td><td style='text-align: right;'>{vat_amount:,.2f} บาท</td></tr>" if include_vat else ""
 
-            st.markdown(f"""
-            <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
+            # สร้าง HTML พร้อมระบบจัดการการพิมพ์ (@media print)
+            doc_html_content = f"""
+            <style>
+            @media print {{
+                body * {{ visibility: hidden; }}
+                #printable-doc, #printable-doc * {{ visibility: visible; }}
+                #printable-doc {{ position: absolute; left: 0; top: 0; width: 100%; }}
+                .no-print {{ display: none; }}
+            }}
+            </style>
+            <div style="text-align: right; margin-bottom: 10px;" class="no-print">
+                <button onclick="window.print()" style="background-color: #ff4b4b; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">🖨️ พิมพ์เอกสาร (Print)</button>
+            </div>
+            <div id="printable-doc" style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
                 <div style="text-align: center;">
                     {logo_html}
                     <h2 style="margin: 0;">{shop_name}</h2>
@@ -359,10 +371,10 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
                         </tr>
                     </thead>
                     <tbody>
-            """, unsafe_allow_html=True)
+            """
             
             for idx, row in df_items_display.iterrows():
-                st.markdown(f"""
+                doc_html_content += f"""
                     <tr>
                         <td style="border: 1px solid #ddd; padding: 8px;">{idx+1}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">{row['name']}</td>
@@ -370,9 +382,9 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
                         <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['price']:,.2f}</td>
                         <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{row['total']:,.2f}</td>
                     </tr>
-                """, unsafe_allow_html=True)
+                """
                 
-            st.markdown(f"""
+            doc_html_content += f"""
                     </tbody>
                 </table>
                 
@@ -393,8 +405,8 @@ elif menu == "📄 ระบบออกเอกสารทางการ":
                     </tr>
                 </table>
             </div>
-            """, unsafe_allow_html=True)
-            st.info("💡 สามารถกดสั่งพิมพ์ (Print) หน้านี้ผ่านเบราว์เซอร์เพื่อพิมพ์ออกเครื่องพิมพ์ A4 ได้ทันทีครับ")
+            """
+            st.markdown(doc_html_content, unsafe_allow_html=True)
 
 # ----------------------------------------------------
 # 3. จัดการสต็อกสินค้า
@@ -433,7 +445,6 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
         "⚙️ รายการและอัปเดตสถานะงานซ่อม"
     ])
     
-    # --- Tab 1: รับเครื่องเข้าซ่อมใหม่ ---
     with r_tab1:
         c1, c2 = st.columns(2)
         with c1:
@@ -458,13 +469,11 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
             else:
                 st.error("กรุณากรอกชื่อและเบอร์โทรศัพท์ลูกค้าให้ครบถ้วน")
 
-    # --- Tab 2: พิมพ์ใบรับซ่อม (เลือกกระดาษ & ฉบับ) ---
     with r_tab2:
         st.markdown("### 🖨️ เลือกรายการซ่อมเพื่อพิมพ์ใบรับเครื่อง")
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         
         if not repairs_df.empty:
-            # เลือกรายการซ่อมจาก Dropdown
             rep_print_list = [f"ID: {row['id']} | ลูกค้า: {row['customer']} | รุ่น: {row['model']} | วันที่: {row['date']}" for index, row in repairs_df.iterrows()]
             selected_print_str = st.selectbox("เลือกรหัสงานซ่อมที่ต้องการพิมพ์", rep_print_list)
             
@@ -473,7 +482,6 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
             
             st.markdown("---")
             
-            # เลือกรูปแบบการพิมพ์
             p_col1, p_col2 = st.columns(2)
             with p_col1:
                 paper_size = st.selectbox("เลือกขนาดกระดาษพิมพ์", ["กระดาษ A4 (ฉบับเต็ม)", "สลิปความร้อน (Thermal 80มม.)"])
@@ -483,7 +491,6 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
             st.markdown("---")
             st.markdown(f"### 📄 ตัวอย่างการพิมพ์: [{paper_size}] - [{copy_type}]")
             
-            # โค้ดแสดงผลรูปแบบเอกสารตามที่เลือก
             logo_html = ""
             if shop_logo_path and os.path.exists(shop_logo_path):
                 with open(shop_logo_path, "rb") as image_file:
@@ -491,8 +498,19 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
                 logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="max-height: 50px; margin-bottom: 5px;"><br>'
 
             if paper_size == "กระดาษ A4 (ฉบับเต็ม)":
-                st.markdown(f"""
-                <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000; font-family: sans-serif;">
+                ticket_html_content = f"""
+                <style>
+                @media print {{
+                    body * {{ visibility: hidden; }}
+                    #printable-ticket, #printable-ticket * {{ visibility: visible; }}
+                    #printable-ticket {{ position: absolute; left: 0; top: 0; width: 100%; }}
+                    .no-print {{ display: none; }}
+                }}
+                </style>
+                <div style="text-align: right; margin-bottom: 10px;" class="no-print">
+                    <button onclick="window.print()" style="background-color: #ff4b4b; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">🖨️ พิมพ์ใบรับซ่อม (Print)</button>
+                </div>
+                <div id="printable-ticket" style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000; font-family: sans-serif;">
                     <div style="text-align: center;">
                         {logo_html}
                         <h2 style="margin: 0;">{shop_name}</h2>
@@ -532,15 +550,25 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
                     <table style="width: 100%; text-align: center; font-size: 13px; margin-top: 30px;">
                         <tr>
                             <td>____________________________________<br>พนักงานผู้รับเครื่อง / Authorized</td>
-                            <td>____________________________________<br>กลูกค้าผู้ส่งซ่อม / Customer Signature</td>
+                            <td>____________________________________<br>ลูกค้าผู้ส่งซ่อม / Customer Signature</td>
                         </tr>
                     </table>
                 </div>
-                """, unsafe_allow_html=True)
+                """
             else:
-                # สลิปความร้อน (Thermal 80มม.)
-                st.markdown(f"""
-                <div style="max-width: 350px; border: 1px dashed #333; padding: 15px; background-color: #fff; color: #000; font-family: monospace; font-size: 12px;">
+                ticket_html_content = f"""
+                <style>
+                @media print {{
+                    body * {{ visibility: hidden; }}
+                    #printable-slip, #printable-slip * {{ visibility: visible; }}
+                    #printable-slip {{ position: absolute; left: 0; top: 0; width: 100%; }}
+                    .no-print {{ display: none; }}
+                }}
+                </style>
+                <div style="text-align: left; margin-bottom: 10px;" class="no-print">
+                    <button onclick="window.print()" style="background-color: #ff4b4b; color: white; padding: 8px 15px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; font-weight: bold;">🖨️ พิมพ์สลิป (Print)</button>
+                </div>
+                <div id="printable-slip" style="max-width: 350px; border: 1px dashed #333; padding: 15px; background-color: #fff; color: #000; font-family: monospace; font-size: 12px;">
                     <div style="text-align: center;">
                         <b>{shop_name}</b><br>
                         <span style="font-size: 10px;">โทร. {shop_promptpay}</span><br>
@@ -564,13 +592,11 @@ elif menu == "📝 ระบบรับและพิมพ์ใบรับ�
                         ขอบคุณที่ใช้บริการครับ
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
-                
-            st.info("💡 สามารถกดสั่งพิมพ์ (Print) หน้านี้ผ่านเบราว์เซอร์ (Ctrl+P หรือ Cmd+P) เพื่อพิมพ์ออกเครื่องพิมพ์กระดาษ A4 หรือเครื่องพิมพ์สลิปความร้อนได้ทันที")
+                """
+            st.markdown(ticket_html_content, unsafe_allow_html=True)
         else:
             st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ กรุณารับเครื่องซ่อมที่แท็บแรกก่อน")
 
-    # --- Tab 3: รายการและอัปเดตสถานะงานซ่อม ---
     with r_tab3:
         repairs_df = pd.read_sql("SELECT * FROM repairs", conn)
         if not repairs_df.empty:
