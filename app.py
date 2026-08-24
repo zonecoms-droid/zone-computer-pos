@@ -7,6 +7,7 @@ from promptpay import qrcode as pp_qrcode
 from io import BytesIO
 from PIL import Image
 import os
+import base64
 
 st.set_page_config(page_title="Zone Computer & Service", layout="wide")
 
@@ -159,7 +160,6 @@ if menu == "🏪 ตั้งค่าข้อมูลร้านค้า & 
             if save_shop_btn:
                 saved_path = shop_logo_path
                 if uploaded_logo is not None:
-                    # บันทึกไฟล์โลโก้ลงในโฟลเดอร์โปรเจกต์
                     saved_path = "shop_logo.png"
                     img = Image.open(uploaded_logo)
                     img.save(saved_path)
@@ -340,16 +340,16 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
             conn.commit()
             st.success("บันทึกเอกสารเข้าระบบเรียบร้อย!")
             
-            # โค้ดแสดงผลเอกสาร (Print View) พร้อมโลโก้ร้าน
             st.markdown("---")
             
-            # แปลงโลโก้เป็น Base64 หรือแสดงรูปภาพ Streamlit
             logo_html = ""
             if shop_logo_path and os.path.exists(shop_logo_path):
-                import base64
                 with open(shop_logo_path, "rb") as image_file:
                     encoded_string = base64.b64encode(image_file.read()).decode()
                 logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="max-height: 70px; margin-bottom: 5px;"><br>'
+
+            # แก้ไข SyntaxError โดยแยกตัวแปร HTML ของแถว VAT ออกมากำหนดค่าด้านนอก
+            vat_row_html = f"<tr><td><b>VAT 7%:</b></td><td style='text-align: right;'>{vat_amount:,.2f} บาท</td></tr>" if include_vat else ""
 
             st.markdown(f"""
             <div style="border: 2px solid #333; padding: 25px; border-radius: 8px; background-color: #fff; color: #000;">
@@ -399,7 +399,7 @@ elif menu == "📄 ระบบออกเอกสารทางการ (�
                 <div style="float: right; width: 350px; font-size: 14px;">
                     <table style="width: 100%;">
                         <tr><td><b>รวมเป็นเงิน:</b></td><td style="text-align: right;">{sub_sum:,.2f} บาท</td></tr>
-                        {f"<tr><td><b>VAT 7%:</b></td><td style="text-align: right;">{vat_amount:,.2f} บาท</td></tr>" if include_vat else ""}
+                        {vat_row_html}
                         <tr style="font-size: 16px; border-top: 1px solid #333;"><td><b>ยอดรวมสุทธิ:</b></td><td style="text-align: right;"><b>{grand_total:,.2f} บาท</b></td></tr>
                     </table>
                 </div>
