@@ -994,16 +994,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
-# 5. เช็คประกัน & Serial Number
-# ==========================================
-elif menu == "🛡️ เช็คประกัน & Serial Number":
-    st.header("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
-    sn_input = st.text_input("กรอกหรือสแกน Serial Number")
-    if sn_input:
-        st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
-
-# ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับโลโก้ .jpg / .png สมบูรณ์)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - แยกสีธีมตามประเภทเอกสาร)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -1138,36 +1129,43 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
 
             vat_html = f"<tr><td style='text-align: right;'><b>ภาษีมูลค่าเพิ่ม 7% (VAT):</b></td><td style='text-align: right;'>{vat_amount:,.2f} {currency}</td></tr>" if include_com_vat else ""
 
+            # กำหนดสีธีมและข้อความตามประเภทเอกสาร
             if "1." in doc_type_selected:
                 doc_title_str = "ใบเสนอราคา / QUOTATION"
                 doc_code_prefix = P_QT
                 left_sign_title = "ผู้เสนอ / ผู้ออกเอกสาร"
                 right_sign_title = "ผู้อนุมัติ / ลูกค้า"
+                theme_color = "#0d9488" # สีเขียวอมฟ้า (Teal)
             elif "2." in doc_type_selected:
                 doc_title_str = "ใบส่งสินค้า / ใบแจ้งหนี้ / DELIVERY ORDER & INVOICE"
                 doc_code_prefix = P_IV
                 left_sign_title = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                 right_sign_title = "ผู้รับสินค้า / ลูกค้า"
+                theme_color = "#2563eb" # สีน้ำเงิน (Blue)
             elif "3." in doc_type_selected:
                 doc_title_str = "ใบกำกับภาษี / TAX INVOICE"
                 doc_code_prefix = P_TAX
                 left_sign_title = "ผู้มีอำนาจออกเอกสาร"
                 right_sign_title = "ผู้รับบริการ / ลูกค้า"
+                theme_color = "#4f46e5" # สีคราม (Indigo)
             elif "4." in doc_type_selected:
                 doc_title_str = "ใบเสร็จรับเงิน / CASH RECEIPT"
                 doc_code_prefix = P_RC
                 left_sign_title = "ผู้รับเงิน / ผู้ออกเอกสาร"
                 right_sign_title = "ผู้จ่ายเงิน / ลูกค้า"
+                theme_color = "#16a34a" # สีเขียว (Green)
             elif "5." in doc_type_selected:
                 doc_title_str = "ใบลดหนี้ / CREDIT NOTE"
                 doc_code_prefix = P_CN
                 left_sign_title = "ผู้ออกใบลดหนี้"
                 right_sign_title = "ผู้รับใบลดหนี้ / ลูกค้า"
+                theme_color = "#d97706" # สีส้มอำพัน (Amber)
             else:
                 doc_title_str = "ใบเพิ่มหนี้ / DEBIT NOTE"
                 doc_code_prefix = P_DN
                 left_sign_title = "ผู้ออกใบเพิ่มหนี้"
                 right_sign_title = "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
+                theme_color = "#e11d48" # สีแดงกุหลาบ (Rose)
 
             random_doc_no = f"{doc_code_prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(10,99)}"
 
@@ -1192,14 +1190,14 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             <style>
                 @page {{ size: A4 portrait; margin: 12mm; }}
                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
-                .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                .print-btn:hover {{ background-color: #0369a1; }}
+                .print-btn {{ background-color: {theme_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                .print-btn:hover {{ opacity: 0.9; }}
                 .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
                 .cust-box td {{ padding: 4px 8px; }}
                 .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
-                .items-tbl th {{ background: #0f172a; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                .items-tbl th {{ background: {theme_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
                 .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
                 .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                 .summary-tbl td {{ padding: 6px 10px; }}
@@ -1226,7 +1224,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                     <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
                                 </td>
                                 <td style="text-align: right; vertical-align: top;">
-                                    <div style="background: #0284c7; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                                    <div style="background: {theme_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
                                         {doc_title_str}
                                     </div>
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {random_doc_no}</p>
@@ -1275,7 +1273,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                         {discount_html}
                                         <tr><td style="text-align: right;"><b>ราคาหลังหักส่วนลด:</b></td><td style="text-align: right;">{price_after_discount:,.2f} {currency}</td></tr>
                                         {vat_html}
-                                        <tr><td style="text-align: right; font-size: 14px; color: #0284c7;"><b>จำนวนเงินรวมทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; font-size: 14px; color: #0284c7;"><b>{com_grand:,.2f} {currency}</b></td></tr>
+                                        <tr><td style="text-align: right; font-size: 14px; color: {theme_color};"><b>จำนวนเงินรวมทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; font-size: 14px; color: {theme_color};"><b>{com_grand:,.2f} {currency}</b></td></tr>
                                         {payment_row_under_total}
                                     </table>
                                 </td>
