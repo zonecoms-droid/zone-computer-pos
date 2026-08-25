@@ -517,7 +517,7 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
             st.image(buf.getvalue(), width=140)
 
 # ==========================================
-# 4. ติดตาม & อัปเดตสถานะงานซ่อม (พร้อมปุ่มพิมพ์แยกเอกสารเมื่อ COMPLETED)
+# 4. ติดตาม & อัปเดตสถานะงานซ่อม (ปลอดภัยจาก Error ไฟล์รูปซ่อม)
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -547,14 +547,18 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 st.markdown(f"**อุปกรณ์:** {selected_row['device_name']}")
                 st.markdown(f"**อาการเสีย:** {selected_row['problem_description']}")
                 st.markdown(f"**สถานะปัจจุบัน:** 📌 **{selected_row['status']}**")
+            
             with col_media:
-                m_file = selected_row['media_file']
-                if m_file and os.path.exists(m_file):
+                m_file = selected_row.get('media_file')
+                # 🛠️ ป้องกัน Error แบบรัดกุม เช็คว่าเป็น string และมีไฟล์อยู่จริง
+                if m_file and isinstance(m_file, str) and os.path.exists(m_file):
                     ext = m_file.split('.')[-1].lower()
                     if ext in ['jpg', 'jpeg', 'png']:
                         st.image(m_file, width=250)
                     elif ext in ['mp4', 'mov']:
                         st.video(m_file)
+                else:
+                    st.info("ไม่มีไฟล์รูปภาพหรือวิดีโอแนบมาในใบงานนี้")
             
             new_status = st.selectbox("เปลี่ยนสถานะงานซ่อมเป็น", [
                 "RECEIVED (รับเครื่องเข้า)", "CHECKING (กำลังตรวจสอบอาการ)", 
@@ -614,7 +618,6 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
-                        # สร้าง QR Code สำหรับจ่ายเงิน (เฉพาะใบเสร็จ)
                         qr_tag = ""
                         if pay_chanel == "โอนเงินผ่าน PromptPay QR":
                             q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
@@ -742,7 +745,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                         
                                         <table class="itm-tbl">
                                             <tr>
-                                                <th>รายการสินค้า / บริการ</th>
+                                                <th>รายการซ่อม / อะไหล่</th>
                                                 <th style="text-align: center;">จำนวน</th>
                                                 <th style="text-align: right;">ราคา/หน่วย</th>
                                                 <th style="text-align: right;">จำนวนเงิน (บาท)</th>
