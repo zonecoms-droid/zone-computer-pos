@@ -21,6 +21,16 @@ st.set_page_config(
     layout="wide"
 )
 
+# ฟังก์ชันแปลงไฟล์รูปเป็น Base64 สำหรับใส่ใน HTML เอกสาร
+def get_img_base64(path):
+    if path and isinstance(path, str) and os.path.exists(path):
+        try:
+            with open(path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+        except Exception:
+            return ""
+    return ""
+
 # ฟังก์ชันเชื่อมต่อและสร้างฐานข้อมูล SQLite แบบอัตโนมัติ
 def init_connection():
     conn = sqlite3.connect('zone_online.db', check_same_thread=False)
@@ -50,7 +60,8 @@ def init_db(conn):
             accounting_method TEXT DEFAULT 'เกณฑ์สิทธิ์ (Accrual)',
             accounting_period TEXT DEFAULT '2026',
             lock_period TEXT DEFAULT 'ยังไม่ล็อก',
-            opening_balance REAL DEFAULT 0.0
+            opening_balance REAL DEFAULT 0.0,
+            logo_path TEXT
         )
     ''')
     
@@ -59,7 +70,8 @@ def init_db(conn):
         ('prefix_qt', 'TEXT'), ('prefix_iv', 'TEXT'), ('prefix_tax', 'TEXT'),
         ('prefix_rc', 'TEXT'), ('prefix_cn', 'TEXT'), ('prefix_dn', 'TEXT'),
         ('default_currency', 'TEXT'), ('accounting_method', 'TEXT'), 
-        ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL')
+        ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
+        ('logo_path', 'TEXT')
     ]
     for col, col_type in extra_cols:
         try:
@@ -132,19 +144,19 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล พร้อมใส่ค่าป้องกัน None กัน Error
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1234567890123", "อุบลราชธานี", "ขอบคุณ", "0891234567"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
-    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0
+    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, ""
 
 # ป้องกันค่า None ซ้ำอีกรอบ
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
@@ -167,6 +179,7 @@ ACC_METHOD = ACC_METHOD or "เกณฑ์สิทธิ์ (Accrual)"
 ACC_PERIOD = ACC_PERIOD or "2026"
 LOCK_PER = LOCK_PER or "ยังไม่ล็อก"
 OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
+LOGO_PATH = LOGO_PATH or ""
 
 # ==========================================
 # 🔍 โหมดพิเศษ: หน้าจอเช็คสถานะสาธารณะผ่าน QR Code (?track=...)
@@ -965,7 +978,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับปรุงลายเซ็นคู่ขนานตามประเภทเอกสาร)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับโลโก้ร้าน)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -1145,6 +1158,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             if not is_no_payment_doc:
                 payment_row_under_total = f'<tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{c_pay_method}</td></tr>'
 
+            # สร้าง HTML ของโลโก้ร้านถ้ามีไฟล์รูป
+            logo_b64 = get_img_base64(LOGO_PATH)
+            logo_img_tag = f'<img src="data:image/png;base64,{logo_b64}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_b64 else ''
+
             commercial_html = f"""
             <html>
             <head>
@@ -1178,7 +1195,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                         <table class="header-tbl">
                             <tr>
                                 <td style="vertical-align: top;">
-                                    <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                        {logo_img_tag}
+                                        <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                    </div>
                                     <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
                                 </td>
                                 <td style="text-align: right; vertical-align: top;">
@@ -1328,7 +1348,6 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
                 doc_style = st.selectbox("รูปแบบดีไซน์เอกสาร", ["FlowAccount Corporate Modern", "Classic Minimalist"])
                 def_curr_val = st.selectbox("สกุลเงินหลัก", ["THB", "USD", "EUR"], index=0 if DEF_CURR=='THB' else 0)
             with col_d2:
-                logo_text = st.text_input("ข้อความหัวโลโก้ร้าน", value=STORE_NAME)
                 def_note_val = st.text_area("หมายเหตุเอกสารเริ่มต้น", value=STORE_NOTE)
                 
             if st.form_submit_button("💾 บันทึกการตั้งค่าเอกสาร"):
@@ -1407,7 +1426,7 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
         st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
         st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
 
-    # --- Tab 5: ตั้งค่าธุรกิจ ---
+    # --- Tab 5: ตั้งค่าธุรกิจ (รวมเมนูใส่โลโก้ร้านที่หน้านี้ตามขอ) ---
     with set_tab5:
         st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
         with st.form("settings_biz_form"):
@@ -1418,21 +1437,35 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
             new_address = st.text_area("ที่อยู่สถานประกอบการ", value=STORE_ADDRESS)
             
             st.markdown("---")
+            st.markdown("##### 🖼️ โลโก้ร้านค้า (สำหรับแสดงบนหัวเอกสารการค้า)")
+            uploaded_logo = st.file_uploader("อัปโหลดรูปโลโก้ร้าน (แนะนำไฟล์ PNG หรือ JPG ขนาดพอเหมาะ)", type=["png", "jpg", "jpeg"])
+            if LOGO_PATH and os.path.exists(LOGO_PATH):
+                st.image(LOGO_PATH, width=150, caption="โลโก้ปัจจุบันของร้าน")
+
+            st.markdown("---")
             st.markdown("##### 🌐 ช่องทางโซเชียลมีเดียของร้าน")
             new_line = st.text_input("ลิงก์ Line Official", value=STORE_LINE)
             new_fb = st.text_input("ลิงก์ Facebook Page", value=STORE_FB)
             new_tiktok = st.text_input("ลิงก์ TikTok", value=STORE_TIKTOK)
             
-            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจ"):
+            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจและโลโก้"):
+                final_logo_path = LOGO_PATH
+                if uploaded_logo is not None:
+                    logo_ext = uploaded_logo.name.split(".")[-1]
+                    logo_filename = f"logo_store_{datetime.now().strftime('%Y%m%d%H%M%S')}.{logo_ext}"
+                    final_logo_path = os.path.join(UPLOAD_DIR, logo_filename)
+                    with open(final_logo_path, "wb") as f:
+                        f.write(uploaded_logo.getbuffer())
+
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE store_settings 
-                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ? 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ? 
                     WHERE id = 1
-                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok))
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path))
                 conn.commit()
                 cursor.close()
-                st.success("บันทึกข้อมูลธุรกิจสำเร็จ!")
+                st.success("บันทึกข้อมูลธุรกิจและโลโก้สำเร็จ!")
                 st.rerun()
 
     # --- Tab 6: แป้นพิมพ์ลัด ---
