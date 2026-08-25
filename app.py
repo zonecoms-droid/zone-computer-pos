@@ -6,6 +6,12 @@ import random
 import qrcode
 from io import BytesIO
 import streamlit.components.v1 as components
+import os
+
+# สร้างโฟลเดอร์สำหรับเก็บบันทึกไฟล์รูป/วิดีโอที่ลูกค้าอัปโหลด
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(
@@ -67,7 +73,7 @@ def init_db(conn):
         cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech2', 'ช่างเสริม', 'technician')")
         conn.commit()
 
-    # 4. ตารางงานซ่อม
+    # 4. ตารางงานซ่อม (เพิ่มฟิลด์เก็บชื่อไฟล์ media_path)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +86,7 @@ def init_db(conn):
             estimated_cost REAL,
             technician_id INTEGER,
             status TEXT DEFAULT 'RECEIVED',
+            media_file TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES customers(id),
@@ -99,14 +106,14 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ฟอร์มพิมพ์ A4 แนวตั้ง พร้อมปุ่มสั่งปริ้น)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (รองรับอัปโหลดรูปและวิดีโออาการเสีย)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
 
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", [
     "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม", 
-    "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (Self-Service)",
+    "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
     "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
     "🛡️ เช็คประกัน & Serial Number",
     "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style)",
@@ -212,97 +219,23 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
             <html>
             <head>
             <style>
-                @page {{
-                    size: A4 portrait;
-                    margin: 5mm;
-                }}
-                body {{
-                    background: #f0f2f5;
-                    font-family: sans-serif;
-                    color: black;
-                    margin: 0;
-                    padding: 10px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }}
-                .print-btn-container {{
-                    margin-bottom: 15px;
-                }}
-                .btn-print {{
-                    background-color: #ff4b4b;
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    font-size: 16px;
-                    font-weight: bold;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-                }}
-                .btn-print:hover {{
-                    background-color: #e03e3e;
-                }}
-                .print-container {{
-                    background: white;
-                    border: 1px solid #ccc;
-                    padding: 12mm 15mm;
-                    width: 190mm;
-                    box-sizing: border-box;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                }}
-                .section-box {{
-                    height: 125mm;
-                    box-sizing: border-box;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                }}
-                h3, h4 {{
-                    text-align: center;
-                    margin: 2px 0;
-                }}
-                p {{
-                    font-size: 13px;
-                    margin: 4px 0;
-                }}
-                table {{
-                    width: 100%;
-                    font-size: 13px;
-                    margin-top: 5px;
-                    border-collapse: collapse;
-                }}
-                td {{
-                    padding: 3px 0;
-                }}
-                .perforation {{
-                    border-top: 2px dashed #666;
-                    margin: 8mm 0;
-                    text-align: center;
-                    font-size: 11px;
-                    color: #444;
-                    font-weight: bold;
-                }}
-                .signature-row {{
-                    display: flex;
-                    justify-content: space-between;
-                    margin-top: 10px;
-                    font-size: 12px;
-                }}
+                @page {{ size: A4 portrait; margin: 5mm; }}
+                body {{ background: #f0f2f5; font-family: sans-serif; color: black; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                .print-btn-container {{ margin-bottom: 15px; }}
+                .btn-print {{ background-color: #ff4b4b; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                .btn-print:hover {{ background-color: #e03e3e; }}
+                .print-container {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
+                h3, h4 {{ text-align: center; margin: 2px 0; }}
+                p {{ font-size: 13px; margin: 4px 0; }}
+                table {{ width: 100%; font-size: 13px; margin-top: 5px; border-collapse: collapse; }}
+                td {{ padding: 3px 0; }}
+                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
+                .signature-row {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; }}
                 @media print {{
-                    body {{
-                        background: white;
-                        padding: 0;
-                    }}
-                    .print-btn-container {{
-                        display: none;
-                    }}
-                    .print-container {{
-                        border: none;
-                        box-shadow: none;
-                        padding: 0;
-                        width: 100%;
-                    }}
+                    body {{ background: white; padding: 0; }}
+                    .print-btn-container {{ display: none; }}
+                    .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                 }}
             </style>
             </head>
@@ -312,7 +245,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                 </div>
                 
                 <div class="print-container">
-                    <!-- 📌 ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
+                    <!-- ส่วนที่ 1: สำหรับลูกค้า -->
                     <div class="section-box">
                         <div>
                             <h3><b>{STORE_NAME}</b></h3>
@@ -333,12 +266,12 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                         </div>
                     </div>
 
-                    <!-- ✂️ รอยฉีกตรงกลาง -->
+                    <!-- รอยฉีก -->
                     <div class="perforation">
                         ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
                     </div>
 
-                    <!-- 📌 ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
+                    <!-- ส่วนที่ 2: สำหรับร้านค้า -->
                     <div class="section-box">
                         <div>
                             <h3><b>{STORE_NAME}</b></h3>
@@ -362,18 +295,16 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
             </body>
             </html>
             """
-            
-            # เรนเดอร์ด้วย Components ขนาดความสูงครอบคลุมแนวตั้ง A4
             components.html(portrait_a4_html, height=1050, scrolling=True)
     else:
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง (Self-Service)
+# 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)
 # ==========================================
-elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (Self-Service)":
-    st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมด้วยตัวเองผ่าน QR Code")
-    st.markdown("ตั้งจอหน้าร้านให้ลูกค้าสแกนเพื่อกรอกข้อมูลแจ้งซ่อมเองได้ทันที ไม่ต้องรอนพนักงานพิมพ์ให้!")
+elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)":
+    st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code (แนบรูปภาพ & วิดีโอได้)")
+    st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
     
     qr_data = "https://share.streamlit.io/"
     img = qrcode.make(qr_data)
@@ -382,19 +313,32 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.image(buf.getvalue(), caption="สแกนเพื่อกรอกข้อมูลแจ้งซ่อมออนไลน์", width=250)
     
     st.markdown("---")
-    st.subheader("📝 ฟอร์มลงทะเบียนสำหรับลูกค้า (เปิดบนมือถือลูกค้าได้)")
+    st.subheader("📝 ฟอร์มลงทะเบียนสำหรับลูกค้า")
     
-    with st.form("self_service_form"):
+    # ใช้ st.form ร่วมกับการอัปเดตไฟล์ใน Streamlit
+    with st.form("self_service_media_form"):
         c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
         c_phone = st.text_input("เบอร์โทรศัพท์ติดต่อกลับ")
         c_device = st.text_input("ยี่ห้อ / รุ่นอุปกรณ์ (เช่น Notebook Acer, PC ประกอบ)")
         c_problem = st.text_area("อาการเสียเบื้องต้น / สิ่งที่ต้องการให้ซ่อม")
         c_accessories = st.text_input("อุปกรณ์ที่ส่งมาด้วย (เช่น สายชาร์จ, เมาส์)")
         
-        self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมเข้าร้าน")
+        # ฟิลด์อัปเดตไฟล์รูปภาพหรือวิดีโอ
+        uploaded_file = st.file_uploader("📷 แนบรูปภาพ หรือ 🎥 วิดีโออาการเสีย (รองรับ JPG, PNG, MP4)", type=["jpg", "png", "jpeg", "mp4", "mov"])
+        
+        self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมและไฟล์หลักฐานเข้าร้าน")
         
         if self_submit:
             if c_name and c_phone and c_device:
+                file_path = None
+                if uploaded_file is not None:
+                    # บันทึกไฟล์ลงในโฟลเดอร์ uploads
+                    file_extension = uploaded_file.name.split(".")[-1]
+                    file_name = f"MEDIA_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(100,999)}.{file_extension}"
+                    file_path = os.path.join(UPLOAD_DIR, file_name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                
                 cursor = conn.cursor()
                 cursor.execute("""
                     INSERT INTO customers (name, phone) VALUES (?, ?) 
@@ -405,26 +349,29 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
                 
                 job_code = f"REP-{datetime.now().strftime('%Y%m%d')}-{random.randint(100,999)}"
                 cursor.execute("""
-                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, status)
-                    VALUES (?, ?, ?, ?, ?, 'RECEIVED')
-                """, (job_code, cust_id, c_device, c_problem, c_accessories))
+                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, media_file, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'RECEIVED')
+                """, (job_code, cust_id, c_device, c_problem, c_accessories, file_path))
                 conn.commit()
                 cursor.close()
+                
                 st.success(f"🎉 ลงทะเบียนสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}** กรุณาแจ้งเลขนี้กับพนักงานหน้าร้าน")
+                if file_path:
+                    st.info(f"📁 แนบไฟล์หลักฐานเรียบร้อยแล้ว: {uploaded_file.name}")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลให้ครบถ้วน")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วน")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม
+# 3. ติดตาม & อัปเดตสถานะงานซ่อม (พร้อมแสดงรูป/วิดีโอที่ลูกค้าแนบ)
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
-    st.header("🔍 ค้นหา จัดการ และอัปเดตสถานะงานซ่อม")
+    st.header("🔍 ค้นหา จัดการ และอัปเดตสถานะงานซ่อม (พร้อมตรวจสอบไฟล์แนบ)")
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
     try:
         query = """
-            SELECT r.id, r.job_code, c.name as customer_name, c.phone, r.device_name, r.status, r.estimated_cost, r.created_at
+            SELECT r.id, r.job_code, c.name as customer_name, c.phone, r.device_name, r.problem_description, r.media_file, r.status, r.estimated_cost, r.created_at
             FROM repairs r
             JOIN customers c ON r.customer_id = c.id
         """
@@ -434,10 +381,35 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
         
         df = pd.read_sql(query, conn)
         if not df.empty:
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df.drop(columns=['media_file']), use_container_width=True)
+            
             st.markdown("---")
-            st.subheader("🛠️ อัปเดตสถานะงานซ่อม")
-            selected_job = st.selectbox("เลือกเลขใบงานที่ต้องการเปลี่ยนสถานะ", df['job_code'].tolist())
+            st.subheader("🛠️ ตรวจสอบรายละเอียดและเปลี่ยนสถานะงานซ่อม")
+            selected_job = st.selectbox("เลือกเลขใบงานที่ต้องการจัดการ", df['job_code'].tolist())
+            
+            # ดึงข้อมูลเฉพาะใบงานที่เลือกมาโชว์รูปหรือวิดีโอที่ลูกค้าแนบมา
+            selected_row = df[df['job_code'] == selected_job].iloc[0]
+            
+            col_info, col_media = st.columns(2)
+            with col_info:
+                st.markdown(f"**ชื่อลูกค้า:** {selected_row['customer_name']} ({selected_row['phone']})")
+                st.markdown(f"**อุปกรณ์:** {selected_row['device_name']}")
+                st.markdown(f"**อาการเสีย:** {selected_row['problem_description']}")
+                st.markdown(f"**สถานะปัจจุบัน:** {selected_row['status']}")
+                
+            with col_media:
+                st.markdown("📁 **ไฟล์หลักฐาน / สื่อที่ลูกค้าแนบมา:**")
+                m_file = selected_row['media_file']
+                if m_file and os.path.exists(m_file):
+                    ext = m_file.split('.')[-1].lower()
+                    if ext in ['jpg', 'jpeg', 'png']:
+                        st.image(m_file, caption="รูปภาพอาการเสียจากลูกค้า", width=300)
+                    elif ext in ['mp4', 'mov']:
+                        st.video(m_file)
+                else:
+                    st.info("ไม่มีไฟล์รูปภาพหรือวิดีโอแนบมาในใบงานนี้")
+            
+            st.markdown("---")
             new_status = st.selectbox("เปลี่ยนสถานะเป็น", [
                 "RECEIVED (รับเครื่องเข้า)", "CHECKING (กำลังตรวจสอบอาการ)", 
                 "WAITING_PART (รออะไหล่/ตีราคา)", "REPAIRING (กำลังดำเนินการซ่อม)", 
