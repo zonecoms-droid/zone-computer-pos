@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-sqlite3
+import sqlite3
 from datetime import datetime, timedelta
 import random
 import qrcode
@@ -329,7 +329,7 @@ if track_code:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
     st.stop()
 
-# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code พร้อมตัวเลือกกรอกข้อมูลออกบิล และสร้าง QR Code ติดตามสถานะให้ทันที
+# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
 if page_param == "register":
     st.set_page_config(page_title=f"ลงทะเบียนแจ้งซ่อม - {STORE_NAME}", page_icon="📱", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
@@ -385,7 +385,6 @@ if page_param == "register":
             else:
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
-    # แสดง QR Code ติดตามสถานะให้ลูกค้าทันทีหลังส่งข้อมูลสำเร็จ
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
         st.markdown("---")
@@ -635,7 +634,7 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
     st.code(reg_url, language="text")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม (ดึงข้อมูลภาษีที่ลูกค้ากรอกมาแสดงอัตโนมัติ)
+# 3. ติดตาม & อัปเดตสถานะงานซ่อม
 # ==========================================
 elif menu == "🔍 ติดตามสถานะซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -659,7 +658,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             selected_job = st.selectbox("เลือกเลขใบงานที่ต้องการจัดการ", df['job_code'].tolist())
             selected_row = df[df['job_code'] == selected_job].iloc[0]
             
-            # ดึงข้อมูลเพิ่มเติมจากตาราง repairs (รวมถึงข้อมูลภาษีที่ลูกค้ากรอกเอง)
             repair_full = pd.read_sql(f"SELECT * FROM repairs WHERE job_code = '{selected_job}';", conn).iloc[0]
             
             col_info, col_media = st.columns(2)
@@ -706,7 +704,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 ])
                 
                 with st.form(f"form_doc_{selected_job}"):
-                    # ดึงข้อมูลที่ลูกค้ากรอกมาเป็น Default
                     init_tax_name = repair_full['tax_name'] if repair_full['tax_name'] else selected_row['customer_name']
                     init_tax_id = repair_full['tax_id'] if repair_full['tax_id'] else ""
                     init_tax_branch = repair_full['tax_branch'] if repair_full['tax_branch'] else "สำนักงานใหญ่"
@@ -901,7 +898,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #0369a1; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
                                 .cust-box td {{ padding: 4px 8px; }}
@@ -910,23 +907,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
                                 .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                                 .summary-tbl td {{ padding: 6px 10px; }}
-                                .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
-                                .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
+                                .footer-box {{ display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 20px; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; margin: 0; }}
+                                    body {{ background: white; padding: 0; }}
                                     .print-btn {{ display: none; }}
-                                    .flow-container {{ 
-                                        border: none; 
-                                        box-shadow: none; 
-                                        padding: 10mm; 
-                                        width: 100%; 
-                                        height: 272mm; 
-                                        max-height: 272mm; 
-                                        display: flex; 
-                                        flex-direction: column; 
-                                        justify-content: space-between; 
-                                        page-break-after: always;
-                                    }}
+                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
                             </head>
@@ -984,14 +969,13 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{grand_total:,.2f} บาท</b></td></tr>
-                                                        <tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{pay_chanel}</td></tr>
                                                     </table>
                                                 </td>
                                             </tr>
                                         </table>
                                     </div>
 
-                                    <div class="footer-section">
+                                    <div>
                                         <div class="footer-box">
                                             <div style="width: 65%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
@@ -1035,12 +1019,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
-# 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow with Color Coding & Sticky Footer)
+# 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
