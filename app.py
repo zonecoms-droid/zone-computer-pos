@@ -36,14 +36,15 @@ def init_db(conn):
             phone TEXT,
             tax_id TEXT,
             address TEXT,
-            note TEXT
+            note TEXT,
+            promptpay TEXT
         )
     ''')
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567')
         ''')
         conn.commit()
 
@@ -100,13 +101,13 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
-STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE = store_info
+STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมระบบออกเอกสาร FlowAccount สไตล์ QR Code)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ระบบเอกสาร FlowAccount พร้อม QR Code)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -116,7 +117,7 @@ menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำง�
     "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
     "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
     "🛡️ เช็คประกัน & Serial Number",
-    "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style + QR)",
+    "📄 ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)",
     "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง",
     "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)"
 ])
@@ -435,10 +436,11 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน! (ซื้อเมื่อ: 15 มกราคม 2026 / ประกันหมดอายุ: 15 มกราคม 2027)")
 
 # ==========================================
-# 5. ออกเอกสารการค้า (FlowAccount Style + QR Code)
+# 5. ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)
 # ==========================================
-elif menu == "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style + QR)":
-    st.header("📄 ระบบออกเอกสารและใบกำกับภาษี (FlowAccount Style + QR Code)")
+elif menu == "📄 ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)":
+    st.header("📄 ระบบออกเอกสารและใบกำกับภาษี (สไตล์ FlowAccount + QR Code ชำระเงิน)")
+    
     doc_type = st.selectbox("เลือกประเภทเอกสาร", ["ใบเสนอราคา (Quotation)", "ใบเสร็จรับเงิน / ใบกำกับภาษี (Tax Invoice)", "บิลเงินสด (Cash Receipt)"])
     st.markdown("---")
     
@@ -449,11 +451,12 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
         cust_address = st.text_area("ที่อยู่ลูกค้า")
     with col2:
         doc_date = st.date_input("วันที่เอกสาร", datetime.today())
-        payment_method = st.selectbox("ช่องทางการชำระเงิน", ["เงินสด", "โอนเงินผ่าน QR Code (PromptPay)", "บัตรเครดิต"])
+        payment_method = st.selectbox("ช่องทางการชำระเงิน", ["เงินสด", "โอนเงินผ่าน PromptPay QR", "บัตรเครดิต"])
 
     num_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
     subtotal = 0.0
     
+    items_list = []
     for i in range(int(num_items)):
         cols = st.columns([3, 1, 1, 1])
         with cols[0]: item_desc = st.text_input(f"รายการที่ {i+1}", key=f"desc_{i}")
@@ -463,29 +466,13 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
             total_item = qty * price
             st.text_input("รวม", value=f"{total_item:,.2f}", disabled=True, key=f"total_{i}")
         subtotal += total_item
+        items_list.append((item_desc, qty, price, total_item))
 
     st.markdown("---")
     col_a, col_b = st.columns([2, 1])
     with col_a: 
-        notes = st.text_area("หมายเหตุ", value=STORE_NOTE)
-        
-        # เพิ่มส่วนสร้าง QR Code สำหรับให้ลูกค้าสแกนชำระเงินหรือลงทะเบียนจากบิลนี้
-        st.markdown("### 📱 QR Code แนบท้ายเอกสาร (สำหรับให้ลูกค้าสแกน)")
-        qr_option = st.radio("เลือกประเภท QR Code ที่ต้องการฝังในใบเสร็จ", ["ลิงก์ระบบลงทะเบียน/เช็คสถานะร้าน", "พร้อมเพย์ (PromptPay) สำหรับชำระเงิน"])
-        
-        if qr_option == "ลิงก์ระบบลงทะเบียน/เช็คสถานะร้าน":
-            target_url = "https://share.streamlit.io/"
-            qr_caption = "สแกนเพื่อลงทะเบียนซ่อม / เช็คสถานะออนไลน์"
-        else:
-            target_url = f"PROMPTPAY:{STORE_PHONE}" # ตัวอย่างสตริงพร้อมเพย์เบอร์ร้าน
-            qr_caption = f"สแกนเพื่อโอนชำระเงินผ่านพร้อมเพย์ ({STORE_PHONE})"
-            
-        # สร้างรูป QR Code แสดงผลในหน้าจอทันที
-        qr_img = qrcode.make(target_url)
-        qr_buf = BytesIO()
-        qr_img.save(qr_buf)
-        st.image(qr_buf.getvalue(), caption=qr_caption, width=150)
-
+        notes = st.text_area("หมายเหตุท้ายเอกสาร", value=STORE_NOTE)
+        include_qr = st.checkbox("📌 แนบ QR Code พร้อมเพย์ (PromptPay) สำหรับสแกนจ่ายบนใบเสร็จ", value=True)
     with col_b:
         st.markdown(f"**มูลค่ารวม:** `{subtotal:,.2f} บาท`")
         include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
@@ -493,12 +480,104 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
         if include_vat: st.markdown(f"**VAT 7%:** `{subtotal * 0.07:,.2f} บาท`")
         st.markdown(f"### **ยอดสุทธิ:** `{grand_total:,.2f} บาท`")
         
-    if st.button("💾 บันทึกและออกเอกสารอย่างเป็นทางการ"):
+    if st.button("💾 สร้างและแสดงตัวอย่างเอกสารอย่างเป็นทางการ"):
         if cust_name:
-            st.success(f"🎉 ออกเอกสารประเภท **{doc_type}** ยอดสุทธิ **{grand_total:,.2f} บาท** สำเร็จ! (พร้อมฝัง QR Code บนเอกสาร)")
-            st.balloons()
+            st.success(f"🎉 สร้างเอกสาร **{doc_type}** เรียบร้อยแล้ว! ดูตัวอย่างด้านล่างได้เลยครับ")
+            
+            # สร้าง QR Code สำหรับ PromptPay (จำลองลิงก์หรือพร้อมเพย์)
+            qr_img_tag = ""
+            if include_qr:
+                qr_content = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
+                qr = qrcode.make(qr_content)
+                q_buf = BytesIO()
+                qr.save(q_buf)
+                import base64
+                qr_base64 = base64.b64encode(q_buf.getvalue()).decode()
+                qr_img_tag = f'<img src="data:image/png;base64,{qr_base64}" width="120px"><br><span style="font-size:10px;">สแกนจ่ายผ่าน PromptPay: {STORE_PROMPTPAY}</span>'
+
+            # สร้างตารางรายการสินค้า HTML
+            items_html = ""
+            for idx, itm in enumerate(items_list):
+                items_html += f"<tr><td style='border-bottom:1px solid #ddd; padding:5px;'>{idx+1}. {itm[0]}</td><td style='border-bottom:1px solid #ddd; padding:5px; text-align:center;'>{itm[1]}</td><td style='border-bottom:1px solid #ddd; padding:5px; text-align:right;'>{itm[2]:,.2f}</td><td style='border-bottom:1px solid #ddd; padding:5px; text-align:right;'>{itm[3]:,.2f}</td></tr>"
+
+            vat_text = f"<tr><td colspan='3' style='text-align:right; padding:5px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:5px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
+
+            flow_doc_html = f"""
+            <html>
+            <head>
+            <style>
+                body {{ background: #f0f2f5; font-family: sans-serif; color: black; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                .print-btn {{ background-color: #ff4b4b; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 15px; }}
+                .doc-container {{ background: white; border: 1px solid #ccc; padding: 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+                .header-table {{ width: 100%; border-collapse: collapse; }}
+                .items-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
+                .items-table th {{ background: #333; color: white; padding: 6px; text-align: left; }}
+                .footer-box {{ display: flex; justify-content: space-between; margin-top: 20px; font-size: 12px; align-items: flex-start; }}
+                @media print {{
+                    body {{ background: white; padding: 0; }}
+                    .print-btn {{ display: none; }}
+                    .doc-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
+                }}
+            </style>
+            </head>
+            <body>
+                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (FlowAccount Style)</button>
+                <div class="doc-container">
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <h2><b>{STORE_NAME}</b></h2>
+                                <p style="font-size: 11px; margin: 2px 0;">{STORE_ADDRESS}</p>
+                                <p style="font-size: 11px; margin: 2px 0;">โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                            </td>
+                            <td style="text-align: right; vertical-align: top;">
+                                <h2 style="color: #333; margin: 0;"><b>{doc_type.split(' ')[0]}</b></h2>
+                                <p style="font-size: 12px; margin: 4px 0;"><b>วันที่:</b> {doc_date}</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <hr style="margin: 10px 0;">
+                    <table class="header-table" style="font-size: 13px;">
+                        <tr>
+                            <td><b>นามลูกค้า / บริษัท:</b> {cust_name}</td>
+                            <td><b>ช่องทางชำระ:</b> {payment_method}</td>
+                        </tr>
+                        <tr>
+                            <td><b>ที่อยู่:</b> {cust_address if cust_address else '-'}</td>
+                            <td><b>เลขผู้เสียภาษีลูกค้า:</b> {cust_tax_id if cust_tax_id else '-'}</td>
+                        </tr>
+                    </table>
+                    
+                    <table class="items-table">
+                        <tr>
+                            <th>รายการสินค้า / บริการ</th>
+                            <th style="text-align: center;">จำนวน</th>
+                            <th style="text-align: right;">ราคา/หน่วย</th>
+                            <th style="text-align: right;">จำนวนเงิน (บาท)</th>
+                        </tr>
+                        {items_html}
+                        <tr><td colspan="3" style="text-align: right; padding-top: 10px;"><b>มูลค่ารวมสินค้า:</b></td><td style="text-align: right; padding-top: 10px;">{subtotal:,.2f} บาท</td></tr>
+                        {vat_text}
+                        <tr><td colspan="3" style="text-align: right; padding: 5px; font-size: 14px;"><b>ยอดชำระสุทธิ:</b></td><td style="text-align: right; padding: 5px; font-size: 14px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                    </table>
+
+                    <div class="footer-box">
+                        <div>
+                            <p><b>หมายเหตุ:</b> {notes}</p>
+                            <br><br>
+                            <p>ลงชื่อ......................................................(ผู้รับเงิน / ผู้ออกเอกสาร)</p>
+                        </div>
+                        <div style="text-align: center;">
+                            {qr_img_tag}
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            components.html(flow_doc_html, height=750, scrolling=True)
         else:
-            st.warning("⚠️ กรุณากรอกชื่อลูกค้าก่อน")
+            st.warning("⚠️ กรุณากรอกชื่อลูกค้าก่อนออกเอกสารครับเพื่อน")
 
 # ==========================================
 # 6. สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง
@@ -511,12 +590,13 @@ elif menu == "💰 สรุปยอดซ่อม & ค่าคอมมิ�
 # 7. ตั้งค่าข้อมูลร้านค้า (Store Settings)
 # ==========================================
 elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)":
-    st.header("⚙️ ตั้งค่าข้อมูลร้านค้าและใบเสร็จ")
-    st.markdown("แก้ไขข้อมูลร้านค้าเพื่อใช้แสดงผลบนใบรับซ่อมและใบเสร็จรับเงินได้อย่างอิสระเสรี")
+    st.header("⚙️ ตั้งค่าข้อมูลร้านค้าและเลขพร้อมเพย์")
+    st.markdown("แก้ไขข้อมูลร้านค้า เบอร์พร้อมเพย์ และข้อความบนเอกสารได้อย่างอิสระเสรี")
     
     with st.form("settings_form"):
         new_store_name = st.text_input("ชื่อร้านค้า / บริษัท", value=STORE_NAME)
         new_phone = st.text_input("เบอร์โทรศัพท์ร้าน", value=STORE_PHONE)
+        new_promptpay = st.text_input("เบอร์มือถือหรือเลขพร้อมเพย์ (PromptPay สำหรับ QR Code)", value=STORE_PROMPTPAY)
         new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี", value=STORE_TAX)
         new_address = st.text_area("ที่อยู่ร้านค้า", value=STORE_ADDRESS)
         new_note = st.text_input("ข้อความท้ายบิล / หมายเหตุ", value=STORE_NOTE)
@@ -527,10 +607,10 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE store_settings 
-                SET store_name = ?, phone = ?, tax_id = ?, address = ?, note = ? 
+                SET store_name = ?, phone = ?, tax_id = ?, address = ?, note = ?, promptpay = ? 
                 WHERE id = 1
-            """, (new_store_name, new_phone, new_tax_id, new_address, new_note))
+            """, (new_store_name, new_phone, new_tax_id, new_address, new_note, new_promptpay))
             conn.commit()
             cursor.close()
-            st.success("🎉 บันทึกการตั้งค่าร้านค้าเรียบร้อยแล้ว! กรุณารีเฟรชหน้าเว็บเพื่ออัปเดตข้อมูล")
+            st.success("🎉 บันทึกการตั้งค่าเรียบร้อยแล้ว! กรุณารีเฟรชหน้าเว็บเพื่ออัปเดตข้อมูล")
             st.balloons()
