@@ -337,7 +337,7 @@ if track_code:
     st.stop()
 
 # ==========================================
-# 🖥️ หน้าแอดมินปกติ (Admin Dashboard)
+# 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Horizontal Navigation)
 # ==========================================
 st.set_page_config(
     page_title="ZoneOnline Service - Enterprise Edition", 
@@ -351,23 +351,22 @@ st.markdown("ระบบบริหารจัดการร้านคอ�
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
 
+# แถบเมนูหลักแนวนอน (Horizontal Navigation Buttons)
 menu_options = [
-    "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม", 
-    "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
-    "🌐 QR Code ช่องทางติดต่อ (Line, FB, TikTok)",
-    "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
-    "🛡️ เช็คประกัน & Serial Number",
-    "📄 ระบบออกเอกสารการค้า (FlowAccount Style)",
-    "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง",
-    "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)"
+    "📥 รับเครื่องซ่อมใหม่", 
+    "📱 ลูกค้าลงทะเบียนเอง",
+    "🔍 ติดตามสถานะซ่อม", 
+    "📄 ระบบออกเอกสารการค้า",
+    "⚙️ ศูนย์กลางการตั้งค่า"
 ]
 
-menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", menu_options)
+menu = st.radio("🎯 เลือกเมนูการทำงานหลัก", menu_options, horizontal=True)
+st.markdown("---")
 
 # ==========================================
 # 1. รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม
 # ==========================================
-if menu == "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม":
+if menu == "📥 รับเครื่องซ่อมใหม่":
     st.header("📥 บันทึกรับเครื่องซ่อมและพิมพ์ใบรับซ่อม (A4 แนวตั้ง)")
     
     with st.form("pro_repair_form"):
@@ -559,7 +558,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
 # ==========================================
 # 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง
 # ==========================================
-elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)":
+elif menu == "📱 ลูกค้าลงทะเบียนเอง":
     st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code")
     qr_data = "https://zone-computer-pos.streamlit.app/?page=register"
     img = qrcode.make(qr_data)
@@ -607,34 +606,9 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
 # ==========================================
-# 3. QR Code ช่องทางติดต่อ
+# 3. ติดตาม & อัปเดตสถานะงานซ่อม
 # ==========================================
-elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, TikTok)":
-    st.header("🌐 QR Code ช่องทางติดต่อโซเชียลมีเดียของร้าน")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.subheader("💚 Line")
-        if STORE_LINE:
-            img = qrcode.make(STORE_LINE)
-            buf = BytesIO(); img.save(buf)
-            st.image(buf.getvalue(), width=140)
-    with col2:
-        st.subheader("💙 Facebook")
-        if STORE_FB:
-            img = qrcode.make(STORE_FB)
-            buf = BytesIO(); img.save(buf)
-            st.image(buf.getvalue(), width=140)
-    with col3:
-        st.subheader("🖤 TikTok")
-        if STORE_TIKTOK:
-            img = qrcode.make(STORE_TIKTOK)
-            buf = BytesIO(); img.save(buf)
-            st.image(buf.getvalue(), width=140)
-
-# ==========================================
-# 4. ติดตาม & อัปเดตสถานะงานซ่อม
-# ==========================================
-elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
+elif menu == "🔍 ติดตามสถานะซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
@@ -1021,18 +995,9 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
-# 5. เช็คประกัน & Serial Number
+# 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow with Color Coding & Sticky Footer)
 # ==========================================
-elif menu == "🛡️ เช็คประกัน & Serial Number":
-    st.header("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
-    sn_input = st.text_input("กรอกหรือสแกน Serial Number")
-    if sn_input:
-        st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
-
-# ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow with Color Coding & Sticky Footer)
-# ==========================================
-elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
+elif menu == "📄 ระบบออกเอกสารการค้า":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
     st.markdown("จัดการวงจรการขายครบวงจร: ใบเสนอราคา ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (พร้อมใบลดหนี้และใบเพิ่มหนี้ แยกสีธีมตามประเภทเอกสาร)")
 
@@ -1255,10 +1220,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                         <html>
                         <head>
                         <style>
-                            @page {{ size: A4 portrait; margin: 12mm; }}
+                            @page {{ size: A4 portrait; margin: 10mm; }}
                             body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                             .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                            .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                            .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
                             .header-tbl {{ width: 100%; border-collapse: collapse; }}
                             .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
                             .cust-box td {{ padding: 4px 8px; }}
@@ -1269,7 +1234,22 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                             .summary-tbl td {{ padding: 6px 10px; }}
                             .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
                             .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
-                            @media print {{ body {{ background: white; padding: 0; }} .print-btn {{ display: none; }} .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }} }}
+                            @media print {{ 
+                                body {{ background: white; padding: 0; margin: 0; }} 
+                                .print-btn {{ display: none; }} 
+                                .flow-container {{ 
+                                    border: none; 
+                                    box-shadow: none; 
+                                    padding: 10mm; 
+                                    width: 100%; 
+                                    height: 272mm; 
+                                    max-height: 272mm; 
+                                    display: flex; 
+                                    flex-direction: column; 
+                                    justify-content: space-between; 
+                                    page-break-after: always;
+                                } 
+                            }}
                         </style>
                         </head>
                         <body>
@@ -1326,7 +1306,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                     </table>
                                 </div>
 
-                                <!-- บล็อกท้ายกระดาษที่ถูกดึงลงล่างสุดเสมอ -->
+                                <!-- บล็อกท้ายกระดาษที่ถูกตรึงไว้ล่างสุดเสมอ -->
                                 <div class="footer-section">
                                     <div class="footer-box">
                                         <div style="width: 70%;">
@@ -1359,31 +1339,27 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             st.info("ยังไม่มีตารางข้อมูลเอกสารการค้าในระบบ กรุณาสร้างเอกสารใหม่ 1 ครั้งเพื่อเริ่มใช้งาน")
 
 # ==========================================
-# 7. สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง
+# 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub - รวมเมนูย้ายมาใหม่ครบถ้วน)
 # ==========================================
-elif menu == "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง":
-    st.header("💰 รายงานยอดขายและค่ามือช่างประจำร้าน")
-    st.info("ส่วนแสดงรายงานและคำนวณค่าคอมมิชชั่นช่างอัตโนมัติ")
-
-# ==========================================
-# 8. ตั้งค่าข้อมูลร้านค้า (Enterprise Settings Hub)
-# ==========================================
-elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)":
+elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
-    st.markdown("ปรับแต่งค่าระบบเอกสาร บัญชี ผู้ใช้งาน สินค้า ธุรกิจ และคีย์ลัดของร้านค้า")
+    st.markdown("จัดการข้อมูลร้านค้า เอกสาร บัญชี ผู้ใช้งาน รวมถึงระบบตรวจสอบประกัน โซเชียล และรายงานยอดขาย")
     
-    set_tab1, set_tab2, set_tab3, set_tab4, set_tab5, set_tab6 = st.tabs([
+    set_tab1, set_tab2, set_tab3, set_tab4, set_tab5, set_tab6, set_tab7, set_tab8, set_tab9 = st.tabs([
         "📄 ตั้งค่าเอกสาร", 
         "📊 ตั้งค่าด้านบัญชี", 
         "👤 ตั้งค่าผู้ใช้งาน", 
         "📦 ตั้งค่าสินค้า", 
-        "🏢 ตั้งค่าธุรกิจ", 
-        "⌨️ แป้นพิมพ์ลัด"
+        "🏢 ตั้งค่าธุรกิจ & โลโก้", 
+        "⌨️ แป้นพิมพ์ลัด",
+        "🌐 QR Code โซเชียล",
+        "🛡️ เช็คประกัน & Serial",
+        "💰 สรุปยอด & ค่าคอมช่าง"
     ])
     
     # --- Tab 1: ตั้งค่าเอกสาร ---
     with set_tab1:
-        st.subheader("📄 ตั้งค่าเอกสาร & เลขรัน / ดีไซน์ / โลโก้")
+        st.subheader("📄 ตั้งค่าเอกสาร & เลขรัน / ดีไซน์")
         with st.form("settings_doc_form"):
             st.markdown("##### 🔢 เลขรันเอกสาร (Document Prefix)")
             col_p1, col_p2, col_p3 = st.columns(3)
@@ -1535,3 +1511,54 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
         * `Alt + S` : บันทึกข้อมูลฟอร์ม
         * `Esc` : ยกเลิก / ปิดหน้าต่างป๊อปอัป
         """)
+
+    # --- Tab 7: QR Code โซเชียล (ย้ายมาจากเมนูลัด) ---
+    with set_tab7:
+        st.subheader("🌐 QR Code ช่องทางติดต่อโซเชียลมีเดียของร้าน")
+        st.markdown("สแกนเพื่อเพิ่มเพื่อนหรือติดตามเพจร้านค้าได้ทันที")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.subheader("💚 Line")
+            if STORE_LINE:
+                img = qrcode.make(STORE_LINE)
+                buf = BytesIO(); img.save(buf)
+                st.image(buf.getvalue(), width=160, caption="Line Official")
+            else:
+                st.info("ยังไม่ได้ตั้งค่าลิงก์ Line ในแท็บตั้งค่าธุรกิจ")
+        with col2:
+            st.subheader("💙 Facebook")
+            if STORE_FB:
+                img = qrcode.make(STORE_FB)
+                buf = BytesIO(); img.save(buf)
+                st.image(buf.getvalue(), width=160, caption="Facebook Page")
+            else:
+                st.info("ยังไม่ได้ตั้งค่าลิงก์ Facebook ในแท็บตั้งค่าธุรกิจ")
+        with col3:
+            st.subheader("🖤 TikTok")
+            if STORE_TIKTOK:
+                img = qrcode.make(STORE_TIKTOK)
+                buf = BytesIO(); img.save(buf)
+                st.image(buf.getvalue(), width=160, caption="TikTok Profile")
+            else:
+                st.info("ยังไม่ได้ตั้งค่าลิงก์ TikTok ในแท็บตั้งค่าธุรกิจ")
+
+    # --- Tab 8: เช็คประกัน & Serial (ย้ายมาจากเมนูลัด) ---
+    with set_tab8:
+        st.subheader("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
+        sn_input = st.text_input("🔍 กรอกหรือสแกน Serial Number เพื่อเช็คสถานะประกัน")
+        if sn_input:
+            st.success(f"✅ สินค้า Serial Number: `{sn_input}` อยู่ในระยะเวลาประกันของร้านค้าสมบูรณ์!")
+
+    # --- Tab 9: สรุปยอด & ค่าคอมช่าง (ย้ายมาจากเมนูลัด) ---
+    with set_tab9:
+        st.subheader("💰 รายงานยอดขายและค่ามือช่างประจำร้าน")
+        try:
+            rep_summary_df = pd.read_sql("SELECT job_code, device_name, estimated_cost, status, created_at FROM repairs ORDER BY id DESC;", conn)
+            if not rep_summary_df.empty:
+                st.dataframe(rep_summary_df, use_container_width=True)
+                total_est = rep_summary_df['estimated_cost'].sum()
+                st.metric(label="💵 ยอดประเมินงานซ่อมรวมทั้งหมด", value=f"{total_est:,.2f} บาท")
+            else:
+                st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+        except Exception:
+            st.info("ยังไม่มีข้อมูลรายงานยอดซ่อมในระบบ")
