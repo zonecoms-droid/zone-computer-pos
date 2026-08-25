@@ -32,7 +32,6 @@ def init_db(conn):
             note TEXT
         )
     ''')
-    # ใส่ค่าเริ่มต้นร้านค้าถ้ายังไม่มี
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
@@ -99,14 +98,17 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (รองรับ QR ลงทะเบียนเอง และพิมพ์สลิปหลายขนาด)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ฟอร์มพิมพ์ A4 ครึ่งหน้า พร้อมรอยฉีก)")
+
+# จัดการ Session State สำหรับเก็บใบงานล่าสุดที่เพิ่งบันทึก
+if 'current_job_code' not in st.session_state:
+    st.session_state.current_job_code = None
 
 # เมนูด้านข้าง (Sidebar)
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", [
-    "📥 รับเครื่องซ่อมใหม่ (Pro Intake)", 
+    "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม", 
     "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (Self-Service)",
     "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
-    "🖨️ พิมพ์ใบรับซ่อม / สลิป (Multi-Size)",
     "🛡️ เช็คประกัน & Serial Number",
     "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style)",
     "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง",
@@ -114,10 +116,10 @@ menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำง�
 ])
 
 # ==========================================
-# 1. ระบบรับเครื่องซ่อมใหม่ (Pro Intake)
+# 1. รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อมในหน้าเดียวกัน
 # ==========================================
-if menu == "📥 รับเครื่องซ่อมใหม่ (Pro Intake)":
-    st.header("📥 บันทึกรับเครื่องซ่อมและมอบหมายงานช่าง")
+if menu == "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม":
+    st.header("📥 บันทึกรับเครื่องซ่อมและพิมพ์ใบรับซ่อม (A4 ครึ่งหน้า)")
     
     with st.form("pro_repair_form"):
         col1, col2 = st.columns(2)
@@ -148,7 +150,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่ (Pro Int
             technician_id = tech_dict[selected_tech_name]
             commission = st.number_input("ค่ามือ / คอมมิชชั่นช่างงานนี้ (บาท)", min_value=0.0, step=50.0)
 
-        submit_btn = st.form_submit_button("🚀 บันทึกรับเครื่องเข้าสู่ระบบ")
+        submit_btn = st.form_submit_button("🚀 บันทึกรับเครื่องและสร้างใบรับซ่อม")
         
         if submit_btn:
             if customer_name and phone and device_name:
@@ -172,12 +174,99 @@ if menu == "📥 รับเครื่องซ่อมใหม่ (Pro Int
                     
                     conn.commit()
                     cursor.close()
-                    st.success(f"🎉 บันทึกรับเครื่องสำเร็จ! เลขที่ใบงาน: **{job_code}**")
-                    st.balloons()
+                    
+                    # บันทึกเลขใบงานลงใน Session State เพื่อแสดงผลใบรับซ่อมทันที
+                    st.session_state.current_job_code = job_code
+                    st.success(f"🎉 บันทึกรับเครื่องสำเร็จ! เลขที่ใบงาน: **{job_code}** เลื่อนลงด้านล่างเพื่อพิมพ์ใบรับซ่อมได้เลยครับ")
                 except Exception as e:
                     st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
             else:
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+
+    st.markdown("---")
+    st.subheader("🖨️ พิมพ์ใบรับซ่อม (ฟอร์ม A4 แบบครึ่ง สำหรับร้านและลูกค้า)")
+    
+    # ดึงรายการใบงานทั้งหมดมาให้เลือกพิมพ์ย้อนหลังได้ด้วย
+    cursor = conn.cursor()
+    cursor.execute("SELECT job_code FROM repairs ORDER BY created_at DESC LIMIT 50")
+    all_jobs = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    
+    if all_jobs:
+        # กำหนดค่าเริ่มต้นตัวเลือกให้ตรงกับใบงานล่าสุดที่เพิ่งกดบันทึก
+        default_index = 0
+        if st.session_state.current_job_code in all_jobs:
+            default_index = all_jobs.index(st.session_state.current_job_code)
+            
+        selected_job_to_print = st.selectbox("เลือกเลขใบงานที่ต้องการพิมพ์", all_jobs, index=default_index)
+        
+        # ดึงข้อมูลใบงานนั้นๆ มาแสดงผล
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.accessories, r.estimated_cost, r.status, r.created_at
+            FROM repairs r JOIN customers c ON r.customer_id = c.id
+            WHERE r.job_code = ?
+        """, (selected_job_to_print,))
+        print_data = cursor.fetchone()
+        cursor.close()
+        
+        if print_data:
+            j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
+            
+            # HTML Template สำหรับพิมพ์ A4 ครึ่งหน้า (มี 2 ส่วนบน-ล่าง และรอยฉีกตรงกลาง)
+            half_a4_html = f"""
+            <div style="background: white; color: black; padding: 20px; font-family: sans-serif; border: 2px solid #333; max-width: 800px; margin: 0 auto;">
+                
+                <!-- 📌 ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
+                <div style="padding-bottom: 10px;">
+                    <h3 style="text-align: center; margin: 0;"><b>{STORE_NAME}</b></h3>
+                    <p style="text-align: center; font-size: 12px; margin: 3px 0;">ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                    <h4 style="text-align: center; margin: 5px 0; background: #eee; padding: 4px;">ใบรับซ่อมสินค้า (สำหรับลูกค้า / ต้นฉบับ)</h4>
+                    <table style="width: 100%; font-size: 13px; margin-top: 5px;">
+                        <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
+                        <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
+                        <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
+                    </table>
+                    <p style="font-size: 13px; margin: 5px 0;"><b>อาการเสีย:</b> {prob}</p>
+                    <p style="font-size: 13px; margin: 5px 0;"><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
+                    <p style="font-size: 13px; margin: 5px 0;"><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 12px;">
+                        <p>ลงชื่อลูกค้า: ......................................................</p>
+                        <p>ผู้รับเครื่อง: ......................................................</p>
+                    </div>
+                </div>
+
+                <!-- ✂️ รอยฉีกตรงกลาง (Perforation Line) -->
+                <div style="border-top: 2px dashed #666; margin: 15px 0; text-align: center; font-size: 12px; color: #444; font-weight: bold;">
+                    ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
+                </div>
+
+                <!-- 📌 ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
+                <div style="padding-top: 5px;">
+                    <h3 style="text-align: center; margin: 0;"><b>{STORE_NAME}</b></h3>
+                    <p style="text-align: center; font-size: 12px; margin: 3px 0;">ใบควบคุมงานซ่อมภายในร้าน (สำหรับร้านค้าเก็บไว้)</p>
+                    <h4 style="text-align: center; margin: 5px 0; background: #eee; padding: 4px;">ใบรับซ่อมสินค้า (สำหรับร้านค้า / สำเนา)</h4>
+                    <table style="width: 100%; font-size: 13px; margin-top: 5px;">
+                        <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
+                        <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
+                        <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
+                    </table>
+                    <p style="font-size: 13px; margin: 5px 0;"><b>อาการเสีย:</b> {prob}</p>
+                    <p style="font-size: 13px; margin: 5px 0;"><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
+                    <p style="font-size: 13px; margin: 5px 0;"><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 12px;">
+                        <p>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</p>
+                        <p>ช่างผู้รับซ่อม: ......................................................</p>
+                    </div>
+                </div>
+
+            </div>
+            """
+            
+            st.markdown(half_a4_html, unsafe_allow_html=True)
+            st.info("💡 คำแนะนำ: กดปุ่ม **Ctrl + P** (หรือ **Cmd + P** บน Mac) เพื่อสั่งพิมพ์ใบรับซ่อมนี้ออกเครื่องพิมพ์ A4 ได้เลยครับ ระบบจะจัดหน้าครึ่งบน-ล่างให้พอดีเป๊ะ!")
+    else:
+        st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
 # 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง (Self-Service)
@@ -186,8 +275,7 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมด้วยตัวเองผ่าน QR Code")
     st.markdown("ตั้งจอหน้าร้านให้ลูกค้าสแกนเพื่อกรอกข้อมูลแจ้งซ่อมเองได้ทันที ไม่ต้องรอนพนักงานพิมพ์ให้!")
     
-    # สร้าง QR Code จำลองลิงก์ระบบ
-    qr_data = "https://share.streamlit.io/" # เปลี่ยนเป็นลิงก์เว็บจริงของเพื่อนได้
+    qr_data = "https://share.streamlit.io/"
     img = qrcode.make(qr_data)
     buf = BytesIO()
     img.save(buf)
@@ -269,86 +357,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
-# 4. พิมพ์ใบรับซ่อม / สลิป (Multi-Size)
-# ==========================================
-elif menu == "🖨️ พิมพ์ใบรับซ่อม / สลิป (Multi-Size)":
-    st.header("🖨️ ระบบพิมพ์ใบรับซ่อมและสลิป (เลือกขนาดได้ตามใจชอบ)")
-    
-    cursor = conn.cursor()
-    cursor.execute("SELECT job_code FROM repairs ORDER BY created_at DESC")
-    jobs = [row[0] for row in cursor.fetchall()]
-    cursor.close()
-    
-    if jobs:
-        selected_print_job = st.selectbox("เลือกเลขใบงานที่ต้องการพิมพ์", jobs)
-        print_size = st.radio("เลือกขนาดกระดาษพิมพ์", ["สลิปความร้อน (58mm / 80mm)", "ใบรับซ่อมมาตรฐาน (A4)"])
-        
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.accessories, r.estimated_cost, r.status, r.created_at
-            FROM repairs r JOIN customers c ON r.customer_id = c.id
-            WHERE r.job_code = ?
-        """, (selected_print_job,))
-        job_data = cursor.fetchone()
-        cursor.close()
-        
-        if job_data:
-            j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = job_data
-            
-            st.markdown("---")
-            st.markdown("### 📄 ตัวอย่างเอกสารก่อนพิมพ์")
-            
-            if print_size == "สลิปความร้อน (58mm / 80mm)":
-                st.markdown(f"""
-                <div style="border: 2px dashed #333; padding: 15px; width: 300px; font-family: monospace; background: white; color: black;">
-                    <center>
-                        <h3><b>{STORE_NAME}</b></h3>
-                        <p>โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
-                        <hr>
-                        <h4><b>ใบรับซ่อมสินค้า / Repair Slip</b></h4>
-                    </center>
-                    <p><b>เลขที่ใบงาน:</b> {j_code}</p>
-                    <p><b>วันที่:</b> {date_in}</p>
-                    <p><b>ลูกค้า:</b> {c_name} ({c_phone})</p>
-                    <p><b>อุปกรณ์:</b> {dev}</p>
-                    <p><b>S/N:</b> {sn if sn else '-'}</p>
-                    <p><b>อาการเสีย:</b> {prob}</p>
-                    <p><b>อุปกรณ์ที่มา:</b> {acc if acc else '-'}</p>
-                    <p><b>ประเมินราคา:</b> {cost:,.2f} บาท</p>
-                    <hr>
-                    <center><p>{STORE_NOTE}</p></center>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style="border: 2px solid #333; padding: 30px; width: 100%; font-family: sans-serif; background: white; color: black;">
-                    <h2 style="text-align: center;"><b>{STORE_NAME}</b></h2>
-                    <p style="text-align: center;">ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
-                    <hr>
-                    <h3 style="text-align: center;">ใบรับเครื่องซ่อม (Job Service Form)</h3>
-                    <table style="width: 100%; margin-top: 20px;">
-                        <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
-                        <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
-                        <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
-                    </table>
-                    <br>
-                    <p><b>อาการเสีย / รายละเอียด:</b> {prob}</p>
-                    <p><b>อุปกรณ์ที่แนบมาด้วย:</b> {acc if acc else '-'}</p>
-                    <p><b>ประเมินราคาค่าซ่อมเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
-                    <br><br>
-                    <div style="display: flex; justify-content: space-between;">
-                        <p>ลงชื่อ......................................................(ลูกค้า)<br>วันที่_____/_____/_____</p>
-                        <p>ลงชื่อ......................................................(ผู้รับเครื่อง)<br>วันที่_____/_____/_____</p>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-            st.info("💡 คำแนะนำ: กดปุ่ม Ctrl + P (หรือ Cmd + P บน Mac) เพื่อสั่งพิมพ์เอกสารนี้ออกเครื่องพิมพ์ได้ทันที!")
-    else:
-        st.info("ยังไม่มีข้อมูลใบงานในระบบ")
-
-# ==========================================
-# 5. เช็คประกัน & Serial Number
+# 4. เช็คประกัน & Serial Number
 # ==========================================
 elif menu == "🛡️ เช็คประกัน & Serial Number":
     st.header("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
@@ -358,7 +367,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน! (ซื้อเมื่อ: 15 มกราคม 2026 / ประกันหมดอายุ: 15 มกราคม 2027)")
 
 # ==========================================
-# 6. ออกเอกสารการค้า (FlowAccount Style)
+# 5. ออกเอกสารการค้า (FlowAccount Style)
 # ==========================================
 elif menu == "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารและใบกำกับภาษี (FlowAccount Style)")
@@ -403,14 +412,14 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
             st.warning("⚠️ กรุณากรอกชื่อลูกค้าก่อน")
 
 # ==========================================
-# 7. สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง
+# 6. สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง
 # ==========================================
 elif menu == "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง":
     st.header("💰 รายงานยอดขายและค่ามือช่างประจำร้าน")
     st.info("ส่วนแสดงรายงานและคำนวณค่าคอมมิชชั่นช่างอัตโนมัติ")
 
 # ==========================================
-# 8. ตั้งค่าข้อมูลร้านค้า (Store Settings)
+# 7. ตั้งค่าข้อมูลร้านค้า (Store Settings)
 # ==========================================
 elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)":
     st.header("⚙️ ตั้งค่าข้อมูลร้านค้าและใบเสร็จ")
