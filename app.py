@@ -1030,7 +1030,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow with Color Coding)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow with Color Coding & Sticky Footer)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
@@ -1267,7 +1267,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                             .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
                             .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                             .summary-tbl td {{ padding: 6px 10px; }}
-                            .footer-box {{ display: flex; justify-content: space-between; margin-top: 25px; border-top: 1px solid #cbd5e1; padding-top: 15px; align-items: flex-start; font-size: 12px; }}
+                            .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
+                            .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                             @media print {{ body {{ background: white; padding: 0; }} .print-btn {{ display: none; }} .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }} }}
                         </style>
                         </head>
@@ -1325,7 +1326,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                     </table>
                                 </div>
 
-                                <div>
+                                <!-- บล็อกท้ายกระดาษที่ถูกดึงลงล่างสุดเสมอ -->
+                                <div class="footer-section">
                                     <div class="footer-box">
                                         <div style="width: 70%;">
                                             <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
