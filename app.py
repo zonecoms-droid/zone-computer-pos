@@ -124,7 +124,7 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, STORE_LINE, STORE_FB, STORE_TIKTOK = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (เวอร์ชันสมบูรณ์แบบ)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมระบบ QR เช็คสถานะเรียลไทม์)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -141,11 +141,13 @@ menu_options = [
     "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)"
 ]
 
-# เช็คว่าถ้ามี URL พ่วงมาด้วย เช่น ?page=register ให้เปิดหน้าลงทะเบียนอัตโนมัติ
+# รองรับ Query Parameters สำหรับสแกน QR เช็คสถานะหรือลงทะเบียน
 query_params = st.query_params
 default_index = 0
 if query_params.get("page") == "register":
-    default_index = 1 # ตรงกับเมนู "📱 ลูกค้าสแกน QR ลงทะเบียนเอง..."
+    default_index = 1
+elif query_params.get("track"):
+    default_index = 3 # ไปที่เมนูติดตามสถานะอัตโนมัติ
 
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", menu_options, index=default_index)
 
@@ -217,7 +219,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     st.markdown("---")
-    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (มีปุ่มสั่งปริ้นในตัว)")
+    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (พร้อม QR Code เช็คสถานะเรียลไทม์)")
     
     cursor = conn.cursor()
     cursor.execute("SELECT job_code FROM repairs ORDER BY created_at DESC LIMIT 50")
@@ -243,6 +245,14 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
         if print_data:
             j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             
+            # สร้าง QR Code สำหรับเช็คสถานะเฉพาะใบงานนี้
+            track_url = f"https://zone-computer-pos.streamlit.app/?track={j_code}"
+            qr_track_obj = qrcode.make(track_url)
+            track_stream = BytesIO()
+            qr_track_obj.save(track_stream)
+            track_b64 = base64.b64encode(track_stream.getvalue()).decode()
+            qr_track_tag = f'<img src="data:image/png;base64,{track_b64}" width="75px"><br><span style="font-size:8px;">สแกนเช็คสถานะ</span>'
+            
             portrait_a4_html = f"""
             <html>
             <head>
@@ -259,7 +269,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                 table {{ width: 100%; font-size: 13px; margin-top: 5px; border-collapse: collapse; }}
                 td {{ padding: 3px 0; }}
                 .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
-                .signature-row {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; }}
+                .signature-row {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; align-items: flex-end; }}
                 @media print {{
                     body {{ background: white; padding: 0; }}
                     .print-btn-container {{ display: none; }}
@@ -289,8 +299,13 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                             <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
                         </div>
                         <div class="signature-row">
-                            <span>ลงชื่อลูกค้า: ......................................................</span>
-                            <span>ผู้รับเครื่อง: ......................................................</span>
+                            <div style="width: 75%;">
+                                <span>ลงชื่อลูกค้า: ......................................................</span><br>
+                                <span style="font-size:11px; color:#555;">(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)</span>
+                            </div>
+                            <div style="text-align: center; width: 25%;">
+                                {qr_track_tag}
+                            </div>
                         </div>
                     </div>
 
@@ -315,8 +330,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                             <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
                         </div>
                         <div class="signature-row">
-                            <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span>
-                            <span>ช่างผู้รับซ่อม: ......................................................</span>
+                            <div style="width: 100%;">
+                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้รับซ่อม: ......................................................</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -334,9 +350,7 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code (แนบรูปภาพ & วิดีโอได้)")
     st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
     
-    # 📌 ลิงก์ตรงสำหรับ QR Code ลงทะเบียน (เติม ?page=register ต่อท้าย)
     qr_data = "https://zone-computer-pos.streamlit.app/?page=register"
-    
     img = qrcode.make(qr_data)
     buf = BytesIO()
     img.save(buf)
@@ -390,7 +404,7 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วน")
 
 # ==========================================
-# 3. QR Code ช่องทางติดต่อ (Line, FB, TikTok - ขนาดเล็กกะทัดรัด)
+# 3. QR Code ช่องทางติดต่อ (Line, FB, TikTok)
 # ==========================================
 elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, TikTok)":
     st.header("🌐 QR Code ช่องทางติดต่อโซเชียลมีเดียของร้าน")
@@ -436,8 +450,14 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกใบเสร็จส่งมอบ (COMPLETED)")
-    search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
+    # รองรับการดึงค่าจาก QR Code ที่สแกนเข้ามา (?track=REP-...)
+    search_default = query_params.get("track", "")
+    search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า", value=search_default)
+    
+    if search_default:
+        st.info(f"📌 ระบบดึงข้อมูลจาก QR Code สำหรับใบงาน: **{search_default}** อัตโนมัติ")
+
     try:
         query = """
             SELECT r.id, r.job_code, c.name as customer_name, c.phone, c.address, r.device_name, r.serial_number, r.problem_description, r.accessories, r.media_file, r.status, r.estimated_cost, r.created_at
@@ -825,7 +845,7 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
                         {items_html}
                         <tr><td colspan="3" style="text-align: right; padding-top: 10px;"><b>มูลค่ารวมสินค้า:</b></td><td style="text-align: right; padding-top: 10px;">{subtotal:,.2f} บาท</td></tr>
                         {vat_text}
-                        <tr><td colspan="3" style="text-align: right; padding: 5px; font-size: 14px;"><b>ยอดชำระสุทธิ:</b></td><td style="text-align: right; padding-top: 5px; font-size: 14px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                        <tr><td colspan="3" style="text-align: right; padding: 5px; font-size: 14px;"><b>ยอดชำระสุทธิ:</b></td><td style="text-align: right; padding: 5px; font-size: 14px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
                     </table>
 
                     <div class="footer-box">
