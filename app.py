@@ -571,7 +571,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 conn.commit()
                 cursor.close()
                 st.success(f"อัปเดตสถานะสำเร็จ!")
-                st.rer0n() if hasattr(st, 'rerun') else st.experimental_rerun()
+                st.rerun()
 
             # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
             if selected_row['status'].startswith('COMPLETED'):
@@ -603,7 +603,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                     c_col1, c_col2 = st.columns(2)
                     with c_col1:
-                        pay_chanel = st.selectbox("ช่องทางชำระเงิน", ["โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)", "เงินสด", "บัตรเครดิต"])
+                        pay_chanel = st.selectbox("ช่องทางชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "บัตรเครดิต"])
                     with c_col2:
                         warrant_days = st.number_input("ระยะเวลารับประกันหลังซ่อม (วัน)", min_value=0, value=30)
                         include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True if "ใบกำกับภาษี" in doc_choice else False)
@@ -858,27 +858,30 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                         </table>
                                     </div>
 
-                                    <div class="footer-box">
-                                        <div style="width: 45%;">
-                                            <table style="width: 100%; text-align: center; font-size: 11px;">
-                                                <tr>
-                                                    <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
-                                                        ลงชื่อ......................................................<br><b>ผู้รับเงิน / ผู้ส่งมอบ</b>
-                                                    </td>
-                                                    <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
-                                                        ลงชื่อ......................................................<br><b>ผู้จ่ายเงิน / ลูกค้า</b>
-                                                    </td>
-                                                </tr>
-                                            </table>
+                                    <div>
+                                        <div class="footer-box">
+                                            <div style="width: 45%;">
+                                                <table style="width: 100%; text-align: center; font-size: 11px;">
+                                                    <tr>
+                                                        <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
+                                                            ลงชื่อ......................................................<br><b>ผู้รับเงิน / ผู้ส่งมอบ</b>
+                                                        </td>
+                                                        <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
+                                                            ลงชื่อ......................................................<br><b>ผู้จ่ายเงิน / ลูกค้า</b>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+
+                                            <div style="width: 25%; text-align: center;">
+                                                {qr_tag}
+                                            </div>
                                         </div>
 
-                                        <div style="width: 25%; text-align: center;">
-                                            {qr_tag}
-                                        </div>
-
-                                        <div style="width: 25%; text-align: center; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span><br>
-                                            <div style="margin-top: 5px;">
+                                        <!-- ล่างสุด: ติดตามร้านเราผ่านโซเชียล -->
+                                        <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
+                                            <div style="margin-top: 4px;">
                                                 {social_html}
                                             </div>
                                         </div>
@@ -905,7 +908,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับเว้นวันที่เขียนมือ & ซ่อนครบกำหนดเครดิตอัตโนมัติ)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับตำแหน่งชำระเงินและโซเชียล)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -948,7 +951,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                 """
             else:
                 c_doc_date_str = "...................................."
-                # หากไม่ระบุวันที่ จะไม่แสดง ครบกำหนด และ เครดิต ตามที่ลูกค้าต้องการ
                 meta_date_block = f"""
                 <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
                 """
@@ -957,9 +959,9 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             currency = st.selectbox("สกุลเงิน", ["THB", "USD", "EUR"])
             
             is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
-            c_pay_method = "โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)"
+            c_pay_method = "โอนเงินผ่าน PromptPay QR"
             if not is_no_payment_doc:
-                c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)", "เงินสด", "เครดิต 30 วัน", "บัตรเครดิต"])
+                c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "เครดิต 30 วัน", "บัตรเครดิต"])
 
         ref_doc_html = ""
         cn_dn_reason = ""
@@ -1070,9 +1072,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                 </div>
                 """
 
-            payment_row_html = ""
+            # วางช่องทางชำระเงินไว้ใต้ตารางสรุปยอด (ถ้าไม่ใช่เอกสารประเภท QT, DO/IV, TAX)
+            payment_row_under_total = ""
             if not is_no_payment_doc:
-                payment_row_html = f'<tr><td colspan="2"><b>ช่องทางชำระเงิน:</b> {c_pay_method}</td></tr>'
+                payment_row_under_total = f'<tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{c_pay_method}</td></tr>'
 
             commercial_html = f"""
             <html>
@@ -1123,7 +1126,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
 
                         {ref_box_html}
 
-                        <!-- Customer Box -->
+                        <!-- Customer Box (ไม่มีช่องชำระเงินด้านบนแล้ว) -->
                         <table class="cust-box tbl">
                             <tr>
                                 <td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {c_target_name}</td>
@@ -1134,7 +1137,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                             <tr>
                                 <td><b>เลขผู้เสียภาษี:</b> {c_target_tax if c_target_tax else '-'} ({c_target_branch})</td>
                             </tr>
-                            {payment_row_html}
                         </table>
 
                         <!-- Items Table -->
@@ -1157,38 +1159,42 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                 </td>
                                 <td style="width: 45%;">
                                     <table class="summary-tbl">
-                                        <tr><td style="text-align: right;"><b>รวมเป็นเงิน (Subtotal):</b></td><td style="text-align: right; width: 140px;">{com_subtotal:,.2f} {currency}</td></tr>
+                                        <tr><td style="text-align: right;"><b>รวมเป็นเงิน (Subtotal):</b></td><td style="text-align: right; width: 150px;">{com_subtotal:,.2f} {currency}</td></tr>
                                         {discount_html}
                                         <tr><td style="text-align: right;"><b>ราคาหลังหักส่วนลด:</b></td><td style="text-align: right;">{price_after_discount:,.2f} {currency}</td></tr>
                                         {vat_html}
-                                        <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>จำนวนเงินรวมทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{com_grand:,.2f} {currency}</b></td></tr>
+                                        <tr><td style="text-align: right; font-size: 14px; color: #0284c7;"><b>จำนวนเงินรวมทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; font-size: 14px; color: #0284c7;"><b>{com_grand:,.2f} {currency}</b></td></tr>
+                                        {payment_row_under_total}
                                     </table>
                                 </td>
                             </tr>
                         </table>
                     </div>
 
-                    <!-- Footer Signatures & QR -->
-                    <div class="footer-box">
-                        <div style="width: 45%;">
-                            <table style="width: 100%; text-align: center; font-size: 11px;">
-                                <tr>
-                                    <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
-                                        ลงชื่อ......................................................<br><b>ผู้รับมอบอำนาจ / ผู้ออกเอกสาร ({salesperson})</b>
-                                    </td>
-                                    <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
-                                        ลงชื่อ......................................................<br><b>ผู้รับสินค้า / ลูกค้า</b>
-                                    </td>
-                                </tr>
-                            </table>
+                    <!-- Footer Signatures & QR & Social Media at the Very Bottom -->
+                    <div>
+                        <div class="footer-box">
+                            <div style="width: 45%;">
+                                <table style="width: 100%; text-align: center; font-size: 11px;">
+                                    <tr>
+                                        <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
+                                            ลงชื่อ......................................................<br><b>ผู้รับมอบอำนาจ / ผู้ออกเอกสาร ({salesperson})</b>
+                                        </td>
+                                        <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
+                                            ลงชื่อ......................................................<br><b>ผู้รับสินค้า / ลูกค้า</b>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div style="width: 25%; text-align: center;">
+                                {com_qr_tag}
+                            </div>
                         </div>
 
-                        <div style="width: 25%; text-align: center;">
-                            {com_qr_tag}
-                        </div>
-
-                        <div style="width: 25%; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span><br>
+                        <!-- ล่างสุด: ติดตามร้านเราผ่านโซเชียล -->
+                        <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
                             <div style="margin-top: 4px;">
                                 {social_html}
                             </div>
