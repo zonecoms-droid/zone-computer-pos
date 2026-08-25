@@ -571,7 +571,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 conn.commit()
                 cursor.close()
                 st.success(f"อัปเดตสถานะสำเร็จ!")
-                st.rerun()
+                st.rer0n() if hasattr(st, 'rerun') else st.experimental_rerun()
 
             # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
             if selected_row['status'].startswith('COMPLETED'):
@@ -823,7 +823,6 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                         <table class="cust-box tbl">
                                             <tr>
                                                 <td style="width: 65%;"><b>ชื่อลูกค้า / บริษัท:</b> {tax_cust_name}</td>
-                                                <td style="width: 35%;"><b>ช่องทางชำระเงิน:</b> {pay_chanel}</td>
                                             </tr>
                                             <tr>
                                                 <td><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
@@ -845,7 +844,8 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                             <tr>
                                                 <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
                                                     <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
-                                                    {custom_notes}
+                                                    {custom_notes}<br><br>
+                                                    <b>ช่องทางชำระเงิน:</b> {pay_chanel}
                                                 </td>
                                                 <td style="width: 45%;">
                                                     <table class="summary-tbl">
@@ -905,11 +905,11 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับเว้นวันที่เขียนมือ & ซ่อนครบกำหนดถ้าไม่ระบุวันที่)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับเว้นวันที่เขียนมือ & ซ่อนครบกำหนดเครดิตอัตโนมัติ)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
-    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภท เลือกวันที่ (หรือเว้นเส้นประเขียนมือ) เครดิต พนักงานขาย และส่วนลดได้อิสระ")
+    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภท เลือกวันที่ (หรือเว้นเส้นประเขียนมือ) พนักงานขาย และส่วนลดได้อิสระ")
     
     doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการออก", [
         "1. ใบเสนอราคา (Quotation - QT)",
@@ -941,6 +941,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                 credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
                 due_date = c_doc_date + timedelta(days=int(credit_days))
                 due_date_str = due_date.strftime('%Y-%m-%d')
+                
                 meta_date_block = f"""
                 <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
                 <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date_str} (เครดิต {credit_days} วัน)</p>
@@ -1071,7 +1072,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
 
             payment_row_html = ""
             if not is_no_payment_doc:
-                payment_row_html = f'<td style="width: 35%;"><b>ช่องทางชำระเงิน:</b> {c_pay_method}</td>'
+                payment_row_html = f'<tr><td colspan="2"><b>ช่องทางชำระเงิน:</b> {c_pay_method}</td></tr>'
 
             commercial_html = f"""
             <html>
@@ -1125,13 +1126,15 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                         <!-- Customer Box -->
                         <table class="cust-box tbl">
                             <tr>
-                                <td style="width: 65%;"><b>นามลูกค้า / บริษัท:</b> {c_target_name}</td>
-                                {payment_row_html}
+                                <td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {c_target_name}</td>
                             </tr>
                             <tr>
                                 <td><b>ที่อยู่:</b> {c_target_address if c_target_address else '-'}</td>
+                            </tr>
+                            <tr>
                                 <td><b>เลขผู้เสียภาษี:</b> {c_target_tax if c_target_tax else '-'} ({c_target_branch})</td>
                             </tr>
+                            {payment_row_html}
                         </table>
 
                         <!-- Items Table -->
