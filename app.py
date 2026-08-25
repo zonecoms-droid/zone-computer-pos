@@ -7,6 +7,7 @@ import qrcode
 from io import BytesIO
 import streamlit.components.v1 as components
 import os
+import base64
 
 # สร้างโฟลเดอร์สำหรับเก็บบันทึกไฟล์รูป/วิดีโอที่ลูกค้าอัปโหลด
 UPLOAD_DIR = "uploads"
@@ -119,7 +120,7 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ใบคืนสินค้า A4 ครึ่งหน้า แบบทูอินวัน)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (เวอร์ชันสมบูรณ์แบบ)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -319,7 +320,9 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code (แนบรูปภาพ & วิดีโอได้)")
     st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
     
-    qr_data = "https://share.streamlit.io/"
+    # 📌 คำแนะนำ: เปลี่ยนลิงก์ด้านล่างนี้ให้เป็น URL จริงของแอปเพื่อนบน Streamlit Cloud (เช่น https://ชื่อแอปของคุณ.streamlit.app)
+    qr_data = "https://share.streamlit.io/" 
+    
     img = qrcode.make(qr_data)
     buf = BytesIO()
     img.save(buf)
@@ -487,7 +490,6 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                             qr_obj = qrcode.make(q_cont)
                             q_stream = BytesIO()
                             qr_obj.save(q_stream)
-                            import base64
                             b64_qr = base64.b64encode(q_stream.getvalue()).decode()
                             rcpt_qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="90px"><br><span style="font-size:8px;">สแกนชำระ PromptPay</span>'
 
@@ -497,7 +499,6 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                         r_vat_html = f"<tr><td colspan='3' style='text-align:right; padding:2px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:2px;'>{r_subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat_rcpt else ""
 
-                        # HTML สำหรับพิมพ์ A4 แนวตั้ง ครึ่งหน้า (แบ่งบน-ล่าง มีรอยฉีก)
                         final_receipt_html = f"""
                         <html>
                         <head>
@@ -524,7 +525,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                             <button class="print-btn" onclick="window.print()">🖨️ คลิกที่นี่เพื่อพิมพ์ใบคืนสินค้า / ใบเสร็จ (A4 แนวตั้ง)</button>
                             <div class="doc-box">
                                 
-                                <!-- 📌 ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
+                                <!-- ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
                                 <div class="section-box">
                                     <div>
                                         <table class="tbl">
@@ -575,12 +576,12 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                     </div>
                                 </div>
 
-                                <!-- ✂️ รอยฉีกตรงกลาง -->
+                                <!-- รอยฉีกตรงกลาง -->
                                 <div class="perforation">
                                     ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
                                 </div>
 
-                                <!-- 📌 ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
+                                <!-- ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
                                 <div class="section-box">
                                     <div>
                                         <table class="tbl">
@@ -704,7 +705,6 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
                 qr = qrcode.make(qr_content)
                 q_buf = BytesIO()
                 qr.save(q_buf)
-                import base64
                 qr_base64 = base64.b64encode(q_buf.getvalue()).decode()
                 qr_img_tag = f'<img src="data:image/png;base64,{qr_base64}" width="120px"><br><span style="font-size:10px;">สแกนจ่ายผ่าน PromptPay: {STORE_PROMPTPAY}</span>'
 
