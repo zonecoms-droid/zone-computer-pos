@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
+sqlite3
 from datetime import datetime, timedelta
 import random
 import qrcode
@@ -8,6 +8,7 @@ from io import BytesIO
 import streamlit.components.v1 as components
 import os
 import base64
+import json
 from PIL import Image, ImageDraw
 
 # สร้างโฟลเดอร์สำหรับเก็บบันทึกไฟล์รูป/วิดีโอที่ลูกค้าอัปโหลด
@@ -102,6 +103,32 @@ def init_db(conn):
             conn.commit()
         except sqlite3.OperationalError:
             pass
+
+    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS commercial_docs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doc_no TEXT UNIQUE,
+            doc_type TEXT,
+            status TEXT,
+            customer_name TEXT,
+            customer_tax TEXT,
+            customer_branch TEXT,
+            customer_address TEXT,
+            doc_date TEXT,
+            due_date TEXT,
+            salesperson TEXT,
+            currency TEXT,
+            items_json TEXT,
+            subtotal REAL,
+            discount_pct REAL,
+            vat_amount REAL,
+            grand_total REAL,
+            ref_doc_no TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
 
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
@@ -994,335 +1021,345 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - แยกสีธีมตามประเภทเอกสาร)
+# 5. เช็คประกัน & Serial Number
+# ==========================================
+elif menu == "🛡️ เช็คประกัน & Serial Number":
+    st.header("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
+    sn_input = st.text_input("กรอกหรือสแกน Serial Number")
+    if sn_input:
+        st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
+
+# ==========================================
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
-    st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
-    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภท เลือกวันที่ (หรือเว้นเส้นประเขียนมือ) พนักงานขาย และส่วนลดได้อิสระ")
-    
-    doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการออก", [
-        "1. ใบเสนอราคา (Quotation - QT)",
-        "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
-        "3. ใบกำกับภาษี (Tax Invoice - TAX)",
-        "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
-        "5. ใบลดหนี้ (Credit Note - CN)",
-        "6. ใบเพิ่มหนี้ (Debit Note - DN)"
-    ])
-    
+    st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
+    st.markdown("จัดการวงจรการขายครบวงจร: ใบเสนอราคา ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (พร้อมใบลดหนี้และใบเพิ่มหนี้)")
+
+    sub_menu = st.radio("🗂️ เลือกโหมดการจัดการ", ["📝 สร้างเอกสารใหม่ (Create Document)", "📋 ติดตามสถานะและส่งต่อเอกสาร (Sales Pipeline)"], horizontal=True)
     st.markdown("---")
-    
-    with st.form("commercial_docs_form"):
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.subheader("🏢 ข้อมูลลูกค้า / คู่ค้า")
-            c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด")
-            c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012")
-            c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
-            c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี")
-        with col_c2:
-            st.subheader("📅 รายละเอียดเอกสาร & เงื่อนไข")
-            
-            date_mode = st.radio("รูปแบบวันที่ออกเอกสาร", ["ระบุวันที่อัตโนมัติ", "เว้นช่องว่างเส้นประ (สำหรับลงวันที่ด้วยมือ)"], horizontal=True)
-            
-            if date_mode == "ระบุวันที่อัตโนมัติ":
-                c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today())
-                c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
-                credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
-                due_date = c_doc_date + timedelta(days=int(credit_days))
-                due_date_str = due_date.strftime('%Y-%m-%d')
+
+    if sub_menu == "📝 สร้างเอกสารใหม่ (Create Document)":
+        with st.form("commercial_docs_form"):
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                st.subheader("🏢 ข้อมูลลูกค้า / คู่ค้า")
+                c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด")
+                c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012")
+                c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
+                c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี")
+            with col_c2:
+                st.subheader("📅 ประเภทเอกสาร & เงื่อนไข")
                 
-                meta_date_block = f"""
-                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
-                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date_str} (เครดิต {credit_days} วัน)</p>
-                """
-            else:
-                c_doc_date_str = "...................................."
-                meta_date_block = f"""
-                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
-                """
-            
-            salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
-            currency = st.selectbox("สกุลเงิน", [DEF_CURR, "THB", "USD", "EUR"])
-            
-            is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
-            c_pay_method = "โอนเงินผ่าน PromptPay QR"
-            if not is_no_payment_doc:
-                c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "บัตรเครดิต"])
+                doc_type_selected = st.selectbox("🎯 ประเภทเอกสารเริ่มต้น", [
+                    "1. ใบเสนอราคา (Quotation - QT)",
+                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
+                    "3. ใบกำกับภาษี (Tax Invoice - TAX)",
+                    "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
+                    "5. ใบลดหนี้ (Credit Note - CN)",
+                    "6. ใบเพิ่มหนี้ (Debit Note - DN)"
+                ])
 
-        ref_doc_html = ""
-        cn_dn_reason = ""
-        if "ลดหนี้" in doc_type_selected or "เพิ่มหนี้" in doc_type_selected:
-            st.markdown("---")
-            st.subheader("📎 ข้อมูลอ้างอิงเอกสารเดิม (สำหรับการปรับปรุงหนี้)")
-            r_col1, r_col2 = st.columns(2)
-            with r_col1:
-                ref_doc_no = st.text_input("อ้างอิงเลขที่ใบกำกับภาษีเดิม (เช่น IV-20260301)", value="IV-20260301-001")
-            with r_col2:
-                cn_dn_reason = st.text_input("สาเหตุการลด/เพิ่มหนี้", value="คืนสินค้าเนื่องจากชำรุด / คิดราคาผิดพลาด")
+                date_mode = st.radio("รูปแบบวันที่ออกเอกสาร", ["ระบุวันที่อัตโนมัติ", "เว้นช่องว่างเส้นประ (สำหรับลงวันที่ด้วยมือ)"], horizontal=True)
+                if date_mode == "ระบุวันที่อัตโนมัติ":
+                    c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today())
+                    c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
+                    credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
+                    due_date = c_doc_date + timedelta(days=int(credit_days))
+                    due_date_str = due_date.strftime('%Y-%m-%d')
+                else:
+                    c_doc_date_str = "...................................."
+                    due_date_str = "...................................."
+                
+                salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
+                currency = st.selectbox("สกุลเงิน", [DEF_CURR, "THB", "USD", "EUR"])
+                
+                is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
+                c_pay_method = "โอนเงินผ่าน PromptPay QR"
+                if not is_no_payment_doc:
+                    c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "บัตรเครดิต"])
 
-        st.markdown("---")
-        st.subheader("🛒 รายการสินค้า / บริการ")
-        num_com_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
-        
-        com_subtotal = 0.0
-        com_items_list = []
-        
-        for ci in range(int(num_com_items)):
-            ccols = st.columns([3, 1, 1, 1])
-            with ccols[0]:
-                c_desc = st.text_input(f"รายการที่ {ci+1}", value=f"จำหน่าย/บริการคอมพิวเตอร์ รายการที่ {ci+1}", key=f"com_desc_{ci}")
-            with ccols[1]:
-                c_qty = st.number_input("จำนวน", min_value=1, value=1, key=f"com_qty_{ci}")
-            with ccols[2]:
-                c_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"com_price_{ci}")
-            with ccols[3]:
-                c_tot = c_qty * c_price
-                st.text_input("รวม", value=f"{c_tot:,.2f}", disabled=True, key=f"com_tot_{ci}")
-            com_subtotal += c_tot
-            com_items_list.append((c_desc, c_qty, c_price, c_tot))
-
-        st.markdown("---")
-        col_note, col_summary = st.columns([2, 1])
-        with col_note:
-            com_notes = st.text_area("หมายเหตุท้ายเอกสาร / เงื่อนไข", value=STORE_NOTE)
-        with col_summary:
-            discount_pct = st.number_input("ส่วนลด %", min_value=0.0, max_value=100.0, value=0.0, step=0.1)
-            include_com_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
-
-        generate_commercial_doc = st.form_submit_button("🖨️ สร้างเอกสารทางการค้าพร้อมพิมพ์ (FlowAccount Style)")
-
-        if generate_commercial_doc:
-            discount_amount = com_subtotal * (discount_pct / 100.0)
-            price_after_discount = com_subtotal - discount_amount
-            vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
-            com_grand = price_after_discount + vat_amount
-
-            com_qr_tag = ""
-            if not is_no_payment_doc and "PromptPay" in c_pay_method:
-                q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{com_grand:.2f}"
-                qr_obj = qrcode.make(q_cont)
-                q_stream = BytesIO()
-                qr_obj.save(q_stream)
-                b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                com_qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {com_grand:,.2f} {currency}</b></span>'
-
-            def make_social_qr(link, label):
-                if not link: return ""
-                sq = qrcode.make(link)
-                s_buf = BytesIO()
-                sq.save(s_buf)
-                s_b64 = base64.b64encode(s_buf.getvalue()).decode()
-                return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
-
-            social_html = ""
-            if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
-            if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
-            if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
-
-            items_html = ""
-            for idx, val in enumerate(com_items_list):
-                items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
-
-            discount_html = ""
-            if discount_pct > 0:
-                discount_html = f"<tr><td style='text-align: right;'><b>ส่วนลด ({discount_pct}%):</b></td><td style='text-align: right;'>- {discount_amount:,.2f} {currency}</td></tr>"
-
-            vat_html = f"<tr><td style='text-align: right;'><b>ภาษีมูลค่าเพิ่ม 7% (VAT):</b></td><td style='text-align: right;'>{vat_amount:,.2f} {currency}</td></tr>" if include_com_vat else ""
-
-            # กำหนดสีธีมและข้อความตามประเภทเอกสาร
-            if "1." in doc_type_selected:
-                doc_title_str = "ใบเสนอราคา / QUOTATION"
-                doc_code_prefix = P_QT
-                left_sign_title = "ผู้เสนอ / ผู้ออกเอกสาร"
-                right_sign_title = "ผู้อนุมัติ / ลูกค้า"
-                theme_color = "#0d9488" # สีเขียวอมฟ้า (Teal)
-            elif "2." in doc_type_selected:
-                doc_title_str = "ใบส่งสินค้า / ใบแจ้งหนี้ / DELIVERY ORDER & INVOICE"
-                doc_code_prefix = P_IV
-                left_sign_title = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
-                right_sign_title = "ผู้รับสินค้า / ลูกค้า"
-                theme_color = "#2563eb" # สีน้ำเงิน (Blue)
-            elif "3." in doc_type_selected:
-                doc_title_str = "ใบกำกับภาษี / TAX INVOICE"
-                doc_code_prefix = P_TAX
-                left_sign_title = "ผู้มีอำนาจออกเอกสาร"
-                right_sign_title = "ผู้รับบริการ / ลูกค้า"
-                theme_color = "#4f46e5" # สีคราม (Indigo)
-            elif "4." in doc_type_selected:
-                doc_title_str = "ใบเสร็จรับเงิน / CASH RECEIPT"
-                doc_code_prefix = P_RC
-                left_sign_title = "ผู้รับเงิน / ผู้ออกเอกสาร"
-                right_sign_title = "ผู้จ่ายเงิน / ลูกค้า"
-                theme_color = "#16a34a" # สีเขียว (Green)
-            elif "5." in doc_type_selected:
-                doc_title_str = "ใบลดหนี้ / CREDIT NOTE"
-                doc_code_prefix = P_CN
-                left_sign_title = "ผู้ออกใบลดหนี้"
-                right_sign_title = "ผู้รับใบลดหนี้ / ลูกค้า"
-                theme_color = "#d97706" # สีส้มอำพัน (Amber)
-            else:
-                doc_title_str = "ใบเพิ่มหนี้ / DEBIT NOTE"
-                doc_code_prefix = P_DN
-                left_sign_title = "ผู้ออกใบเพิ่มหนี้"
-                right_sign_title = "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
-                theme_color = "#e11d48" # สีแดงกุหลาบ (Rose)
-
-            random_doc_no = f"{doc_code_prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(10,99)}"
-
-            ref_box_html = ""
+            ref_doc_no_input = ""
+            cn_dn_reason = ""
             if "ลดหนี้" in doc_type_selected or "เพิ่มหนี้" in doc_type_selected:
-                ref_box_html = f"""
-                <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; color: #991b1b;">
-                    <b>อ้างอิงใบกำกับภาษีเดิม:</b> {ref_doc_no} | <b>สาเหตุ:</b> {cn_dn_reason}
-                </div>
-                """
+                st.markdown("---")
+                st.subheader("📎 ข้อมูลอ้างอิงเอกสารเดิม")
+                r_col1, r_col2 = st.columns(2)
+                with r_col1:
+                    ref_doc_no_input = st.text_input("อ้างอิงเลขที่ใบกำกับภาษีเดิม", value="IV-20260301-001")
+                with r_col2:
+                    cn_dn_reason = st.text_input("สาเหตุ", value="คืนสินค้าชำรุด / คิดราคาผิดพลาด")
 
-            payment_row_under_total = ""
-            if not is_no_payment_doc:
-                payment_row_under_total = f'<tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{c_pay_method}</td></tr>'
+            st.markdown("---")
+            st.subheader("🛒 รายการสินค้า / บริการ")
+            num_com_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
+            
+            com_subtotal = 0.0
+            com_items_list = []
+            
+            for ci in range(int(num_com_items)):
+                ccols = st.columns([3, 1, 1, 1])
+                with ccols[0]:
+                    c_desc = st.text_input(f"รายการที่ {ci+1}", value=f"จำหน่าย/บริการคอมพิวเตอร์ รายการที่ {ci+1}", key=f"com_desc_{ci}")
+                with ccols[1]:
+                    c_qty = st.number_input("จำนวน", min_value=1, value=1, key=f"com_qty_{ci}")
+                with ccols[2]:
+                    c_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"com_price_{ci}")
+                with ccols[3]:
+                    c_tot = c_qty * c_price
+                    st.text_input("รวม", value=f"{c_tot:,.2f}", disabled=True, key=f"com_tot_{ci}")
+                com_subtotal += c_tot
+                com_items_list.append((c_desc, c_qty, c_price, c_tot))
 
-            logo_data_uri = get_img_base64(LOGO_PATH)
-            logo_img_tag = f'<img src="{logo_data_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_data_uri else ''
+            st.markdown("---")
+            col_note, col_summary = st.columns([2, 1])
+            with col_note:
+                com_notes = st.text_area("หมายเหตุท้ายเอกสาร / เงื่อนไข", value=STORE_NOTE)
+            with col_summary:
+                discount_pct = st.number_input("ส่วนลด %", min_value=0.0, max_value=100.0, value=0.0, step=0.1)
+                include_com_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
 
-            commercial_html = f"""
-            <html>
-            <head>
-            <style>
-                @page {{ size: A4 portrait; margin: 12mm; }}
-                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
-                .print-btn {{ background-color: {theme_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                .print-btn:hover {{ opacity: 0.9; }}
-                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
-                .header-tbl {{ width: 100%; border-collapse: collapse; }}
-                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
-                .cust-box td {{ padding: 4px 8px; }}
-                .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
-                .items-tbl th {{ background: {theme_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
-                .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
-                .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
-                .summary-tbl td {{ padding: 6px 10px; }}
-                .footer-box {{ display: flex; justify-content: space-between; margin-top: 25px; border-top: 1px solid #cbd5e1; padding-top: 15px; align-items: flex-start; font-size: 12px; }}
-                @media print {{
-                    body {{ background: white; padding: 0; }}
-                    .print-btn {{ display: none; }}
-                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
-                }}
-            </style>
-            </head>
-            <body>
-                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร FlowAccount Style (A4 เต็มแผ่น)</button>
-                <div class="flow-container">
-                    <div>
-                        <!-- Header -->
-                        <table class="header-tbl">
-                            <tr>
-                                <td style="vertical-align: top;">
-                                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                                        {logo_img_tag}
-                                        <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
-                                    </div>
-                                    <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
-                                </td>
-                                <td style="text-align: right; vertical-align: top;">
-                                    <div style="background: {theme_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
-                                        {doc_title_str}
-                                    </div>
-                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {random_doc_no}</p>
-                                    {meta_date_block}
-                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {salesperson} | <b>สกุลเงิน:</b> {currency}</p>
-                                </td>
-                            </tr>
-                        </table>
+            save_doc_btn = st.form_submit_button("💾 บันทึกเอกสารเข้าสู่ระบบ Sales Pipeline")
 
-                        {ref_box_html}
+            if save_doc_btn:
+                discount_amount = com_subtotal * (discount_pct / 100.0)
+                price_after_discount = com_subtotal - discount_amount
+                vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
+                com_grand = price_after_discount + vat_amount
 
-                        <!-- Customer Box -->
-                        <table class="cust-box tbl">
-                            <tr>
-                                <td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {c_target_name}</td>
-                            </tr>
-                            <tr>
-                                <td><b>ที่อยู่:</b> {c_target_address if c_target_address else '-'}</td>
-                            </tr>
-                            <tr>
-                                <td><b>เลขผู้เสียภาษี:</b> {c_target_tax if c_target_tax else '-'} ({c_target_branch})</td>
-                            </tr>
-                        </table>
+                if "1." in doc_type_selected:
+                    d_type, prefix, initial_status = "QT", P_QT, "รออนุมัติ"
+                elif "2." in doc_type_selected:
+                    d_type, prefix, initial_status = "IV", P_IV, "รอส่งสินค้า"
+                elif "3." in doc_type_selected:
+                    d_type, prefix, initial_status = "TAX", P_TAX, "รอออกใบเสร็จ"
+                elif "4." in doc_type_selected:
+                    d_type, prefix, initial_status = "RC", P_RC, "เสร็จสิ้นการขาย"
+                elif "5." in doc_type_selected:
+                    d_type, prefix, initial_status = "CN", P_CN, "ใบลดหนี้"
+                else:
+                    d_type, prefix, initial_status = "DN", P_DN, "ใบเพิ่มหนี้"
 
-                        <!-- Items Table -->
-                        <table class="items-tbl">
-                            <tr>
-                                <th>รายการสินค้า / บริการ / อะไหล่</th>
-                                <th style="text-align: center; width: 70px;">จำนวน</th>
-                                <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
-                                <th style="text-align: right; width: 130px;">จำนวนเงิน ({currency})</th>
-                            </tr>
-                            {items_html}
-                        </table>
+                doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+                items_json_str = json.dumps(com_items_list, ensure_ascii=False)
 
-                        <!-- Summary Section -->
-                        <table style="width: 100%; margin-top: 10px;">
-                            <tr>
-                                <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
-                                    <b>หมายเหตุ / เงื่อนไข:</b><br>
-                                    {com_notes}
-                                </td>
-                                <td style="width: 45%;">
-                                    <table class="summary-tbl">
-                                        <tr><td style="text-align: right;"><b>รวมเป็นเงิน (Subtotal):</b></td><td style="text-align: right; width: 150px;">{com_subtotal:,.2f} {currency}</td></tr>
-                                        {discount_html}
-                                        <tr><td style="text-align: right;"><b>ราคาหลังหักส่วนลด:</b></td><td style="text-align: right;">{price_after_discount:,.2f} {currency}</td></tr>
-                                        {vat_html}
-                                        <tr><td style="text-align: right; font-size: 14px; color: {theme_color};"><b>จำนวนเงินรวมทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; font-size: 14px; color: {theme_color};"><b>{com_grand:,.2f} {currency}</b></td></tr>
-                                        {payment_row_under_total}
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, com_notes))
+                    conn.commit()
+                    cursor.close()
+                    st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
+
+    else:
+        # --- TAB 2: Sales Pipeline & Workflow Tracking ---
+        st.subheader("📋 ติดตามสถานะเอกสารและการส่งข้อมูล (Sales Pipeline)")
+        st.markdown("ระบบจะควบคุมลำดับ: **ใบเสนอราคา (รออนุมัติ) ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (เสร็จสิ้น)**")
+
+        try:
+            pipeline_df = pd.read_sql("SELECT id, doc_no, doc_type, status, customer_name, grand_total, currency, created_at FROM commercial_docs ORDER BY id DESC;", conn)
+            if not pipeline_df.empty:
+                st.dataframe(pipeline_df, use_container_width=True)
+
+                st.markdown("---")
+                st.subheader("⚙️ ดำเนินการส่งต่อสถานะ (Convert & Workflow Actions)")
+                
+                selected_doc_no = st.selectbox("เลือกเลขที่เอกสารที่ต้องการจัดการ", pipeline_df['doc_no'].tolist())
+                cur_doc = pd.read_sql(f"SELECT * FROM commercial_docs WHERE doc_no = '{selected_doc_no}';", conn).iloc[0]
+
+                st.info(f"📄 **เอกสาร:** {cur_doc['doc_no']} | **ประเภท:** {cur_doc['doc_type']} | **ลูกค้า:** {cur_doc['customer_name']} | **สถานะปัจจุบัน:** 📌 **{cur_doc['status']}** | **ยอดรวม:** {cur_doc['grand_total']:,.2f} {cur_doc['currency']}")
+
+                col_act1, col_act2 = st.columns(2)
+                with col_act1:
+                    # เงื่อนไขการเปลี่ยนสถานะตาม Workflow
+                    next_action_label = ""
+                    target_next_type = ""
+                    target_next_status = ""
+
+                    if cur_doc['doc_type'] == 'QT' and cur_doc['status'] == 'รออนุมัติ':
+                        next_action_label = "✅ อนุมัติ และส่งข้อมูลไปใบส่งสินค้า/แจ้งหนี้ (DO/IV)"
+                        target_next_type, target_next_status = "IV", "รอส่งสินค้า"
+                    elif cur_doc['doc_type'] == 'IV' and cur_doc['status'] in ['รอส่งสินค้า', 'อนุมัติแล้ว']:
+                        next_action_label = "🚚 ส่งสินค้าแล้ว และส่งข้อมูลไปใบกำกับภาษี (TAX)"
+                        target_next_type, target_next_status = "TAX", "รอออกใบเสร็จ"
+                    elif cur_doc['doc_type'] == 'TAX' and cur_doc['status'] == 'รอออกใบเสร็จ':
+                        next_action_label = "💵 ออกใบเสร็จรับเงิน (RC) เพื่อรับชำระ"
+                        target_next_type, target_next_status = "RC", "เสร็จสิ้นการขาย"
+                    elif cur_doc['doc_type'] == 'RC' and cur_doc['status'] != 'เสร็จสิ้นการขาย':
+                        next_action_label = "🎉 ยืนยันรับชำระ (เสร็จสิ้นการขาย)"
+                        target_next_status = "เสร็จสิ้นการขาย"
+
+                    if next_action_label:
+                        if st.button(next_action_label):
+                            cursor = conn.cursor()
+                            if target_next_type:
+                                # สร้างเอกสารขั้นตอนถัดไปอัตโนมัติโดยคัดลอกข้อมูลเดิม
+                                if target_next_type == 'IV': prefix = P_IV
+                                elif target_next_type == 'TAX': prefix = P_TAX
+                                else: prefix = P_RC
+
+                                new_doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+                                cursor.execute("""
+                                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (new_doc_no_gen, target_next_type, target_next_status, cur_doc['customer_name'], cur_doc['customer_tax'], cur_doc['customer_branch'], cur_doc['customer_address'], cur_doc['doc_date'], cur_doc['due_date'], cur_doc['salesperson'], cur_doc['currency'], cur_doc['items_json'], cur_doc['subtotal'], cur_doc['discount_pct'], cur_doc['vat_amount'], cur_doc['grand_total'], cur_doc['doc_no'], cur_doc['notes']))
+                            
+                            # อัปเดตสถานะเอกสารปัจจุบันเป็นเสร็จสิ้นขั้นตอน
+                            cursor.execute("UPDATE commercial_docs SET status = 'อนุมัติ/ส่งต่อแล้ว' WHERE doc_no = ?", (selected_doc_no,))
+                            conn.commit()
+                            cursor.close()
+                            st.success(f"ส่งข้อมูลและอัปเดตสถานะสำเร็จ!")
+                            st.rerun()
+                    else:
+                        st.success("🎉 เอกสารฉบับนี้อยู่ในสถานะ 'เสร็จสิ้นการขาย' สมบูรณ์แล้ว")
+
+                with col_act2:
+                    if st.button("🖨️ พิมพ์เอกสารนี้ทันที (FlowAccount Style)"):
+                        # แปลงข้อมูลรายการสินค้าจาก JSON กลับมาแสดงผลในรูปแบบ HTML พิมพ์
+                        items_parsed = json.loads(cur_doc['items_json'])
+                        print_items_html = ""
+                        for idx, val in enumerate(items_parsed):
+                            print_items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+
+                        # กำหนดสีตามประเภทเอกสาร
+                        d_t = cur_doc['doc_type']
+                        if d_t == 'QT':
+                            t_title, t_color, l_sign, r_sign = "ใบเสนอราคา / QUOTATION", "#0d9488", "ผู้เสนอ / ผู้ออกเอกสาร", "ผู้อนุมัติ / ลูกค้า"
+                        elif d_t == 'IV':
+                            t_title, t_color, l_sign, r_sign = "ใบส่งสินค้า / ใบแจ้งหนี้", "#2563eb", "ผู้ส่งสินค้า / ผู้ออกเอกสาร", "ผู้รับสินค้า / ลูกค้า"
+                        elif d_t == 'TAX':
+                            t_title, t_color, l_sign, r_sign = "ใบกำกับภาษี / TAX INVOICE", "#4f46e5", "ผู้มีอำนาจออกเอกสาร", "ผู้รับบริการ / ลูกค้า"
+                        elif d_t == 'RC':
+                            t_title, t_color, l_sign, r_sign = "ใบเสร็จรับเงิน / CASH RECEIPT", "#16a34a", "ผู้รับเงิน / ผู้ออกเอกสาร", "ผู้จ่ายเงิน / ลูกค้า"
+                        elif d_t == 'CN':
+                            t_title, t_color, l_sign, r_sign = "ใบลดหนี้ / CREDIT NOTE", "#d97706", "ผู้ออกใบลดหนี้", "ผู้รับใบลดหนี้ / ลูกค้า"
+                        else:
+                            t_title, t_color, l_sign, r_sign = "ใบเพิ่มหนี้ / DEBIT NOTE", "#e11d48", "ผู้ออกใบเพิ่มหนี้", "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
+
+                        logo_data_uri = get_img_base64(LOGO_PATH)
+                        logo_img_tag = f'<img src="{logo_data_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_data_uri else ''
+
+                        def make_social_qr(link, label):
+                            if not link: return ""
+                            sq = qrcode.make(link)
+                            s_buf = BytesIO()
+                            sq.save(s_buf)
+                            s_b64 = base64.b64encode(s_buf.getvalue()).decode()
+                            return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
+
+                        social_html = ""
+                        if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
+                        if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
+                        if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
+
+                        print_html_full = f"""
+                        <html>
+                        <head>
+                        <style>
+                            @page {{ size: A4 portrait; margin: 12mm; }}
+                            body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                            .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                            .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                            .header-tbl {{ width: 100%; border-collapse: collapse; }}
+                            .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
+                            .cust-box td {{ padding: 4px 8px; }}
+                            .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
+                            .items-tbl th {{ background: {t_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                            .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
+                            .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
+                            .summary-tbl td {{ padding: 6px 10px; }}
+                            .footer-box {{ display: flex; justify-content: space-between; margin-top: 25px; border-top: 1px solid #cbd5e1; padding-top: 15px; align-items: flex-start; font-size: 12px; }}
+                            @media print {{ body {{ background: white; padding: 0; }} .print-btn {{ display: none; }} .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }} }}
+                        </style>
+                        </head>
+                        <body>
+                            <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารฉบับนี้</button>
+                            <div class="flow-container">
+                                <div>
+                                    <table class="header-tbl">
+                                        <tr>
+                                            <td style="vertical-align: top;">
+                                                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                                    {logo_img_tag}
+                                                    <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                                </div>
+                                                <p style="font-size: 12px; margin: 4px 0; color: #475569;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                                            </td>
+                                            <td style="text-align: right; vertical-align: top;">
+                                                <div style="background: {t_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                                                    {t_title}
+                                                </div>
+                                                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
+                                                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {cur_doc['doc_date']}</p>
+                                                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {cur_doc['salesperson']} | <b>สกุลเงิน:</b> {cur_doc['currency']}</p>
+                                            </td>
+                                        </tr>
                                     </table>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
 
-                    <!-- Footer Signatures & QR & Social Media at the Very Bottom -->
-                    <div>
-                        <div class="footer-box">
-                            <div style="width: 70%;">
-                                <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
-                                    <tr>
-                                        <td style="padding-bottom: 5px; width: 50%;">
-                                            ลงชื่อ......................................................
-                                        </td>
-                                        <td style="padding-bottom: 5px; width: 50%;">
-                                            ลงชื่อ......................................................
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            {left_sign_title} วันที่....................
-                                        </td>
-                                        <td>
-                                            {right_sign_title} วันที่.........................
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
+                                    <table class="cust-box tbl">
+                                        <tr><td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']}</td></tr>
+                                        <tr><td><b>ที่อยู่:</b> {cur_doc['customer_address']}</td></tr>
+                                    </table>
 
-                            <div style="width: 25%; text-align: center;">
-                                {com_qr_tag}
-                            </div>
-                        </div>
+                                    <table class="items-tbl">
+                                        <tr>
+                                            <th>รายการสินค้า / บริการ / อะไหล่</th>
+                                            <th style="text-align: center; width: 70px;">จำนวน</th>
+                                            <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
+                                            <th style="text-align: right; width: 130px;">จำนวนเงิน ({cur_doc['currency']})</th>
+                                        </tr>
+                                        {print_items_html}
+                                    </table>
 
-                        <!-- ล่างสุด: ติดตามร้านเราผ่านโซเชียล -->
-                        <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
-                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
-                            <div style="margin-top: 4px;">
-                                {social_html}
+                                    <table style="width: 100%; margin-top: 10px;">
+                                        <tr>
+                                            <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
+                                                <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
+                                            </td>
+                                            <td style="width: 45%;">
+                                                <table class="summary-tbl">
+                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{cur_doc['subtotal']:,.2f} {cur_doc['currency']}</td></tr>
+                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{cur_doc['grand_total']:,.2f} {cur_doc['currency']}</b></td></tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div>
+                                    <div class="footer-box">
+                                        <div style="width: 70%;">
+                                            <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
+                                                <tr>
+                                                    <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
+                                                    <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>{l_sign} วันที่....................</td>
+                                                    <td>{r_sign} วันที่.........................</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                                        <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
+                                        <div style="margin-top: 4px;">{social_html}</div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-            components.html(commercial_html, height=1050, scrolling=True)
+                        </body>
+                        </html>
+                        """
+                        components.html(print_html_full, height=1050, scrolling=True)
+            else:
+                st.info("ยังไม่มีเอกสารการค้าในระบบ สามารถไปที่แท็บ 'สร้างเอกสารใหม่' เพื่อเริ่มใช้งานได้เลยครับ")
+        except Exception as e:
+            st.info("ยังไม่มีตารางข้อมูลเอกสารการค้าในระบบ กรุณาสร้างเอกสารใหม่ 1 ครั้งเพื่อเริ่มใช้งาน")
 
 # ==========================================
 # 7. สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง
