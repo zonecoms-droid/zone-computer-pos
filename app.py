@@ -905,7 +905,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับเว้นวันที่เขียนมือ)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับเว้นวันที่เขียนมือ & ซ่อนครบกำหนดถ้าไม่ระบุวันที่)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -933,23 +933,24 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
         with col_c2:
             st.subheader("📅 รายละเอียดเอกสาร & เงื่อนไข")
             
-            # ตัวเลือกวันที่: ระบุวันที่ออกเอกสาร หรือ เว้นช่องว่างเส้นประ (สำหรับเขียนมือ)
             date_mode = st.radio("รูปแบบวันที่ออกเอกสาร", ["ระบุวันที่อัตโนมัติ", "เว้นช่องว่างเส้นประ (สำหรับลงวันที่ด้วยมือ)"], horizontal=True)
+            
             if date_mode == "ระบุวันที่อัตโนมัติ":
                 c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today())
                 c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
-            else:
-                c_doc_date_str = "...................................."
-            
-            credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
-            
-            if date_mode == "ระบุวันที่อัตโนมัติ":
+                credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
                 due_date = c_doc_date + timedelta(days=int(credit_days))
                 due_date_str = due_date.strftime('%Y-%m-%d')
+                meta_date_block = f"""
+                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
+                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date_str} (เครดิต {credit_days} วัน)</p>
+                """
             else:
-                due_date_str = "...................................."
-            
-            st.markdown(f"📌 **ครบกำหนด:** `{due_date_str} (เครดิต {credit_days} วัน)`")
+                c_doc_date_str = "...................................."
+                # หากไม่ระบุวันที่ จะไม่แสดง ครบกำหนด และ เครดิต ตามที่ลูกค้าต้องการ
+                meta_date_block = f"""
+                <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
+                """
             
             salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
             currency = st.selectbox("สกุลเงิน", ["THB", "USD", "EUR"])
@@ -1113,8 +1114,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                         {doc_title_str}
                                     </div>
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {random_doc_no}</p>
-                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
-                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date_str} (เครดิต {credit_days} วัน)</p>
+                                    {meta_date_block}
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {salesperson} | <b>สกุลเงิน:</b> {currency}</p>
                                 </td>
                             </tr>
