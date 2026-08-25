@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
+sqlite3
 from datetime import datetime, timedelta
 import random
 import qrcode
@@ -178,17 +178,25 @@ def init_db(conn):
             technician_id INTEGER,
             status TEXT DEFAULT 'RECEIVED',
             media_file TEXT,
+            need_tax INTEGER DEFAULT 0,
+            tax_name TEXT,
+            tax_id TEXT,
+            tax_branch TEXT,
+            tax_address TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES customers(id),
             FOREIGN KEY (technician_id) REFERENCES staff(id)
         )
     ''')
-    try:
-        cursor.execute("ALTER TABLE repairs ADD COLUMN media_file TEXT;")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
+    
+    # อัปเดตคอลัมน์ภาษีในตาราง repairs แบบปลอดภัย
+    for col, col_type in [('need_tax', 'INTEGER DEFAULT 0'), ('tax_name', 'TEXT'), ('tax_id', 'TEXT'), ('tax_branch', 'TEXT'), ('tax_address', 'TEXT')]:
+        try:
+            cursor.execute(f"ALTER TABLE repairs ADD COLUMN {col} {col_type};")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
 
     cursor.close()
 
@@ -321,7 +329,7 @@ if track_code:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
     st.stop()
 
-# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code โดยตรง (ปลอดภัย ไม่เห็นข้อมูลส่วนอื่นของร้าน)
+# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code พร้อมตัวเลือกกรอกข้อมูลออกบิล และสร้าง QR Code ติดตามสถานะให้ทันที
 if page_param == "register":
     st.set_page_config(page_title=f"ลงทะเบียนแจ้งซ่อม - {STORE_NAME}", page_icon="📱", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
@@ -335,6 +343,14 @@ if page_param == "register":
         c_problem = st.text_area("อาการเสีย / รายละเอียดเบื้องต้น")
         c_accessories = st.text_input("อุปกรณ์ที่ส่งมาด้วย (เช่น สายชาร์จ, กระเป๋า)")
         uploaded_file = st.file_uploader("📷 แนบรูปภาพ หรือ 🎥 วิดีโออาการเสีย (ถ้ามี)", type=["jpg", "png", "jpeg", "mp4", "mov"])
+        
+        st.markdown("---")
+        st.markdown("##### 🧾 ข้อมูลสำหรับออกใบเสร็จรับเงิน / ใบกำกับภาษี (ไม่บังคับ)")
+        need_tax = st.checkbox("ต้องการใบเสร็จรับเงิน / ใบกำกับภาษีในนามบริษัทหรือบุคคล (กรอกข้อมูลออกบิล)")
+        tax_name = st.text_input("ชื่อ-นามสกุล / ชื่อบริษัท สำหรับออกบิล", value="")
+        tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก (หรือเลขบัตรประชาชน)", value="")
+        tax_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
+        tax_address = st.text_area("ที่อยู่ตามทะเบียนภาษี สำหรับออกบิล", value="")
         
         self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมเข้าร้าน")
         if self_submit:
@@ -357,16 +373,32 @@ if page_param == "register":
                 
                 job_code = f"REP-{datetime.now().strftime('%Y%m%d')}-{random.randint(100,999)}"
                 cursor.execute("""
-                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, media_file, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'RECEIVED')
-                """, (job_code, cust_id, c_device, c_problem, c_accessories, file_path))
+                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, media_file, status, need_tax, tax_name, tax_id, tax_branch, tax_address)
+                    VALUES (?, ?, ?, ?, ?, ?, 'RECEIVED', ?, ?, ?, ?, ?)
+                """, (job_code, cust_id, c_device, c_problem, c_accessories, file_path, 1 if need_tax else 0, tax_name if need_tax else c_name, tax_id, tax_branch, tax_address))
                 conn.commit()
                 cursor.close()
                 
-                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}** กรุณาบันทึกเลขที่ใบงานนี้ไว้สำหรับตรวจสอบสถานะกับทางร้านครับ")
+                st.session_state['public_registered_job'] = job_code
+                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+
+    # แสดง QR Code ติดตามสถานะให้ลูกค้าทันทีหลังส่งข้อมูลสำเร็จ
+    if 'public_registered_job' in st.session_state:
+        j_c = st.session_state['public_registered_job']
+        st.markdown("---")
+        st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
+        st.markdown("คุณสามารถบันทึกหรือสแกน QR Code นี้เพื่อตรวจสอบสถานะงานซ่อมแบบเรียลไทม์ได้ตลอดเวลาครับ")
+        
+        track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
+        qr_img = qrcode.make(track_url)
+        qr_buf = BytesIO()
+        qr_img.save(qr_buf)
+        st.image(qr_buf.getvalue(), width=220, caption=f"สแกนเพื่อเช็คสถานะใบงาน: {j_c}")
+        st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะงานซ่อม]({track_url})")
+
     st.stop()
 
 # ==========================================
@@ -603,7 +635,7 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
     st.code(reg_url, language="text")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม
+# 3. ติดตาม & อัปเดตสถานะงานซ่อม (ดึงข้อมูลภาษีที่ลูกค้ากรอกมาแสดงอัตโนมัติ)
 # ==========================================
 elif menu == "🔍 ติดตามสถานะซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -626,6 +658,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.markdown("---")
             selected_job = st.selectbox("เลือกเลขใบงานที่ต้องการจัดการ", df['job_code'].tolist())
             selected_row = df[df['job_code'] == selected_job].iloc[0]
+            
+            # ดึงข้อมูลเพิ่มเติมจากตาราง repairs (รวมถึงข้อมูลภาษีที่ลูกค้ากรอกเอง)
+            repair_full = pd.read_sql(f"SELECT * FROM repairs WHERE job_code = '{selected_job}';", conn).iloc[0]
             
             col_info, col_media = st.columns(2)
             with col_info:
@@ -662,7 +697,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
             if selected_row['status'].startswith('COMPLETED'):
                 st.markdown("---")
-                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! กรุณาเลือกประเภทเอกสารที่ต้องการออกด้านล่างนี้ครับ")
+                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
                 
                 doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
                     "📦 ใบคืนสินค้า (Delivery Slip - A4 ครึ่งหน้า)", 
@@ -671,20 +706,21 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 ])
                 
                 with st.form(f"form_doc_{selected_job}"):
-                    tax_cust_name = selected_row['customer_name']
-                    tax_cust_id = ""
-                    tax_cust_branch = "สำนักงานใหญ่"
-                    tax_cust_address = selected_row['address'] if selected_row['address'] else ""
+                    # ดึงข้อมูลที่ลูกค้ากรอกมาเป็น Default
+                    init_tax_name = repair_full['tax_name'] if repair_full['tax_name'] else selected_row['customer_name']
+                    init_tax_id = repair_full['tax_id'] if repair_full['tax_id'] else ""
+                    init_tax_branch = repair_full['tax_branch'] if repair_full['tax_branch'] else "สำนักงานใหญ่"
+                    init_tax_address = repair_full['tax_address'] if repair_full['tax_address'] else selected_row['address']
                     
-                    if "ใบกำกับภาษี" in doc_choice:
-                        st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (สำหรับออกใบกำกับภาษีตามกฎหมายสรรพากร)")
+                    if "ใบกำกับภาษี" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice:
+                        st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (ดึงมาจากข้อมูลที่ลูกค้าลงทะเบียนไว้)")
                         tc_col1, tc_col2 = st.columns(2)
                         with tc_col1:
-                            tax_cust_name = st.text_input("ชื่อลูกค้า / บริษัท", value=selected_row['customer_name'])
-                            tax_cust_id = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="")
+                            tax_cust_name = st.text_input("ชื่อลูกค้า / บริษัท", value=init_tax_name)
+                            tax_cust_id = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value=init_tax_id)
                         with tc_col2:
-                            tax_cust_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
-                            tax_cust_address = st.text_area("ที่อยู่ตามทะเบียนภาษี", value=selected_row['address'] if selected_row['address'] else "")
+                            tax_cust_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value=init_tax_branch)
+                            tax_cust_address = st.text_area("ที่อยู่ตามทะเบียนภาษี", value=init_tax_address)
                         st.markdown("---")
 
                     c_col1, c_col2 = st.columns(2)
@@ -723,14 +759,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
                         qr_tag = ""
-                        if "PromptPay" in pay_chanel and "ใบคืนสินค้า" in doc_choice:
-                            q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
-                            qr_obj = qrcode.make(q_cont)
-                            q_stream = BytesIO()
-                            qr_obj.save(q_stream)
-                            b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
-                        elif "PromptPay" in pay_chanel and "ใบเสร็จรับเงิน" in doc_choice:
+                        if "PromptPay" in pay_chanel and ("ใบคืนสินค้า" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice):
                             q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
                             qr_obj = qrcode.make(q_cont)
                             q_stream = BytesIO()
@@ -861,15 +890,18 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             is_tax = "ใบกำกับภาษี" in doc_choice
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
 
+                            logo_data_uri = get_img_base64(LOGO_PATH)
+                            logo_img_tag = f'<img src="{logo_data_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_data_uri else ''
+
                             final_html = f"""
                             <html>
                             <head>
                             <style>
-                                @page {{ size: A4 portrait; margin: 12mm; }}
+                                @page {{ size: A4 portrait; margin: 10mm; }}
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #0369a1; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
                                 .cust-box td {{ padding: 4px 8px; }}
@@ -878,11 +910,23 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
                                 .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                                 .summary-tbl td {{ padding: 6px 10px; }}
-                                .footer-box {{ display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 20px; align-items: flex-start; font-size: 12px; }}
+                                .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
+                                .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; }}
+                                    body {{ background: white; padding: 0; margin: 0; }}
                                     .print-btn {{ display: none; }}
-                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
+                                    .flow-container {{ 
+                                        border: none; 
+                                        box-shadow: none; 
+                                        padding: 10mm; 
+                                        width: 100%; 
+                                        height: 272mm; 
+                                        max-height: 272mm; 
+                                        display: flex; 
+                                        flex-direction: column; 
+                                        justify-content: space-between; 
+                                        page-break-after: always;
+                                    }}
                                 }}
                             </style>
                             </head>
@@ -893,7 +937,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <table class="header-tbl">
                                             <tr>
                                                 <td style="vertical-align: top;">
-                                                    <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                                        {logo_img_tag}
+                                                        <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                                    </div>
                                                     <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
@@ -937,13 +984,14 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                                        <tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{pay_chanel}</td></tr>
                                                     </table>
                                                 </td>
                                             </tr>
                                         </table>
                                     </div>
 
-                                    <div>
+                                    <div class="footer-section">
                                         <div class="footer-box">
                                             <div style="width: 65%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
@@ -1336,7 +1384,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
             st.info("ยังไม่มีตารางข้อมูลเอกสารการค้าในระบบ กรุณาสร้างเอกสารใหม่ 1 ครั้งเพื่อเริ่มใช้งาน")
 
 # ==========================================
-# 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub - รวมเมนูย้ายมาใหม่ครบถ้วน)
+# 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
 # ==========================================
 elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
@@ -1509,7 +1557,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         * `Esc` : ยกเลิก / ปิดหน้าต่างป๊อปอัป
         """)
 
-    # --- Tab 7: QR Code โซเชียล (ย้ายมาจากเมนูลัด) ---
+    # --- Tab 7: QR Code โซเชียล ---
     with set_tab7:
         st.subheader("🌐 QR Code ช่องทางติดต่อโซเชียลมีเดียของร้าน")
         st.markdown("สแกนเพื่อเพิ่มเพื่อนหรือติดตามเพจร้านค้าได้ทันที")
@@ -1539,14 +1587,14 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
             else:
                 st.info("ยังไม่ได้ตั้งค่าลิงก์ TikTok ในแท็บตั้งค่าธุรกิจ")
 
-    # --- Tab 8: เช็คประกัน & Serial (ย้ายมาจากเมนูลัด) ---
+    # --- Tab 8: เช็คประกัน & Serial ---
     with set_tab8:
         st.subheader("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
         sn_input = st.text_input("🔍 กรอกหรือสแกน Serial Number เพื่อเช็คสถานะประกัน")
         if sn_input:
             st.success(f"✅ สินค้า Serial Number: `{sn_input}` อยู่ในระยะเวลาประกันของร้านค้าสมบูรณ์!")
 
-    # --- Tab 9: สรุปยอด & ค่าคอมช่าง (ย้ายมาจากเมนูลัด) ---
+    # --- Tab 9: สรุปยอด & ค่าคอมช่าง ---
     with set_tab9:
         st.subheader("💰 รายงานยอดขายและค่ามือช่างประจำร้าน")
         try:
