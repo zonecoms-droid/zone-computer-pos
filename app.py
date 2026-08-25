@@ -5,7 +5,7 @@ from datetime import datetime
 import random
 import qrcode
 from io import BytesIO
-import streamlit.components.v1 as components  # <-- เพิ่มบรรทัดนี้สำหรับเรนเดอร์ HTML
+import streamlit.components.v1 as components
 
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(
@@ -99,7 +99,7 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ฟอร์มพิมพ์ A4 ครึ่งหน้า พร้อมรอยฉีก)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ฟอร์มพิมพ์ A4 แนวตั้ง พร้อมปุ่มสั่งปริ้น)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -118,7 +118,7 @@ menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำง�
 # 1. รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม
 # ==========================================
 if menu == "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม":
-    st.header("📥 บันทึกรับเครื่องซ่อมและพิมพ์ใบรับซ่อม (A4 ครึ่งหน้า)")
+    st.header("📥 บันทึกรับเครื่องซ่อมและพิมพ์ใบรับซ่อม (A4 แนวตั้ง)")
     
     with st.form("pro_repair_form"):
         col1, col2 = st.columns(2)
@@ -175,14 +175,14 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                     cursor.close()
                     
                     st.session_state.current_job_code = job_code
-                    st.success(f"🎉 บันทึกรับเครื่องสำเร็จ! เลขที่ใบงาน: **{job_code}** เลื่อนลงด้านล่างเพื่อดูตัวอย่างใบรับซ่อมได้เลยครับ")
+                    st.success(f"🎉 บันทึกรับเครื่องสำเร็จ! เลขที่ใบงาน: **{job_code}** เลื่อนลงด้านล่างเพื่อกดปุ่มสั่งปริ้นได้เลยครับ")
                 except Exception as e:
                     st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
             else:
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     st.markdown("---")
-    st.subheader("🖨️ ตัวอย่างใบรับซ่อม (ฟอร์ม A4 แบบครึ่ง สำหรับร้านและลูกค้า)")
+    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (มีปุ่มสั่งปริ้นในตัว)")
     
     cursor = conn.cursor()
     cursor.execute("SELECT job_code FROM repairs ORDER BY created_at DESC LIMIT 50")
@@ -208,27 +208,55 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
         if print_data:
             j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             
-            half_a4_html = f"""
+            portrait_a4_html = f"""
             <html>
             <head>
             <style>
+                @page {{
+                    size: A4 portrait;
+                    margin: 5mm;
+                }}
                 body {{
-                    background: #f9f9f9;
+                    background: #f0f2f5;
                     font-family: sans-serif;
                     color: black;
                     margin: 0;
                     padding: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }}
+                .print-btn-container {{
+                    margin-bottom: 15px;
+                }}
+                .btn-print {{
+                    background-color: #ff4b4b;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+                }}
+                .btn-print:hover {{
+                    background-color: #e03e3e;
                 }}
                 .print-container {{
                     background: white;
-                    border: 2px solid #333;
-                    padding: 20px;
-                    max-width: 750px;
-                    margin: 0 auto;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    border: 1px solid #ccc;
+                    padding: 12mm 15mm;
+                    width: 190mm;
+                    box-sizing: border-box;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
                 }}
                 .section-box {{
-                    padding-bottom: 5px;
+                    height: 125mm;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
                 }}
                 h3, h4 {{
                     text-align: center;
@@ -245,40 +273,60 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
                     border-collapse: collapse;
                 }}
                 td {{
-                    padding: 2px 0;
+                    padding: 3px 0;
                 }}
                 .perforation {{
                     border-top: 2px dashed #666;
-                    margin: 15px 0;
+                    margin: 8mm 0;
                     text-align: center;
                     font-size: 11px;
                     color: #444;
                     font-weight: bold;
-                    padding-top: 5px;
                 }}
                 .signature-row {{
                     display: flex;
                     justify-content: space-between;
-                    margin-top: 15px;
+                    margin-top: 10px;
                     font-size: 12px;
+                }}
+                @media print {{
+                    body {{
+                        background: white;
+                        padding: 0;
+                    }}
+                    .print-btn-container {{
+                        display: none;
+                    }}
+                    .print-container {{
+                        border: none;
+                        box-shadow: none;
+                        padding: 0;
+                        width: 100%;
+                    }}
                 }}
             </style>
             </head>
             <body>
+                <div class="print-btn-container">
+                    <button class="btn-print" onclick="window.print()">🖨️ คลิกที่นี่เพื่อสั่งพิมพ์ใบรับซ่อม (A4 แนวตั้ง)</button>
+                </div>
+                
                 <div class="print-container">
                     <!-- 📌 ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
                     <div class="section-box">
-                        <h3><b>{STORE_NAME}</b></h3>
-                        <p style="text-align: center; font-size: 11px;">ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
-                        <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับลูกค้า / ต้นฉบับ)</h4>
-                        <table>
-                            <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
-                            <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
-                            <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
-                        </table>
-                        <p><b>อาการเสีย:</b> {prob}</p>
-                        <p><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
-                        <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
+                        <div>
+                            <h3><b>{STORE_NAME}</b></h3>
+                            <p style="text-align: center; font-size: 11px;">ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับลูกค้า / ต้นฉบับ)</h4>
+                            <table>
+                                <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
+                                <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
+                                <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
+                            </table>
+                            <p><b>อาการเสีย:</b> {prob}</p>
+                            <p><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
+                            <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
+                        </div>
                         <div class="signature-row">
                             <span>ลงชื่อลูกค้า: ......................................................</span>
                             <span>ผู้รับเครื่อง: ......................................................</span>
@@ -292,17 +340,19 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
 
                     <!-- 📌 ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
                     <div class="section-box">
-                        <h3><b>{STORE_NAME}</b></h3>
-                        <p style="text-align: center; font-size: 11px;">ใบควบคุมงานซ่อมภายในร้าน (สำหรับร้านค้าเก็บไว้)</p>
-                        <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับร้านค้า / สำเนา)</h4>
-                        <table>
-                            <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
-                            <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
-                            <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
-                        </table>
-                        <p><b>อาการเสีย:</b> {prob}</p>
-                        <p><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
-                        <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
+                        <div>
+                            <h3><b>{STORE_NAME}</b></h3>
+                            <p style="text-align: center; font-size: 11px;">ใบควบคุมงานซ่อมภายในร้าน (สำหรับร้านค้าเก็บไว้)</p>
+                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับร้านค้า / สำเนา)</h4>
+                            <table>
+                                <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
+                                <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
+                                <tr><td><b>รุ่นอุปกรณ์:</b> {dev}</td><td><b>Serial Number:</b> {sn if sn else '-'}</td></tr>
+                            </table>
+                            <p><b>อาการเสีย:</b> {prob}</p>
+                            <p><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
+                            <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
+                        </div>
                         <div class="signature-row">
                             <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span>
                             <span>ช่างผู้รับซ่อม: ......................................................</span>
@@ -313,9 +363,8 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
             </html>
             """
             
-            # ใช้ components.html เพื่อเรนเดอร์ HTML ออกมาเป็นหน้ากระดาษสวยงามเป๊ะๆ
-            components.html(half_a4_html, height=650, scrolling=True)
-            st.info("💡 คำแนะนำ: แสดงผลผ่าน HTML Component เรียบร้อยแล้ว สามารถคลิกเข้าไปในกรอบด้านบนแล้วกด **Ctrl + P** (หรือ **Cmd + P** บน Mac) เพื่อสั่งพิมพ์ได้ทันทีครับ!")
+            # เรนเดอร์ด้วย Components ขนาดความสูงครอบคลุมแนวตั้ง A4
+            components.html(portrait_a4_html, height=1050, scrolling=True)
     else:
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
