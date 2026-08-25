@@ -190,7 +190,6 @@ def init_db(conn):
         )
     ''')
     
-    # อัปเดตคอลัมน์ภาษีในตาราง repairs แบบปลอดภัย
     for col, col_type in [('need_tax', 'INTEGER DEFAULT 0'), ('tax_name', 'TEXT'), ('tax_id', 'TEXT'), ('tax_branch', 'TEXT'), ('tax_address', 'TEXT')]:
         try:
             cursor.execute(f"ALTER TABLE repairs ADD COLUMN {col} {col_type};")
@@ -242,7 +241,7 @@ OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
 LOGO_PATH = LOGO_PATH or "logo.jpg"
 
 # ==========================================
-# 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า (Track หรือ Register)
+# 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า (Track, Register หรือ Commercial Request)
 # ==========================================
 query_params = st.query_params
 track_code = query_params.get("track", None)
@@ -389,8 +388,6 @@ if page_param == "register":
         j_c = st.session_state['public_registered_job']
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
-        st.markdown("คุณสามารถบันทึกหรือสแกน QR Code นี้เพื่อตรวจสอบสถานะงานซ่อมแบบเรียลไทม์ได้ตลอดเวลาครับ")
-        
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         qr_img = qrcode.make(track_url)
         qr_buf = BytesIO()
@@ -398,6 +395,69 @@ if page_param == "register":
         st.image(qr_buf.getvalue(), width=220, caption=f"สแกนเพื่อเช็คสถานะใบงาน: {j_c}")
         st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะงานซ่อม]({track_url})")
 
+    st.stop()
+
+# 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสารและกรอกข้อมูลเอง)
+if page_param == "commercial_request":
+    st.set_page_config(page_title=f"ขอออกเอกสารทางการค้า - {STORE_NAME}", page_icon="📄", layout="centered")
+    st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📄 {STORE_NAME}</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    with st.form("public_commercial_form"):
+        req_name = st.text_input("ชื่อ-นามสกุล / ชื่อบริษัท ลูกค้า *")
+        req_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ *")
+        req_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก (กรณีออกใบกำกับภาษี)")
+        req_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่)", value="สำนักงานใหญ่")
+        req_address = st.text_area("ที่อยู่สำหรับออกเอกสาร / ใบกำกับภาษี *")
+        
+        req_doc_type = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการ", [
+            "ใบเสนอราคา (Quotation - QT)",
+            "ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
+            "ใบกำกับภาษี (Tax Invoice - TAX)",
+            "ใบเสร็จรับเงิน (Cash Receipt - RC)"
+        ])
+        
+        st.markdown("---")
+        st.markdown("##### 🛒 รายการสินค้า / บริการ / อะไหล่ที่ต้องการ")
+        item_desc = st.text_input("รายละเอียดสินค้า / บริการ *", value="ค่าบริการซ่อมคอมพิวเตอร์และจัดหาอุปกรณ์ไอที")
+        item_qty = st.number_input("จำนวน", min_value=1, value=1)
+        item_price = st.number_input("ราคาต่อหน่วย (บาท)", min_value=0.0, step=100.0, value=1500.0)
+        
+        req_notes = st.text_area("หมายเหตุเพิ่มเติม (ถ้ามี)")
+        
+        submit_req = st.form_submit_button("📤 ส่งคำขอออกเอกสารเข้าร้าน")
+        if submit_req:
+            if req_name and req_phone and req_address and item_desc:
+                subtotal = item_qty * item_price
+                vat_amount = subtotal * 0.07 if "ใบกำกับภาษี" in req_doc_type else 0.0
+                grand_total = subtotal + vat_amount
+                
+                if "ใบเสนอราคา" in req_doc_type:
+                    d_type, prefix, status = "QT", P_QT, "รออนุมัติ"
+                elif "ใบส่งสินค้า" in req_doc_type:
+                    d_type, prefix, status = "IV", P_IV, "รอส่งสินค้า"
+                elif "ใบกำกับภาษี" in req_doc_type:
+                    d_type, prefix, status = "TAX", P_TAX, "รอออกใบเสร็จ"
+                else:
+                    d_type, prefix, status = "RC", P_RC, "เสร็จสิ้นการขาย"
+                    
+                doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+                items_list = [(item_desc, item_qty, item_price, subtotal)]
+                items_json_str = json.dumps(items_list, ensure_ascii=False)
+                
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (doc_no_gen, d_type, status, req_name, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
+                conn.commit()
+                cursor.close()
+                
+                st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}** ทางร้านจะดำเนินการตรวจสอบและออกเอกสารให้ทันทีครับ")
+                st.balloons()
+            else:
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
     st.stop()
 
 # ==========================================
@@ -623,15 +683,26 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
 # 2. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
 # ==========================================
 elif menu == "📱 QR โหลดหน้าลงทะเบียน":
-    st.header("📱 QR Code สำหรับลูกค้าสแกนลงทะเบียนแจ้งซ่อม")
-    st.markdown("เมื่อลูกค้านำมือถือมาสแกน QR Code นี้ จะเปิดเจอเฉพาะหน้าฟอร์มลงทะเบียนแจ้งซ่อมเท่านั้น โดยจะไม่เห็นข้อมูลภายในร้านครับ")
+    st.header("📱 QR Code สำหรับลูกค้าสแกน (เลือกระหว่างแจ้งซ่อม หรือ ขอออกเอกสารการค้า)")
     
-    reg_url = "https://zone-computer-pos.streamlit.app/?page=register"
-    img = qrcode.make(reg_url)
-    buf = BytesIO()
-    img.save(buf)
-    st.image(buf.getvalue(), caption="สแกนเพื่อเปิดหน้าลงทะเบียนแจ้งซ่อมออนไลน์ (สำหรับลูกค้า)", width=250)
-    st.code(reg_url, language="text")
+    col_q1, col_q2 = st.columns(2)
+    with col_q1:
+        st.subheader("1. QR Code แจ้งซ่อมออนไลน์")
+        reg_url = "https://zone-computer-pos.streamlit.app/?page=register"
+        img1 = qrcode.make(reg_url)
+        buf1 = BytesIO()
+        img1.save(buf1)
+        st.image(buf1.getvalue(), caption="สแกนเพื่อลงทะเบียนแจ้งซ่อม", width=220)
+        st.code(reg_url, language="text")
+        
+    with col_q2:
+        st.subheader("2. QR Code ขอออกเอกสารการค้า")
+        doc_req_url = "https://zone-computer-pos.streamlit.app/?page=commercial_request"
+        img2 = qrcode.make(doc_req_url)
+        buf2 = BytesIO()
+        img2.save(buf2)
+        st.image(buf2.getvalue(), caption="สแกนเพื่อขอใบเสนอราคา/ใบกำกับภาษี", width=220)
+        st.code(doc_req_url, language="text")
 
 # ==========================================
 # 3. ติดตาม & อัปเดตสถานะงานซ่อม
@@ -998,7 +1069,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 </table>
                                             </div>
 
-                                            <div style="width: 25%; text-align: center;">
+                                            <div style="text-align: center; width: 25%;">
                                                 {qr_tag}
                                             </div>
                                         </div>
@@ -1019,7 +1090,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
