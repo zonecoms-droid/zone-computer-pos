@@ -1,33 +1,77 @@
 import streamlit as st
 import pandas as pd
-import psycopg2
+import sqlite3
 from datetime import datetime
 import random
 
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(
-    page_title="ZoneOnline Service - Pro Edition", 
+    page_title="ZoneOnline Service - SQLite Pro Edition", 
     page_icon="⚡", 
     layout="wide"
 )
 
-# ฟังก์ชันเชื่อมต่อฐานข้อมูล PostgreSQL
+# ฟังก์ชันเชื่อมต่อและสร้างฐานข้อมูล SQLite แบบอัตโนมัติ
 def init_connection():
-    return psycopg2.connect(
-        host=st.secrets["postgres"]["host"],
-        database=st.secrets["postgres"]["database"],
-        user=st.secrets["postgres"]["user"],
-        password=st.secrets["postgres"]["password"],
-        port=st.secrets["postgres"]["port"]
-    )
+    # สร้างไฟล์ฐานข้อมูลชื่อ zone_online.db ในโปรเจกต์อัตโนมัติ
+    conn = sqlite3.connect('zone_online.db', check_same_thread=False)
+    return conn
 
-try:
-    conn = init_connection()
-except Exception as e:
-    st.error(f"⚠️ เชื่อมต่อฐานข้อมูลไม่สำเร็จ: {e}")
+def init_db(conn):
+    cursor = conn.cursor()
+    # 1. ตารางลูกค้า
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT UNIQUE NOT NULL,
+            address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    # 2. ตารางพนักงาน/ช่าง
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            full_name TEXT NOT NULL,
+            role TEXT CHECK(role IN ('admin', 'cashier', 'technician')) NOT NULL
+        )
+    ''')
+    # เพิ่มช่างเริ่มต้นถ้ายังไม่มีในระบบ
+    cursor.execute("SELECT COUNT(*) FROM staff")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech1', 'ช่างดิด (มือหนึ่ง)', 'technician')")
+        cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech2', 'ช่างเสริม', 'technician')")
+        conn.commit()
 
-st.title("⚡ ZoneOnline Service System [Pro Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ระดับโปร + สไตล์ FlowAccount)")
+    # 3. ตารางงานซ่อม
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS repairs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_code TEXT UNIQUE NOT NULL,
+            customer_id INTEGER,
+            device_name TEXT NOT NULL,
+            serial_number TEXT,
+            problem_description TEXT NOT NULL,
+            accessories TEXT,
+            estimated_cost REAL,
+            technician_id INTEGER,
+            status TEXT DEFAULT 'RECEIVED',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id),
+            FOREIGN KEY (technician_id) REFERENCES staff(id)
+        )
+    ''')
+    cursor.close()
+
+# เริ่มต้นเชื่อมต่อและสร้างตาราง
+conn = init_connection()
+init_db(conn)
+
+st.title("⚡ ZoneOnline Service System [SQLite Pro Edition]")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ใช้งานง่าย ไม่ต้องต่อ Host นอก)")
 
 # เมนูด้านข้าง (Sidebar)
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", [
@@ -73,7 +117,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่ (Pro Int
                 cursor.close()
                 tech_dict = {t[1]: t[0] for t in techs} if techs else {"ยังไม่มีช่างในระบบ": 0}
             except:
-                tech_dict = {"เชื่อมต่อฐานข้อมูลก่อน": 0}
+                tech_dict = {"ยังไม่มีข้อมูลช่าง": 0}
                 
             selected_tech_name = st.selectbox("มอบหมายให้ช่างผู้รับผิดชอบ", list(tech_dict.keys()))
             technician_id = tech_dict[selected_tech_name]
@@ -86,19 +130,23 @@ if menu == "📥 รับเครื่องซ่อมใหม่ (Pro Int
             if customer_name and phone and device_name:
                 try:
                     cursor = conn.cursor()
+                    
+                    # บันทึกหรืออัปเดตข้อมูลลูกค้า (SQLite Upsert)
                     cursor.execute("""
                         INSERT INTO customers (name, phone, address) 
-                        VALUES (%s, %s, %s) 
-                        ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address 
-                        RETURNING id;
+                        VALUES (?, ?, ?) 
+                        ON CONFLICT(phone) DO UPDATE SET name = excluded.name, address = excluded.address;
                     """, (customer_name, phone, address))
+                    
+                    # ดึง ID ของลูกค้า
+                    cursor.execute("SELECT id FROM customers WHERE phone = ?", (phone,))
                     customer_id = cursor.fetchone()[0]
                     
                     job_code = f"REP-{datetime.now().strftime('%Y%m%d')}-{random.randint(100,999)}"
                     
                     cursor.execute("""
                         INSERT INTO repairs (job_code, customer_id, device_name, serial_number, problem_description, accessories, estimated_cost, technician_id, status)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'RECEIVED')
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')
                     """, (job_code, customer_id, device_name, serial_number, problem_description, accessories, estimated_cost, technician_id))
                     
                     conn.commit()
@@ -120,14 +168,13 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
     try:
-        cursor = conn.cursor()
         query = """
             SELECT r.id, r.job_code, c.name as customer_name, c.phone, r.device_name, r.status, r.estimated_cost, r.created_at
             FROM repairs r
             JOIN customers c ON r.customer_id = c.id
         """
         if search_query:
-            query += f" WHERE r.job_code ILIKE '%{search_query}%' OR c.phone ILIKE '%{search_query}%' OR c.name ILIKE '%{search_query}%'"
+            query += f" WHERE r.job_code LIKE '%{search_query}%' OR c.phone LIKE '%{search_query}%' OR c.name LIKE '%{search_query}%'"
         query += " ORDER BY r.created_at DESC;"
         
         df = pd.read_sql(query, conn)
@@ -150,13 +197,14 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
             
             if st.button("💾 บันทึกการเปลี่ยนสถานะ"):
                 status_code = new_status.split(" ")[0]
-                cursor.execute("UPDATE repairs SET status = %s, updated_at = CURRENT_TIMESTAMP WHERE job_code = %s", (status_code, selected_job))
+                cursor = conn.cursor()
+                cursor.execute("UPDATE repairs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE job_code = ?", (status_code, selected_job))
                 conn.commit()
+                cursor.close()
                 st.success(f"อัปเดตสถานะใบงาน {selected_job} เป็น {status_code} เรียบร้อยแล้ว!")
                 st.rerun()
         else:
-            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
-        cursor.close()
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ หรือไม่พบคำค้นหาที่ระบุ")
     except Exception as e:
         st.error(f"ไม่สามารถดึงข้อมูลได้: {e}")
 
