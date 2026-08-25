@@ -326,7 +326,7 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
     
     # 📌 ลิงก์แอปจริงที่ใช้งานได้ถูกต้อง
-    qr_data = "https://zone-computer-pos.streamlit.app"
+    qr_data = "https://zone-computer-pos-jpy7s29appgkmnhjbumsnj8.streamlit.app/"
     
     img = qrcode.make(qr_data)
     buf = BytesIO()
