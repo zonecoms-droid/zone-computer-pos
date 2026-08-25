@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 import qrcode
 from io import BytesIO
@@ -637,7 +637,14 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
                         qr_tag = ""
-                        if "PromptPay" in pay_chanel:
+                        if "PromptPay" in pay_chanel and "ใบคืนสินค้า" in doc_choice:
+                            q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
+                            qr_obj = qrcode.make(q_cont)
+                            q_stream = BytesIO()
+                            qr_obj.save(q_stream)
+                            b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
+                        elif "PromptPay" in pay_chanel and "ใบเสร็จรับเงิน" in doc_choice:
                             q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
                             qr_obj = qrcode.make(q_cont)
                             q_stream = BytesIO()
@@ -898,11 +905,11 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับแต่งวันที่, เครดิต, พนักงานขาย, สกุลเงิน, ส่วนลด)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
-    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภทได้อย่างง่ายดาย พร้อมคำนวณและ QR Code ชำระเงินในตัว")
+    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภท ปรับแต่งวันที่ เครดิต พนักงานขาย สกุลเงิน และส่วนลดได้อิสระ")
     
     doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการออก", [
         "1. ใบเสนอราคา (Quotation - QT)",
@@ -922,11 +929,24 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด")
             c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012")
             c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
-        with col_c2:
-            st.subheader("📅 รายละเอียดเอกสาร")
             c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี")
-            c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today())
-            c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)", "เงินสด", "เครดิต 30 วัน", "บัตรเครดิต"])
+        with col_c2:
+            st.subheader("📅 รายละเอียดเอกสาร & เงื่อนไข")
+            c_doc_date = st.date_input("วันที่ (วันที่ออกเอกสาร)", datetime.today())
+            credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
+            
+            # คำนวณวันครบกำหนดอัตโนมัติจากวันที่ + เครดิตวัน
+            due_date = c_doc_date + timedelta(days=int(credit_days))
+            st.markdown(f"📌 **ครบกำหนด:** `{due_date.strftime('%Y-%m-%d')}`")
+            
+            salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
+            currency = st.selectbox("สกุลเงิน", ["THB", "USD", "EUR"])
+            
+            # ตรวจสอบว่าเป็นเอกสารที่ต้องซ่อนช่องชำระเงินหรือไม่ (QT, DO/IV, TAX)
+            is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
+            c_pay_method = "โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)"
+            if not is_no_payment_doc:
+                c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)", "เงินสด", "เครดิต 30 วัน", "บัตรเครดิต"])
 
         # ถ้าเป็นใบลดหนี้หรือใบเพิ่มหนี้ ให้ใส่ช่องอ้างอิงเอกสารเดิม
         ref_doc_html = ""
@@ -966,23 +986,28 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
         with col_note:
             com_notes = st.text_area("หมายเหตุท้ายเอกสาร / เงื่อนไข", value=STORE_NOTE)
         with col_summary:
+            discount_pct = st.number_input("ส่วนลด %", min_value=0.0, max_value=100.0, value=0.0, step=0.1)
             include_com_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
-            com_grand = com_subtotal * 1.07 if include_com_vat else com_subtotal
 
         generate_commercial_doc = st.form_submit_button("🖨️ สร้างเอกสารทางการค้าพร้อมพิมพ์ (FlowAccount Style)")
 
         if generate_commercial_doc:
-            # สร้าง QR Code พร้อมเพย์
+            # คำนวณส่วนลดและภาษีตามโครงสร้างใหม่
+            discount_amount = com_subtotal * (discount_pct / 100.0)
+            price_after_discount = com_subtotal - discount_amount
+            vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
+            com_grand = price_after_discount + vat_amount
+
+            # สร้าง QR Code พร้อมเพย์ (แสดงเฉพาะเอกสารที่มีชำระเงิน)
             com_qr_tag = ""
-            if "PromptPay" in c_pay_method:
+            if not is_no_payment_doc and "PromptPay" in c_pay_method:
                 q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{com_grand:.2f}"
                 qr_obj = qrcode.make(q_cont)
                 q_stream = BytesIO()
                 qr_obj.save(q_stream)
                 b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                com_qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {com_grand:,.2f} บาท</b></span>'
+                com_qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {com_grand:,.2f} {currency}</b></span>'
 
-            # สร้าง QR Code โซเชียล
             def make_social_qr(link, label):
                 if not link: return ""
                 sq = qrcode.make(link)
@@ -1000,9 +1025,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             for idx, val in enumerate(com_items_list):
                 items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
-            vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{com_subtotal * 0.07:,.2f} บาท</td></tr>" if include_com_vat else ""
+            discount_html = ""
+            if discount_pct > 0:
+                discount_html = f"<tr><td style='text-align: right;'><b>ส่วนลด ({discount_pct}%):</b></td><td style='text-align: right;'>- {discount_amount:,.2f} {currency}</td></tr>"
 
-            # แยกชื่อหัวข้อเอกสาร
+            vat_html = f"<tr><td style='text-align: right;'><b>ภาษีมูลค่าเพิ่ม 7% (VAT):</b></td><td style='text-align: right;'>{vat_amount:,.2f} {currency}</td></tr>" if include_com_vat else ""
+
             if "1." in doc_type_selected:
                 doc_title_str = "ใบเสนอราคา / QUOTATION"
                 doc_code_prefix = "QT"
@@ -1031,6 +1059,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                     <b>อ้างอิงใบกำกับภาษีเดิม:</b> {ref_doc_no} | <b>สาเหตุ:</b> {cn_dn_reason}
                 </div>
                 """
+
+            payment_row_html = ""
+            if not is_no_payment_doc:
+                payment_row_html = f'<td style="width: 35%;"><b>ช่องทางชำระเงิน:</b> {c_pay_method}</td>'
 
             commercial_html = f"""
             <html>
@@ -1074,6 +1106,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                     </div>
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {random_doc_no}</p>
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date}</p>
+                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date.strftime('%Y-%m-%d')} (เครดิต {credit_days} วัน)</p>
+                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {salesperson} | <b>สกุลเงิน:</b> {currency}</p>
                                 </td>
                             </tr>
                         </table>
@@ -1084,7 +1118,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                         <table class="cust-box tbl">
                             <tr>
                                 <td style="width: 65%;"><b>นามลูกค้า / บริษัท:</b> {c_target_name}</td>
-                                <td style="width: 35%;"><b>ช่องทางชำระเงิน:</b> {c_pay_method}</td>
+                                {payment_row_html}
                             </tr>
                             <tr>
                                 <td><b>ที่อยู่:</b> {c_target_address if c_target_address else '-'}</td>
@@ -1098,7 +1132,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                 <th>รายการสินค้า / บริการ / อะไหล่</th>
                                 <th style="text-align: center; width: 70px;">จำนวน</th>
                                 <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
-                                <th style="text-align: right; width: 130px;">จำนวนเงิน (บาท)</th>
+                                <th style="text-align: right; width: 130px;">จำนวนเงิน ({currency})</th>
                             </tr>
                             {items_html}
                         </table>
@@ -1112,9 +1146,11 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                 </td>
                                 <td style="width: 45%;">
                                     <table class="summary-tbl">
-                                        <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{com_subtotal:,.2f} บาท</td></tr>
+                                        <tr><td style="text-align: right;"><b>รวมเป็นเงิน (Subtotal):</b></td><td style="text-align: right; width: 140px;">{com_subtotal:,.2f} {currency}</td></tr>
+                                        {discount_html}
+                                        <tr><td style="text-align: right;"><b>ราคาหลังหักส่วนลด:</b></td><td style="text-align: right;">{price_after_discount:,.2f} {currency}</td></tr>
                                         {vat_html}
-                                        <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{com_grand:,.2f} บาท</b></td></tr>
+                                        <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>จำนวนเงินรวมทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{com_grand:,.2f} {currency}</b></td></tr>
                                     </table>
                                 </td>
                             </tr>
@@ -1127,7 +1163,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                             <table style="width: 100%; text-align: center; font-size: 11px;">
                                 <tr>
                                     <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
-                                        ลงชื่อ......................................................<br><b>ผู้รับมอบอำนาจ / ผู้ออกเอกสาร</b>
+                                        ลงชื่อ......................................................<br><b>ผู้รับมอบอำนาจ / ผู้ออกเอกสาร ({salesperson})</b>
                                     </td>
                                     <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
                                         ลงชื่อ......................................................<br><b>ผู้รับสินค้า / ลูกค้า</b>
