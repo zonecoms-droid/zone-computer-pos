@@ -124,7 +124,7 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, STORE_LINE, STORE_FB, STORE_TIKTOK = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมระบบ QR เช็คสถานะเรียลไทม์)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (เวอร์ชันสมบูรณ์แบบ)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -147,7 +147,7 @@ default_index = 0
 if query_params.get("page") == "register":
     default_index = 1
 elif query_params.get("track"):
-    default_index = 3 # ไปที่เมนูติดตามสถานะอัตโนมัติ
+    default_index = 3
 
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", menu_options, index=default_index)
 
@@ -245,7 +245,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
         if print_data:
             j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             
-            # สร้าง QR Code สำหรับเช็คสถานะเฉพาะใบงานนี้
+            # ป้องกันกรณี cost เป็น None ให้แปลงเป็น 0.0 ป้องกันพัง
+            cost = float(cost) if cost is not None else 0.0
+            
             track_url = f"https://zone-computer-pos.streamlit.app/?track={j_code}"
             qr_track_obj = qrcode.make(track_url)
             track_stream = BytesIO()
@@ -451,7 +453,6 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกใบเสร็จส่งมอบ (COMPLETED)")
     
-    # รองรับการดึงค่าจาก QR Code ที่สแกนเข้ามา (?track=REP-...)
     search_default = query_params.get("track", "")
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า", value=search_default)
     
