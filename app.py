@@ -130,14 +130,43 @@ def init_db(conn):
 conn = init_connection()
 init_db(conn)
 
-# ดึงข้อมูลร้านค้ามาใช้แสดงผล
+# ดึงข้อมูลร้านค้ามาใช้แสดงผล พร้อมใส่ค่าป้องกัน None กัน Error
 cursor = conn.cursor()
 cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
-(STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
- STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
- DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL) = store_info
+
+if store_info:
+    (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
+     STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL) = store_info
+else:
+    STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1234567890123", "อุบลราชธานี", "ขอบคุณ", "0891234567"
+    STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
+    P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
+    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0
+
+# ป้องกันค่า None ซ้ำอีกรอบ
+STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
+STORE_PHONE = STORE_PHONE or ""
+STORE_TAX = STORE_TAX or ""
+STORE_ADDRESS = STORE_ADDRESS or ""
+STORE_NOTE = STORE_NOTE or ""
+STORE_PROMPTPAY = STORE_PROMPTPAY or ""
+STORE_LINE = STORE_LINE or ""
+STORE_FB = STORE_FB or ""
+STORE_TIKTOK = STORE_TIKTOK or ""
+P_QT = P_QT or "QT"
+P_IV = P_IV or "IV"
+P_TAX = P_TAX or "TAX"
+P_RC = P_RC or "RC"
+P_CN = P_CN or "CN"
+P_DN = P_DN or "DN"
+DEF_CURR = DEF_CURR or "THB"
+ACC_METHOD = ACC_METHOD or "เกณฑ์สิทธิ์ (Accrual)"
+ACC_PERIOD = ACC_PERIOD or "2026"
+LOCK_PER = LOCK_PER or "ยังไม่ล็อก"
+OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
 
 # ==========================================
 # 🔍 โหมดพิเศษ: หน้าจอเช็คสถานะสาธารณะผ่าน QR Code (?track=...)
@@ -936,7 +965,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - อัปเดตศูนย์กลางการตั้งค่าร้านค้าครบถ้วน)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับปรุงลายเซ็นคู่ขนานตามประเภทเอกสาร)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
