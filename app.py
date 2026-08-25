@@ -241,10 +241,11 @@ OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
 LOGO_PATH = LOGO_PATH or "logo.jpg"
 
 # ==========================================
-# 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า (Track, Register หรือ Commercial Request)
+# 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
 # ==========================================
 query_params = st.query_params
 track_code = query_params.get("track", None)
+track_doc = query_params.get("track_doc", None)
 page_param = query_params.get("page", None)
 
 # 1. โหมดตรวจสอบสถานะงานซ่อมผ่าน QR Code
@@ -328,7 +329,75 @@ if track_code:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
     st.stop()
 
-# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
+# 1.1 โหมดตรวจสอบสถานะเอกสารการค้าผ่าน QR Code (track_doc)
+if track_doc:
+    st.set_page_config(page_title=f"ติดตามสถานะเอกสาร - {STORE_NAME}", page_icon="📄", layout="centered")
+    
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT doc_no, doc_type, status, customer_name, grand_total, currency, items_json, created_at 
+        FROM commercial_docs WHERE doc_no = ?
+    """, (track_doc,))
+    doc_data = cursor.fetchone()
+    cursor.close()
+    
+    if doc_data:
+        d_no, d_type, d_stat, c_name, g_tot, curr, items_json_str, d_date = doc_data
+        type_dict = {"QT": "ใบเสนอราคา (Quotation)", "IV": "ใบส่งสินค้า / ใบแจ้งหนี้ (Invoice)", "TAX": "ใบกำกับภาษี (Tax Invoice)", "RC": "ใบเสร็จรับเงิน (Cash Receipt)"}
+        doc_type_name = type_dict.get(d_type, d_type)
+        
+        name_parts = c_name.split()
+        masked_cname = f"คุณ {name_parts[0]} ({name_parts[1][0]}***)" if len(name_parts) > 1 else f"คุณ {c_name}"
+
+        public_doc_html = f"""
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>สถานะเอกสาร - {STORE_NAME}</title>
+            <style>
+                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
+                .card {{ background: white; padding: 30px 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; animation: fadeIn 0.8s ease-in-out; }}
+                @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+                h2 {{ color: #333; margin-bottom: 5px; font-size: 22px; }}
+                .store-sub {{ color: #666; font-size: 13px; margin-bottom: 20px; }}
+                .info-box {{ background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; font-size: 14px; border-left: 4px solid #0284c7; }}
+                .info-box p {{ margin: 6px 0; color: #444; }}
+                .status-badge {{ background-color: #0284c7; color: white; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 15px; display: inline-block; margin: 15px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }}
+                .footer {{ margin-top: 20px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 15px; }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>⚡ {STORE_NAME}</h2>
+                <div class="store-sub">ระบบตรวจสอบสถานะเอกสารทางการค้า</div>
+                
+                <div class="info-box">
+                    <p><b>เลขที่เอกสาร:</b> {d_no}</p>
+                    <p><b>ประเภทเอกสาร:</b> {doc_type_name}</p>
+                    <p><b>ชื่อลูกค้า:</b> {masked_cname}</p>
+                    <p><b>ยอดเงินรวมทั้งสิ้น:</b> <b style="color: #0284c7;">{g_tot:,.2f} {curr}</b></p>
+                    <p><b>วันที่ขอเอกสาร:</b> {d_date}</p>
+                </div>
+                
+                <div>
+                    <div class="status-badge">📌 สถานะ: {d_stat}</div>
+                </div>
+
+                <div class="footer">
+                    📞 โทรสอบถามด่วน: {STORE_PHONE}<br>ขอบคุณที่ใช้บริการร้านโซนคอมพิวเตอร์ครับ 🙏
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        components.html(public_doc_html, height=620, scrolling=True)
+    else:
+        st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
+    st.stop()
+
+# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code พร้อมปุ่มดาวน์โหลด QR Code และแสดงชื่อ/เบอร์โทรใต้ QR
 if page_param == "register":
     st.set_page_config(page_title=f"ลงทะเบียนแจ้งซ่อม - {STORE_NAME}", page_icon="📱", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
@@ -388,20 +457,41 @@ if page_param == "register":
         j_c = st.session_state['public_registered_job']
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
+        st.markdown("คุณสามารถบันทึกหรือสแกน QR Code นี้เพื่อตรวจสอบสถานะงานซ่อมแบบเรียลไทม์ได้ตลอดเวลาครับ")
+        
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         qr_img = qrcode.make(track_url)
         qr_buf = BytesIO()
         qr_img.save(qr_buf)
-        st.image(qr_buf.getvalue(), width=220, caption=f"สแกนเพื่อเช็คสถานะใบงาน: {j_c}")
+        
+        # แสดงรูป QR Code
+        st.image(qr_buf.getvalue(), width=220)
+        
+        # แสดงชื่อร้านและเบอร์โทรใต้ QR Code ตามที่ลูกค้าขอ
+        st.markdown(f"""
+        <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
+            <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
+            <span style="color: #475569; font-size: 12px;">📞 โทร: {STORE_PHONE}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # ปุ่มบันทึก QR Code ลงเครื่องลูกค้า
+        st.download_button(
+            label="📥 บันทึก QR Code ลงเครื่อง",
+            data=qr_buf.getvalue(),
+            file_name=f"QR_Tracking_{j_c}.png",
+            mime="image/png"
+        )
+        
         st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะงานซ่อม]({track_url})")
 
     st.stop()
 
-# 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสารและกรอกข้อมูลเอง)
+# 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสาร และเพิ่มรายการสินค้าได้หลายรายการ)
 if page_param == "commercial_request":
-    st.set_page_config(page_title=f"ขอออกเอกสารทางการค้า - {STORE_NAME}", page_icon="📄", layout="centered")
+    st.set_page_config(page_title=f"ขอออกเอกสารการค้า - {STORE_NAME}", page_icon="📄", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📄 {STORE_NAME}</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า (เพิ่มรายการสินค้าได้ตามต้องการ)</p>", unsafe_allow_html=True)
     st.markdown("---")
     
     with st.form("public_commercial_form"):
@@ -420,17 +510,29 @@ if page_param == "commercial_request":
         
         st.markdown("---")
         st.markdown("##### 🛒 รายการสินค้า / บริการ / อะไหล่ที่ต้องการ")
-        item_desc = st.text_input("รายละเอียดสินค้า / บริการ *", value="ค่าบริการซ่อมคอมพิวเตอร์และจัดหาอุปกรณ์ไอที")
-        item_qty = st.number_input("จำนวน", min_value=1, value=1)
-        item_price = st.number_input("ราคาต่อหน่วย (บาท)", min_value=0.0, step=100.0, value=1500.0)
+        num_req_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
         
+        subtotal = 0.0
+        req_items_list = []
+        for i in range(int(num_req_items)):
+            cols = st.columns([3, 1, 1])
+            with cols[0]:
+                r_desc = st.text_input(f"รายการที่ {i+1}", value=f"รายการสินค้า/บริการ {i+1}", key=f"req_desc_{i}")
+            with cols[1]:
+                r_qty = st.number_input("จำนวน", min_value=1, value=1, key=f"req_qty_{i}")
+            with cols[2]:
+                r_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"req_price_{i}")
+            tot = r_qty * r_price
+            subtotal += tot
+            req_items_list.append((r_desc, r_qty, r_price, tot))
+            
+        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True if "ใบกำกับภาษี" in req_doc_type else False)
         req_notes = st.text_area("หมายเหตุเพิ่มเติม (ถ้ามี)")
         
         submit_req = st.form_submit_button("📤 ส่งคำขอออกเอกสารเข้าร้าน")
         if submit_req:
-            if req_name and req_phone and req_address and item_desc:
-                subtotal = item_qty * item_price
-                vat_amount = subtotal * 0.07 if "ใบกำกับภาษี" in req_doc_type else 0.0
+            if req_name and req_phone and req_address and req_items_list:
+                vat_amount = subtotal * 0.07 if include_vat else 0.0
                 grand_total = subtotal + vat_amount
                 
                 if "ใบเสนอราคา" in req_doc_type:
@@ -443,8 +545,7 @@ if page_param == "commercial_request":
                     d_type, prefix, status = "RC", P_RC, "เสร็จสิ้นการขาย"
                     
                 doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
-                items_list = [(item_desc, item_qty, item_price, subtotal)]
-                items_json_str = json.dumps(items_list, ensure_ascii=False)
+                items_json_str = json.dumps(req_items_list, ensure_ascii=False)
                 
                 cursor = conn.cursor()
                 cursor.execute("""
@@ -454,10 +555,23 @@ if page_param == "commercial_request":
                 conn.commit()
                 cursor.close()
                 
-                st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}** ทางร้านจะดำเนินการตรวจสอบและออกเอกสารให้ทันทีครับ")
+                st.session_state['public_registered_doc'] = doc_no_gen
+                st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}**")
                 st.balloons()
             else:
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+
+    if 'public_registered_doc' in st.session_state:
+        d_c = st.session_state['public_registered_doc']
+        st.markdown("---")
+        st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
+        track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
+        qr_img = qrcode.make(track_doc_url)
+        qr_buf = BytesIO()
+        qr_img.save(qr_buf)
+        st.image(qr_buf.getvalue(), width=220, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
+        st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะเอกสาร]({track_doc_url})")
+
     st.stop()
 
 # ==========================================
@@ -683,7 +797,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
 # 2. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
 # ==========================================
 elif menu == "📱 QR โหลดหน้าลงทะเบียน":
-    st.header("📱 QR Code สำหรับลูกค้าสแกน (เลือกระหว่างแจ้งซ่อม หรือ ขอออกเอกสารการค้า)")
+    st.header("📱 QR Code สำหรับลูกค้าสแกน (เลือกประเภท QR Code ตามต้องการ)")
     
     col_q1, col_q2 = st.columns(2)
     with col_q1:
