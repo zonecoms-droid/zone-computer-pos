@@ -231,7 +231,7 @@ st.set_page_config(
 )
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ใบเสร็จและใบกำกับภาษีขนาดเต็มแผ่น พร้อม QR โซเชียล)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ใบเสร็จ & ใบกำกับภาษี สไตล์ FlowAccount เต็มแผ่น)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -573,32 +573,32 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 st.success(f"อัปเดตสถานะสำเร็จ!")
                 st.rerun()
 
-            # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
+            # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสารสไตล์ FlowAccount ---
             if selected_row['status'].startswith('COMPLETED'):
                 st.markdown("---")
-                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! กรุณาเลือกประเภทเอกสารที่ต้องการออกด้านล่างนี้ครับ")
+                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! กรุณาเลือกประเภทเอกสารทางการค้าที่ต้องการออกด้านล่างนี้ครับ")
                 
                 doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
                     "📦 ใบคืนสินค้า (Delivery Slip - A4 ครึ่งหน้า)", 
-                    "💵 ใบเสร็จรับเงิน (Receipt - A4 เต็มแผ่น)", 
-                    "📄 ใบกำกับภาษี (Tax Invoice - A4 เต็มแผ่น)"
+                    "💵 ใบเสร็จรับเงิน (Cash Receipt - A4 เต็มแผ่น FlowAccount Style)", 
+                    "📄 ใบกำกับภาษี (Tax Invoice - A4 เต็มแผ่น FlowAccount Style)"
                 ])
                 
                 with st.form(f"form_doc_{selected_job}"):
                     tax_cust_name = selected_row['customer_name']
                     tax_cust_id = ""
                     tax_cust_branch = "สำนักงานใหญ่"
-                    tax_cust_address = ""
+                    tax_cust_address = selected_row['address'] if selected_row['address'] else ""
                     
                     if "ใบกำกับภาษี" in doc_choice:
-                        st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (สำหรับออกใบกำกับภาษี)")
+                        st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (สำหรับออกใบกำกับภาษีตามกฎหมายสรรพากร)")
                         tc_col1, tc_col2 = st.columns(2)
                         with tc_col1:
                             tax_cust_name = st.text_input("ชื่อลูกค้า / บริษัท", value=selected_row['customer_name'])
                             tax_cust_id = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="")
                         with tc_col2:
                             tax_cust_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
-                            tax_cust_address = st.text_area("ที่อยู่ตามทะเบียนภาษี", value="")
+                            tax_cust_address = st.text_area("ที่อยู่ตามทะเบียนภาษี", value=selected_row['address'] if selected_row['address'] else "")
                         st.markdown("---")
 
                     c_col1, c_col2 = st.columns(2)
@@ -662,9 +662,9 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                         items_html = ""
                         for idx, val in enumerate(items_data):
-                            items_html += f"<tr><td style='border-bottom:1px solid #ddd; padding:6px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #ddd; padding:6px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #ddd; padding:6px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #ddd; padding:6px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+                            items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
-                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:6px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:6px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
+                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
                         # -------------------------------------------------------------------------
                         # 📦 กรณีเลือก "ใบคืนสินค้า" (A4 ครึ่งหน้า แบบเดิม)
@@ -772,109 +772,122 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                             </html>
                             """
                         # -------------------------------------------------------------------------
-                        # 💵 / 📄 กรณีเลือก "ใบเสร็จรับเงิน" หรือ "ใบกำกับภาษี" (ขนาดเต็มแผ่น A4 Full Page)
+                        # 💵 / 📄 กรณีเลือก "ใบเสร็จรับเงิน" หรือ "ใบกำกับภาษี" (FlowAccount Style เต็มแผ่น A4)
                         # -------------------------------------------------------------------------
                         else:
                             is_tax = "ใบกำกับภาษี" in doc_choice
-                            doc_title = "ใบกำกับภาษี / Tax Invoice" if is_tax else "ใบเสร็จรับเงิน / Cash Receipt"
-                            
-                            tax_section_html = ""
-                            if is_tax:
-                                tax_section_html = f"""
-                                <table class="tbl" style="background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
-                                    <tr><td colspan="2"><b>นามผู้ซื้อสินค้า / ผู้รับบริการ:</b> {tax_cust_name}</td></tr>
-                                    <tr><td><b>เลขประจำตัวผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'}</td><td><b>สาขา:</b> {tax_cust_branch}</td></tr>
-                                    <tr><td colspan="2"><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td></tr>
-                                </table>
-                                """
-                            else:
-                                tax_section_html = f"""
-                                <table class="tbl" style="background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
-                                    <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
-                                    <tr><td colspan="2"><b>อุปกรณ์ที่ซ่อม:</b> {selected_row['device_name']}</td></tr>
-                                </table>
-                                """
+                            doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
 
                             final_html = f"""
                             <html>
                             <head>
                             <style>
-                                @page {{ size: A4 portrait; margin: 15mm; }}
-                                body {{ background: #f0f2f5; font-family: sans-serif; color: #333; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
-                                .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                                .print-btn:hover {{ background-color: #218838; }}
-                                .full-page {{ background: white; border: 1px solid #ccc; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }}
-                                .tbl {{ width: 100%; border-collapse: collapse; }}
-                                .full-items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
-                                .full-items-tbl th {{ background: #1e293b; color: white; padding: 8px; text-align: left; }}
-                                .full-items-tbl td {{ padding: 8px; border-bottom: 1px solid #e2e8f0; }}
-                                .footer-content {{ display: flex; justify-content: space-between; margin-top: 30px; align-items: flex-start; border-top: 1px solid #cbd5e1; padding-top: 20px; font-size: 12px; }}
+                                @page {{ size: A4 portrait; margin: 12mm; }}
+                                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                                .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                                .print-btn:hover {{ background-color: #0369a1; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                                .header-tbl {{ width: 100%; border-collapse: collapse; }}
+                                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
+                                .cust-box td {{ padding: 4px 8px; }}
+                                .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
+                                .items-tbl th {{ background: #0f172a; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                                .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
+                                .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
+                                .summary-tbl td {{ padding: 6px 10px; }}
+                                .footer-box {{ display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 20px; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
                                     .print-btn {{ display: none; }}
-                                    .full-page {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
+                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
                             </head>
                             <body>
-                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารขนาดเต็มแผ่น A4</button>
-                                <div class="full-page">
+                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร FlowAccount Style (A4 เต็มแผ่น)</button>
+                                <div class="flow-container">
                                     <div>
-                                        <!-- Header -->
-                                        <table class="tbl">
+                                        <!-- FlowAccount Header -->
+                                        <table class="header-tbl">
                                             <tr>
-                                                <td>
-                                                    <h2 style="margin: 0; color: #1e293b;"><b>{STORE_NAME}</b></h2>
-                                                    <p style="font-size: 12px; margin: 3px 0; color: #555;">{STORE_ADDRESS}</p>
-                                                    <p style="font-size: 12px; margin: 3px 0; color: #555;">โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                                                <td style="vertical-align: top;">
+                                                    <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                                    <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
-                                                    <h2 style="color: #0284c7; margin: 0;"><b>{doc_title}</b></h2>
-                                                    <p style="font-size: 12px; margin: 4px 0;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                    <p style="font-size: 12px; margin: 4px 0;"><b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                    <div style="background: #0284c7; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px; margin-bottom: 8px;">
+                                                        {doc_title}
+                                                    </div>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
                                                 </td>
                                             </tr>
                                         </table>
-                                        <hr style="border: 0; border-top: 2px solid #e2e8f0; margin: 15px 0;">
-                                        
-                                        {tax_section_html}
-                                        
+
+                                        <!-- Customer Box -->
+                                        <table class="cust-box tbl">
+                                            <tr>
+                                                <td style="width: 65%;"><b>ชื่อลูกค้า / บริษัท:</b> {tax_cust_name}</td>
+                                                <td style="width: 35%;"><b>ช่องทางชำระเงิน:</b> {pay_chanel}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
+                                                <td><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'} ({tax_cust_branch})</td>
+                                            </tr>
+                                        </table>
+
                                         <!-- Items Table -->
-                                        <table class="full-items-tbl">
+                                        <table class="items-tbl">
                                             <tr>
                                                 <th>รายการสินค้า / บริการ / อะไหล่</th>
-                                                <th style="text-align: center; width: 60px;">จำนวน</th>
-                                                <th style="text-align: right; width: 100px;">ราคา/หน่วย</th>
-                                                <th style="text-align: right; width: 120px;">จำนวนเงิน (บาท)</th>
+                                                <th style="text-align: center; width: 70px;">จำนวน</th>
+                                                <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
+                                                <th style="text-align: right; width: 130px;">จำนวนเงิน (บาท)</th>
                                             </tr>
                                             {items_html}
-                                            <tr><td colspan="3" style="text-align: right; padding-top: 12px;"><b>มูลค่ารวมสินค้า (Subtotal):</b></td><td style="text-align: right; padding-top: 12px;">{subtotal:,.2f} บาท</td></tr>
-                                            {vat_html}
-                                            <tr><td colspan="3" style="text-align: right; padding: 10px; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; padding: 10px; font-size: 15px; color: #0284c7;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                        </table>
+
+                                        <!-- Summary Section -->
+                                        <table style="width: 100%; margin-top: 10px;">
+                                            <tr>
+                                                <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
+                                                    <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
+                                                    {custom_notes}
+                                                </td>
+                                                <td style="width: 45%;">
+                                                    <table class="summary-tbl">
+                                                        <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
+                                                        {vat_html}
+                                                        <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
                                         </table>
                                     </div>
 
-                                    <!-- Footer -->
-                                    <div class="footer-content">
-                                        <div style="width: 55%;">
-                                            <p style="margin: 0 0 8px 0;"><b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b></p>
-                                            <p style="margin: 0; color: #555; font-size: 11px;">{custom_notes}</p>
-                                            
-                                            <table style="width: 100%; margin-top: 35px; font-size: 11px;">
+                                    <!-- Footer & Signatures & Social QR -->
+                                    <div class="footer-box">
+                                        <div style="width: 45%;">
+                                            <table style="width: 100%; text-align: center; font-size: 11px;">
                                                 <tr>
-                                                    <td style="text-align: center; border-top: 1px solid #999; padding-top: 6px;">ลงชื่อ......................................................<br>(ผู้รับสินค้า / ลูกค้า)</td>
-                                                    <td style="text-align: center; border-top: 1px solid #999; padding-top: 6px;">ลงชื่อ......................................................<br>(ผู้ออกเอกสาร / ร้านค้า)</td>
+                                                    <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
+                                                        ลงชื่อ......................................................<br><b>ผู้รับเงิน / ผู้ส่งมอบ</b>
+                                                    </td>
+                                                    <td style="border-top: 1px solid #94a3b8; padding-top: 6px;">
+                                                        ลงชื่อ......................................................<br><b>ผู้จ่ายเงิน / ลูกค้า</b>
+                                                    </td>
                                                 </tr>
                                             </table>
                                         </div>
 
-                                        <div style="width: 40%; text-align: right;">
+                                        <div style="width: 25%; text-align: center;">
                                             {qr_tag}
-                                            <div style="margin-top: 20px; text-align: center; font-size: 10px; color: #555;">
-                                                <b>ช่องทางติดต่อ & ติดตามร้านเรา:</b><br>
-                                                <div style="margin-top: 6px;">
-                                                    {social_html}
-                                                </div>
+                                        </div>
+
+                                        <div style="width: 25%; text-align: center; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span><br>
+                                            <div style="margin-top: 5px;">
+                                                {social_html}
                                             </div>
                                         </div>
                                     </div>
