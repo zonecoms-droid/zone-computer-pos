@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-sqlite3
+import sqlite3
 from datetime import datetime, timedelta
 import random
 import qrcode
@@ -1030,11 +1030,11 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - Sales Pipeline & Workflow with Color Coding)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
-    st.markdown("จัดการวงจรการขายครบวงจร: ใบเสนอราคา ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (พร้อมใบลดหนี้และใบเพิ่มหนี้)")
+    st.markdown("จัดการวงจรการขายครบวงจร: ใบเสนอราคา ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (พร้อมใบลดหนี้และใบเพิ่มหนี้ แยกสีธีมตามประเภทเอกสาร)")
 
     sub_menu = st.radio("🗂️ เลือกโหมดการจัดการ", ["📝 สร้างเอกสารใหม่ (Create Document)", "📋 ติดตามสถานะและส่งต่อเอกสาร (Sales Pipeline)"], horizontal=True)
     st.markdown("---")
@@ -1175,7 +1175,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
 
                 col_act1, col_act2 = st.columns(2)
                 with col_act1:
-                    # เงื่อนไขการเปลี่ยนสถานะตาม Workflow
                     next_action_label = ""
                     target_next_type = ""
                     target_next_status = ""
@@ -1197,7 +1196,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                         if st.button(next_action_label):
                             cursor = conn.cursor()
                             if target_next_type:
-                                # สร้างเอกสารขั้นตอนถัดไปอัตโนมัติโดยคัดลอกข้อมูลเดิม
                                 if target_next_type == 'IV': prefix = P_IV
                                 elif target_next_type == 'TAX': prefix = P_TAX
                                 else: prefix = P_RC
@@ -1208,7 +1206,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (new_doc_no_gen, target_next_type, target_next_status, cur_doc['customer_name'], cur_doc['customer_tax'], cur_doc['customer_branch'], cur_doc['customer_address'], cur_doc['doc_date'], cur_doc['due_date'], cur_doc['salesperson'], cur_doc['currency'], cur_doc['items_json'], cur_doc['subtotal'], cur_doc['discount_pct'], cur_doc['vat_amount'], cur_doc['grand_total'], cur_doc['doc_no'], cur_doc['notes']))
                             
-                            # อัปเดตสถานะเอกสารปัจจุบันเป็นเสร็จสิ้นขั้นตอน
                             cursor.execute("UPDATE commercial_docs SET status = 'อนุมัติ/ส่งต่อแล้ว' WHERE doc_no = ?", (selected_doc_no,))
                             conn.commit()
                             cursor.close()
@@ -1219,13 +1216,11 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
 
                 with col_act2:
                     if st.button("🖨️ พิมพ์เอกสารนี้ทันที (FlowAccount Style)"):
-                        # แปลงข้อมูลรายการสินค้าจาก JSON กลับมาแสดงผลในรูปแบบ HTML พิมพ์
                         items_parsed = json.loads(cur_doc['items_json'])
                         print_items_html = ""
                         for idx, val in enumerate(items_parsed):
                             print_items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
-                        # กำหนดสีตามประเภทเอกสาร
                         d_t = cur_doc['doc_type']
                         if d_t == 'QT':
                             t_title, t_color, l_sign, r_sign = "ใบเสนอราคา / QUOTATION", "#0d9488", "ผู้เสนอ / ผู้ออกเอกสาร", "ผู้อนุมัติ / ลูกค้า"
