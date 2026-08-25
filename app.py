@@ -119,7 +119,7 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, STORE_LINE, STORE_FB, STORE_TIKTOK = store_info
 
 # ==========================================
-# 🔍 โหมดพิเศษ: ถ้ามีพารามิเตอร์ ?track=... ให้แสดงหน้าเช็คสถานะแบบส่วนตัว (ไม่มีเมนูแอดมิน)
+# 🔍 โหมดพิเศษ: หน้าจอเช็คสถานะสาธารณะผ่าน QR Code (?track=...)
 # ==========================================
 query_params = st.query_params
 track_code = query_params.get("track", None)
@@ -139,7 +139,6 @@ if track_code:
     if job_data:
         j_code, dev, prob, stat, d_in, d_up, c_name = job_data
         
-        # แปลงสถานะเป็นภาษาไทยและกำหนดสี/ไอคอน
         status_dict = {
             "RECEIVED": ("📥 รับเครื่องเข้าศูนย์ซ่อมแล้ว", "#17a2b8", "ช่างรับเครื่องและบันทึกเข้าสู่ระบบเรียบร้อย"),
             "CHECKING": ("🔍 กำลังตรวจสอบอาการ", "#ffc107", "ช่างกำลังเช็คความผิดปกติของอุปกรณ์"),
@@ -151,7 +150,6 @@ if track_code:
         
         thai_status, badge_color, status_desc = status_dict.get(stat, ("📌 กำลังดำเนินการ", "#6c757d", "สถานะกำลังอัปเดต"))
         
-        # ซ่อนชื่อลูกค้าบางส่วนเพื่อความเป็นส่วนตัว (เช่น "นายสมชาย ใจดี" -> "คุณ สมชาย (จ...)")
         name_parts = c_name.split()
         masked_name = f"คุณ {name_parts[0]} ({name_parts[1][0]}***)" if len(name_parts) > 1 else f"คุณ {c_name}"
 
@@ -200,14 +198,13 @@ if track_code:
             </div>
 
             <script>
-                // เล่นเสียงติ๊งเบาๆ เมื่อโหลดหน้าเว็บสถานะสำเร็จ
                 window.addEventListener('load', () => {{
                     try {{
                         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                         const osc = audioCtx.createOscillator();
                         const gain = audioCtx.createGain();
                         osc.type = 'sine';
-                        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime); // โน้ต E5
+                        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime);
                         gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
                         osc.connect(gain);
                         gain.connect(audioCtx.destination);
@@ -222,7 +219,7 @@ if track_code:
         components.html(public_html, height=650, scrolling=True)
     else:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
-    st.stop() # หยุดการทำงานไม่ให้เรนเดอร์หน้าแอดมินต่อ
+    st.stop()
 
 # ==========================================
 # 🖥️ หน้าแอดมินปกติ (Admin Dashboard)
@@ -234,7 +231,7 @@ st.set_page_config(
 )
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อม QR เช็คสถานะเรียลไทม์แบบปลอดภัย)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (แยกระบบพิมพ์ใบคืนสินค้าและใบเสร็จสมบูรณ์)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -347,7 +344,6 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
             j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             cost = float(cost) if cost is not None else 0.0
             
-            # สร้าง QR Code สำหรับเช็คสถานะเฉพาะใบงานนี้โดยตรง
             track_url = f"https://zone-computer-pos.streamlit.app/?track={j_code}"
             qr_track_obj = qrcode.make(track_url)
             track_stream = BytesIO()
@@ -521,10 +517,10 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
             st.image(buf.getvalue(), width=140)
 
 # ==========================================
-# 4. ติดตาม & อัปเดตสถานะงานซ่อม
+# 4. ติดตาม & อัปเดตสถานะงานซ่อม (พร้อมปุ่มพิมพ์แยกเอกสารเมื่อ COMPLETED)
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
-    st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกใบเสร็จส่งมอบ (COMPLETED)")
+    st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
     try:
@@ -564,7 +560,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 "RECEIVED (รับเครื่องเข้า)", "CHECKING (กำลังตรวจสอบอาการ)", 
                 "WAITING_PART (รออะไหล่/ตีราคา)", "REPAIRING (กำลังดำเนินการซ่อม)", 
                 "COMPLETED (ซ่อมเสร็จสิ้น พร้อมส่งมอบ)", "CANCELLED (ยกเลิกการซ่อม)"
-            ], index=0)
+            ], index=4 if selected_row['status'].startswith('COMPLETED') else 0)
             
             if st.button("💾 บันทึกการเปลี่ยนสถานะ"):
                 status_code = new_status.split(" ")[0]
@@ -574,6 +570,204 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 cursor.close()
                 st.success(f"อัปเดตสถานะสำเร็จ!")
                 st.rerun()
+
+            # --- ถ้าสถานะเป็น COMPLETED ให้แยกปุ่มพิมพ์ "ใบคืนสินค้า" และ "ใบเสร็จรับเงิน" ออกจากกัน ---
+            if selected_row['status'].startswith('COMPLETED'):
+                st.markdown("---")
+                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! สามารถเลือกพิมพ์ **ใบคืนสินค้า** หรือ **ใบเสร็จรับเงิน** พร้อมแก้ไขรายการ ราคา และช่องหมายเหตุได้ด้านล่างครับ")
+                
+                doc_choice = st.radio("🖨️ เลือกประเภทเอกสารที่ต้องการพิมพ์:", ["📦 พิมพ์ใบคืนสินค้า (Delivery Slip)", "💵 พิมพ์ใบเสร็จรับเงิน / ใบกำกับภาษี (Receipt / Tax Invoice)"])
+                
+                with st.form(f"form_doc_{selected_job}"):
+                    c_col1, c_col2 = st.columns(2)
+                    with c_col1:
+                        pay_chanel = st.selectbox("ช่องทางชำระเงิน", ["เงินสด", "โอนเงินผ่าน PromptPay QR", "บัตรเครดิต"])
+                    with c_col2:
+                        warrant_days = st.number_input("ระยะเวลารับประกันหลังซ่อม (วัน)", min_value=0, value=30)
+                        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
+
+                    st.markdown("#### 🛒 ปรับแต่งรายการค่าบริการและอะไหล่ (แก้ไขได้อย่างอิสระ)")
+                    num_items = st.number_input("จำนวนรายการ", min_value=1, max_value=10, value=1, key=f"num_{selected_job}")
+                    
+                    subtotal = 0.0
+                    items_data = []
+                    
+                    for i in range(int(num_items)):
+                        cols = st.columns([3, 1, 1, 1])
+                        with cols[0]:
+                            desc = st.text_input(f"รายการที่ {i+1}", value=selected_row['problem_description'] if i == 0 else f"อะไหล่ชิ้นที่ {i+1}", key=f"desc_{selected_job}_{i}")
+                        with cols[1]:
+                            qty = st.number_input("จำนวน", min_value=1, value=1, key=f"qty_{selected_job}_{i}")
+                        with cols[2]:
+                            default_p = float(selected_row['estimated_cost']) if (i == 0 and selected_row['estimated_cost']) else 0.0
+                            price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=default_p, key=f"price_{selected_job}_{i}")
+                        with cols[3]:
+                            tot = qty * price
+                            st.text_input("รวม", value=f"{tot:,.2f}", disabled=True, key=f"tot_{selected_job}_{i}")
+                        subtotal += tot
+                        items_data.append((desc, qty, price, tot))
+
+                    custom_notes = st.text_area("📝 ช่องหมายเหตุ / เงื่อนไขการรับประกัน", value=f"รับประกันงานซ่อมและอะไหล่ {warrant_days} วัน นับจากวันที่ส่งมอบเครื่อง")
+                    
+                    generate_btn = st.form_submit_button("🖨️ สร้างเอกสารพร้อมพิมพ์ (A4 แนวตั้ง ครึ่งหน้า สำหรับลูกค้า & ร้านค้า)")
+                    
+                    if generate_btn:
+                        grand_total = subtotal * 1.07 if include_vat else subtotal
+                        
+                        # สร้าง QR Code สำหรับจ่ายเงิน (เฉพาะใบเสร็จ)
+                        qr_tag = ""
+                        if pay_chanel == "โอนเงินผ่าน PromptPay QR":
+                            q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
+                            qr_obj = qrcode.make(q_cont)
+                            q_stream = BytesIO()
+                            qr_obj.save(q_stream)
+                            b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="85px"><br><span style="font-size:8px;">สแกนชำระ PromptPay</span>'
+
+                        items_html = ""
+                        for idx, val in enumerate(items_data):
+                            items_html += f"<tr><td style='border-bottom:1px solid #ddd; padding:2px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #ddd; padding:2px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #ddd; padding:2px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #ddd; padding:2px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+
+                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:2px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:2px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
+
+                        doc_title_text = "ใบคืนสินค้าและส่งมอบงานซ่อม (Delivery Slip)" if "ใบคืนสินค้า" in doc_choice else "ใบเสร็จรับเงิน / ใบกำกับภาษี (Receipt / Tax Invoice)"
+
+                        final_html = f"""
+                        <html>
+                        <head>
+                        <style>
+                            @page {{ size: A4 portrait; margin: 5mm; }}
+                            body {{ background: #f0f2f5; font-family: sans-serif; color: black; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                            .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                            .print-btn:hover {{ background-color: #218838; }}
+                            .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+                            .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
+                            .tbl {{ width: 100%; border-collapse: collapse; }}
+                            .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }}
+                            .itm-tbl th {{ background: #333; color: white; padding: 4px; text-align: left; }}
+                            .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
+                            .ftr {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; align-items: flex-end; }}
+                            @media print {{
+                                body {{ background: white; padding: 0; }}
+                                .print-btn {{ display: none; }}
+                                .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
+                            }}
+                        </style>
+                        </head>
+                        <body>
+                            <button class="print-btn" onclick="window.print()">🖨️ คลิกที่นี่เพื่อพิมพ์เอกสาร (A4 แนวตั้ง)</button>
+                            <div class="doc-box">
+                                
+                                <!-- ส่วนที่ 1: สำหรับลูกค้า -->
+                                <div class="section-box">
+                                    <div>
+                                        <table class="tbl">
+                                            <tr>
+                                                <td>
+                                                    <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
+                                                    <p style="font-size: 10px; margin: 1px 0;">{STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                                                </td>
+                                                <td style="text-align: right; vertical-align: top;">
+                                                    <h4 style="color: #333; margin: 0;"><b>{doc_title_text} (สำหรับลูกค้า)</b></h4>
+                                                    <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <table class="tbl" style="font-size: 11px; margin-top: 4px;">
+                                            <tr>
+                                                <td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td>
+                                                <td><b>ช่องทางชำระ:</b> {pay_chanel}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><b>อุปกรณ์:</b> {selected_row['device_name']}</td>
+                                                <td><b>รับประกันหลังซ่อม:</b> {warrant_days} วัน</td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <table class="itm-tbl">
+                                            <tr>
+                                                <th>รายการสินค้า / บริการ</th>
+                                                <th style="text-align: center;">จำนวน</th>
+                                                <th style="text-align: right;">ราคา/หน่วย</th>
+                                                <th style="text-align: right;">จำนวนเงิน (บาท)</th>
+                                            </tr>
+                                            {items_html}
+                                            <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f} บาท</td></tr>
+                                            {vat_html}
+                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                        </table>
+                                    </div>
+
+                                    <div class="ftr">
+                                        <div style="width: 75%;">
+                                            <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
+                                            <p style="font-size: 10px; margin: 10px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
+                                        </div>
+                                        <div style="text-align: center; width: 25%;">
+                                            {qr_tag}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- รอยฉีก -->
+                                <div class="perforation">
+                                    ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
+                                </div>
+
+                                <!-- ส่วนที่ 2: สำหรับร้านค้า -->
+                                <div class="section-box">
+                                    <div>
+                                        <table class="tbl">
+                                            <tr>
+                                                <td>
+                                                    <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
+                                                    <p style="font-size: 10px; margin: 1px 0;">ใบควบคุมการส่งมอบและรับเงิน (สำหรับร้านค้าเก็บไว้)</p>
+                                                </td>
+                                                <td style="text-align: right; vertical-align: top;">
+                                                    <h4 style="color: #333; margin: 0;"><b>{doc_title_text} (สำหรับร้านค้า)</b></h4>
+                                                    <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <table class="tbl" style="font-size: 11px; margin-top: 4px;">
+                                            <tr>
+                                                <td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td>
+                                                <td><b>ช่องทางชำระ:</b> {pay_chanel}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><b>อุปกรณ์:</b> {selected_row['device_name']}</td>
+                                                <td><b>รับประกันหลังซ่อม:</b> {warrant_days} วัน</td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <table class="itm-tbl">
+                                            <tr>
+                                                <th>รายการสินค้า / บริการ</th>
+                                                <th style="text-align: center;">จำนวน</th>
+                                                <th style="text-align: right;">ราคา/หน่วย</th>
+                                                <th style="text-align: right;">จำนวนเงิน (บาท)</th>
+                                            </tr>
+                                            {items_html}
+                                            <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f} บาท</td></tr>
+                                            {vat_html}
+                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                        </table>
+                                    </div>
+
+                                    <div class="ftr">
+                                        <div style="width: 100%;">
+                                            <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
+                                            <p style="font-size: 10px; margin: 10px 0 0 0;">ลงชื่อลูกค้า (ตรวจสอบสภาพเรียบร้อย): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้ส่งมอบ: ......................................................</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </body>
+                        </html>
+                        """
+                        components.html(final_html, height=1050, scrolling=True)
+
         else:
             st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
     except Exception as e:
