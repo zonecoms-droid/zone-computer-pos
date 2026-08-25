@@ -844,8 +844,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                             <tr>
                                                 <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
                                                     <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
-                                                    {custom_notes}<br><br>
-                                                    <b>ช่องทางชำระเงิน:</b> {pay_chanel}
+                                                    {custom_notes}
                                                 </td>
                                                 <td style="width: 45%;">
                                                     <table class="summary-tbl">
@@ -860,15 +859,21 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                                     <div>
                                         <div class="footer-box">
-                                            <div style="width: 65%;">
+                                            <div style="width: 70%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
-                                                        <td style="padding-bottom: 25px;">
-                                                            ลงชื่อ......................................................<br>
+                                                        <td style="padding-bottom: 5px; width: 50%;">
+                                                            ลงชื่อ......................................................
+                                                        </td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">
+                                                            ลงชื่อ......................................................
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>
                                                             ผู้รับเงิน / ผู้ออกเอกสาร วันที่....................
                                                         </td>
-                                                        <td style="padding-bottom: 25px;">
-                                                            ลงชื่อ......................................................<br>
+                                                        <td>
                                                             ผู้จ่ายเงิน / ลูกค้า วันที่.........................
                                                         </td>
                                                     </tr>
@@ -910,7 +915,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับปรุงลายเซ็นคู่ขนาน)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับปรุงลายเซ็นคู่ขนานตามประเภทเอกสาร)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -1048,21 +1053,33 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             if "1." in doc_type_selected:
                 doc_title_str = "ใบเสนอราคา / QUOTATION"
                 doc_code_prefix = "QT"
+                left_sign_title = "ผู้เสนอ / ผู้ออกเอกสาร"
+                right_sign_title = "ผู้อนุมัติ / ลูกค้า"
             elif "2." in doc_type_selected:
                 doc_title_str = "ใบส่งสินค้า / ใบแจ้งหนี้ / DELIVERY ORDER & INVOICE"
                 doc_code_prefix = "IV"
+                left_sign_title = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
+                right_sign_title = "ผู้รับสินค้า / ลูกค้า"
             elif "3." in doc_type_selected:
                 doc_title_str = "ใบกำกับภาษี / TAX INVOICE"
                 doc_code_prefix = "TAX"
+                left_sign_title = "ผู้มีอำนาจออกเอกสาร"
+                right_sign_title = "ผู้รับบริการ / ลูกค้า"
             elif "4." in doc_type_selected:
                 doc_title_str = "ใบเสร็จรับเงิน / CASH RECEIPT"
                 doc_code_prefix = "RC"
+                left_sign_title = "ผู้รับเงิน / ผู้ออกเอกสาร"
+                right_sign_title = "ผู้จ่ายเงิน / ลูกค้า"
             elif "5." in doc_type_selected:
                 doc_title_str = "ใบลดหนี้ / CREDIT NOTE"
                 doc_code_prefix = "CN"
+                left_sign_title = "ผู้ออกใบลดหนี้"
+                right_sign_title = "ผู้รับใบลดหนี้ / ลูกค้า"
             else:
                 doc_title_str = "ใบเพิ่มหนี้ / DEBIT NOTE"
                 doc_code_prefix = "DN"
+                left_sign_title = "ผู้ออกใบเพิ่มหนี้"
+                right_sign_title = "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
 
             random_doc_no = f"{doc_code_prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(10,99)}"
 
@@ -1175,16 +1192,22 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                     <!-- Footer Signatures & QR & Social Media at the Very Bottom -->
                     <div>
                         <div class="footer-box">
-                            <div style="width: 65%;">
+                            <div style="width: 70%;">
                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                     <tr>
-                                        <td style="padding-bottom: 25px;">
-                                            ลงชื่อ......................................................<br>
-                                            ผู้รับเงิน / ผู้ออกเอกสาร วันที่....................
+                                        <td style="padding-bottom: 5px; width: 50%;">
+                                            ลงชื่อ......................................................
                                         </td>
-                                        <td style="padding-bottom: 25px;">
-                                            ลงชื่อ......................................................<br>
-                                            ผู้จ่ายเงิน / ลูกค้า วันที่.........................
+                                        <td style="padding-bottom: 5px; width: 50%;">
+                                            ลงชื่อ......................................................
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            {left_sign_title} วันที่....................
+                                        </td>
+                                        <td>
+                                            {right_sign_title} วันที่.........................
                                         </td>
                                     </tr>
                                 </table>
