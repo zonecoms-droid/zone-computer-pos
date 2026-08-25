@@ -1248,7 +1248,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                     flex-direction: column; 
                                     justify-content: space-between; 
                                     page-break-after: always;
-                                } 
+                                }} 
                             }}
                         </style>
                         </head>
@@ -1343,7 +1343,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 # ==========================================
 elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
-    st.markdown("จัดการข้อมูลร้านค้า เอกสาร บัญชี ผู้ใช้งาน รวมถึงระบบตรวจสอบประกัน โซเชียล และรายงานยอดขาย")
+    st.markdown("จัดการข้อมูลร้านค้า เอกสาร บัญชี ผู้ใช้งาน สินค้า ธุรกิจ รวมถึงระบบตรวจสอบประกัน โซเชียล และรายงานยอดขาย")
     
     set_tab1, set_tab2, set_tab3, set_tab4, set_tab5, set_tab6, set_tab7, set_tab8, set_tab9 = st.tabs([
         "📄 ตั้งค่าเอกสาร", 
