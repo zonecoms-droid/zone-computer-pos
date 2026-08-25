@@ -31,7 +31,7 @@ if not os.path.exists(LOGO_DEFAULT_PATH):
     except Exception:
         pass
 
-# ตั้งค่าหน้าเว็บ
+# ตั้งค่าหน้าเว็บเริ่มต้น
 st.set_page_config(
     page_title="ZoneOnline Service - Enterprise Edition", 
     page_icon="⚡", 
@@ -234,11 +234,13 @@ OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
 LOGO_PATH = LOGO_PATH or "logo.jpg"
 
 # ==========================================
-# 🔍 โหมดพิเศษ: หน้าจอเช็คสถานะสาธารณะผ่าน QR Code (?track=...)
+# 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า (Track หรือ Register)
 # ==========================================
 query_params = st.query_params
 track_code = query_params.get("track", None)
+page_param = query_params.get("page", None)
 
+# 1. โหมดตรวจสอบสถานะงานซ่อมผ่าน QR Code
 if track_code:
     st.set_page_config(page_title=f"เช็คสถานะงานซ่อม - {STORE_NAME}", page_icon="🔍", layout="centered")
     
@@ -311,29 +313,60 @@ if track_code:
                     📞 โทรสอบถามด่วน: {STORE_PHONE}<br>ขอบคุณที่ใช้บริการร้านโซนคอมพิวเตอร์ครับ 🙏
                 </div>
             </div>
-
-            <script>
-                window.addEventListener('load', () => {{
-                    try {{
-                        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime);
-                        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.2);
-                    }} catch(e) {{}}
-                }});
-            </script>
         </body>
         </html>
         """
         components.html(public_html, height=650, scrolling=True)
     else:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
+    st.stop()
+
+# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code โดยตรง (ปลอดภัย ไม่เห็นข้อมูลส่วนอื่นของร้าน)
+if page_param == "register":
+    st.set_page_config(page_title=f"ลงทะเบียนแจ้งซ่อม - {STORE_NAME}", page_icon="📱", layout="centered")
+    st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>ระบบลงทะเบียนแจ้งซ่อมออนไลน์สำหรับลูกค้า</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    with st.form("public_self_service_form"):
+        c_name = st.text_input("ชื่อ-นามสกุลของคุณ *")
+        c_phone = st.text_input("เบอร์โทรศัพท์ติดต่อกลับ *")
+        c_device = st.text_input("ยี่ห้อ / รุ่นอุปกรณ์ (เช่น Notebook ASUS ROG) *")
+        c_problem = st.text_area("อาการเสีย / รายละเอียดเบื้องต้น")
+        c_accessories = st.text_input("อุปกรณ์ที่ส่งมาด้วย (เช่น สายชาร์จ, กระเป๋า)")
+        uploaded_file = st.file_uploader("📷 แนบรูปภาพ หรือ 🎥 วิดีโออาการเสีย (ถ้ามี)", type=["jpg", "png", "jpeg", "mp4", "mov"])
+        
+        self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมเข้าร้าน")
+        if self_submit:
+            if c_name and c_phone and c_device:
+                file_path = None
+                if uploaded_file is not None:
+                    file_extension = uploaded_file.name.split(".")[-1]
+                    file_name = f"MEDIA_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(100,999)}.{file_extension}"
+                    file_path = os.path.join(UPLOAD_DIR, file_name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO customers (name, phone) VALUES (?, ?) 
+                    ON CONFLICT(phone) DO UPDATE SET name = excluded.name;
+                """, (c_name, c_phone))
+                cursor.execute("SELECT id FROM customers WHERE phone = ?", (c_phone,))
+                cust_id = cursor.fetchone()[0]
+                
+                job_code = f"REP-{datetime.now().strftime('%Y%m%d')}-{random.randint(100,999)}"
+                cursor.execute("""
+                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, media_file, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'RECEIVED')
+                """, (job_code, cust_id, c_device, c_problem, c_accessories, file_path))
+                conn.commit()
+                cursor.close()
+                
+                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}** กรุณาบันทึกเลขที่ใบงานนี้ไว้สำหรับตรวจสอบสถานะกับทางร้านครับ")
+                st.balloons()
+            else:
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
     st.stop()
 
 # ==========================================
@@ -354,7 +387,7 @@ if 'current_job_code' not in st.session_state:
 # แถบเมนูหลักแนวนอน (Horizontal Navigation Buttons)
 menu_options = [
     "📥 รับเครื่องซ่อมใหม่", 
-    "📱 ลูกค้าลงทะเบียนเอง",
+    "📱 QR โหลดหน้าลงทะเบียน",
     "🔍 ติดตามสถานะซ่อม", 
     "📄 ระบบออกเอกสารการค้า",
     "⚙️ ศูนย์กลางการตั้งค่า"
@@ -556,54 +589,18 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง
+# 2. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
 # ==========================================
-elif menu == "📱 ลูกค้าลงทะเบียนเอง":
-    st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code")
-    qr_data = "https://zone-computer-pos.streamlit.app/?page=register"
-    img = qrcode.make(qr_data)
+elif menu == "📱 QR โหลดหน้าลงทะเบียน":
+    st.header("📱 QR Code สำหรับลูกค้าสแกนลงทะเบียนแจ้งซ่อม")
+    st.markdown("เมื่อลูกค้านำมือถือมาสแกน QR Code นี้ จะเปิดเจอเฉพาะหน้าฟอร์มลงทะเบียนแจ้งซ่อมเท่านั้น โดยจะไม่เห็นข้อมูลภายในร้านครับ")
+    
+    reg_url = "https://zone-computer-pos.streamlit.app/?page=register"
+    img = qrcode.make(reg_url)
     buf = BytesIO()
     img.save(buf)
-    st.image(buf.getvalue(), caption="สแกนเพื่อเปิดหน้าลงทะเบียนแจ้งซ่อมออนไลน์", width=220)
-    
-    with st.form("self_service_media_form"):
-        c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
-        c_phone = st.text_input("เบอร์โทรศัพท์ติดต่อกลับ")
-        c_device = st.text_input("ยี่ห้อ / รุ่นอุปกรณ์")
-        c_problem = st.text_area("อาการเสียเบื้องต้น")
-        c_accessories = st.text_input("อุปกรณ์ที่ส่งมาด้วย")
-        uploaded_file = st.file_uploader("📷 แนบรูปภาพ หรือ 🎥 วิดีโออาการเสีย", type=["jpg", "png", "jpeg", "mp4", "mov"])
-        
-        self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมและไฟล์หลักฐานเข้าร้าน")
-        if self_submit:
-            if c_name and c_phone and c_device:
-                file_path = None
-                if uploaded_file is not None:
-                    file_extension = uploaded_file.name.split(".")[-1]
-                    file_name = f"MEDIA_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(100,999)}.{file_extension}"
-                    file_path = os.path.join(UPLOAD_DIR, file_name)
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO customers (name, phone) VALUES (?, ?) 
-                    ON CONFLICT(phone) DO UPDATE SET name = excluded.name;
-                """, (c_name, c_phone))
-                cursor.execute("SELECT id FROM customers WHERE phone = ?", (c_phone,))
-                cust_id = cursor.fetchone()[0]
-                
-                job_code = f"REP-{datetime.now().strftime('%Y%m%d')}-{random.randint(100,999)}"
-                cursor.execute("""
-                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, media_file, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'RECEIVED')
-                """, (job_code, cust_id, c_device, c_problem, c_accessories, file_path))
-                conn.commit()
-                cursor.close()
-                st.success(f"🎉 ลงทะเบียนสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
-                st.balloons()
-            else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+    st.image(buf.getvalue(), caption="สแกนเพื่อเปิดหน้าลงทะเบียนแจ้งซ่อมออนไลน์ (สำหรับลูกค้า)", width=250)
+    st.code(reg_url, language="text")
 
 # ==========================================
 # 3. ติดตาม & อัปเดตสถานะงานซ่อม
