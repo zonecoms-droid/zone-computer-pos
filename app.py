@@ -905,11 +905,11 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับแต่งวันที่, เครดิต, พนักงานขาย, สกุลเงิน, ส่วนลด)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับวันที่เลือกได้/ไม่ระบุได้)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
-    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภท ปรับแต่งวันที่ เครดิต พนักงานขาย สกุลเงิน และส่วนลดได้อิสระ")
+    st.markdown("สร้างและพิมพ์เอกสารทางธุรกิจทั้ง 6 ประเภท เลือกวันที่ เครดิต พนักงานขาย สกุลเงิน และคำนวณส่วนลดได้อิสระ")
     
     doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการออก", [
         "1. ใบเสนอราคา (Quotation - QT)",
@@ -932,23 +932,33 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี")
         with col_c2:
             st.subheader("📅 รายละเอียดเอกสาร & เงื่อนไข")
-            c_doc_date = st.date_input("วันที่ (วันที่ออกเอกสาร)", datetime.today())
+            
+            # เพิ่มตัวเลือกให้ติ๊กเปิด/ปิด การระบุวันที่
+            include_doc_date = st.checkbox("ระบุวันที่ออกเอกสาร", value=True)
+            if include_doc_date:
+                c_doc_date = st.date_input("วันที่ (วันที่ออกเอกสาร)", datetime.today())
+                c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
+            else:
+                c_doc_date_str = "-"
+            
             credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
             
-            # คำนวณวันครบกำหนดอัตโนมัติจากวันที่ + เครดิตวัน
-            due_date = c_doc_date + timedelta(days=int(credit_days))
-            st.markdown(f"📌 **ครบกำหนด:** `{due_date.strftime('%Y-%m-%d')}`")
+            if include_doc_date:
+                due_date = c_doc_date + timedelta(days=int(credit_days))
+                due_date_str = due_date.strftime('%Y-%m-%d')
+            else:
+                due_date_str = "-"
+            
+            st.markdown(f"📌 **ครบกำหนด:** `{due_date_str}`")
             
             salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
             currency = st.selectbox("สกุลเงิน", ["THB", "USD", "EUR"])
             
-            # ตรวจสอบว่าเป็นเอกสารที่ต้องซ่อนช่องชำระเงินหรือไม่ (QT, DO/IV, TAX)
             is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
             c_pay_method = "โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)"
             if not is_no_payment_doc:
                 c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)", "เงินสด", "เครดิต 30 วัน", "บัตรเครดิต"])
 
-        # ถ้าเป็นใบลดหนี้หรือใบเพิ่มหนี้ ให้ใส่ช่องอ้างอิงเอกสารเดิม
         ref_doc_html = ""
         cn_dn_reason = ""
         if "ลดหนี้" in doc_type_selected or "เพิ่มหนี้" in doc_type_selected:
@@ -992,13 +1002,11 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
         generate_commercial_doc = st.form_submit_button("🖨️ สร้างเอกสารทางการค้าพร้อมพิมพ์ (FlowAccount Style)")
 
         if generate_commercial_doc:
-            # คำนวณส่วนลดและภาษีตามโครงสร้างใหม่
             discount_amount = com_subtotal * (discount_pct / 100.0)
             price_after_discount = com_subtotal - discount_amount
             vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
             com_grand = price_after_discount + vat_amount
 
-            # สร้าง QR Code พร้อมเพย์ (แสดงเฉพาะเอกสารที่มีชำระเงิน)
             com_qr_tag = ""
             if not is_no_payment_doc and "PromptPay" in c_pay_method:
                 q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{com_grand:.2f}"
@@ -1105,8 +1113,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                                         {doc_title_str}
                                     </div>
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {random_doc_no}</p>
-                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date}</p>
-                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date.strftime('%Y-%m-%d')} (เครดิต {credit_days} วัน)</p>
+                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> {c_doc_date_str}</p>
+                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>ครบกำหนด:</b> {due_date_str} (เครดิต {credit_days} วัน)</p>
                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {salesperson} | <b>สกุลเงิน:</b> {currency}</p>
                                 </td>
                             </tr>
