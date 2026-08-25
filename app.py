@@ -44,7 +44,6 @@ def init_db(conn):
             tiktok_link TEXT
         )
     ''')
-    # Auto Migration เผื่อฐานข้อมูลเก่าไม่มีคอลัมน์เหล่านี้
     for col in ['promptpay', 'line_link', 'fb_link', 'tiktok_link']:
         try:
             cursor.execute(f"ALTER TABLE store_settings ADD COLUMN {col} TEXT;")
@@ -125,14 +124,15 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, STORE_LINE, STORE_FB, STORE_TIKTOK = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (รองรับ QR Code หลากหลายช่องทาง)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (เวอร์ชันสมบูรณ์แบบ)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
 
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", [
     "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม", 
-    "📱 QR Code ติดต่อ & ลงทะเบียน (Line, FB, TikTok)",
+    "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
+    "🌐 QR Code ช่องทางติดต่อ (Line, FB, TikTok)",
     "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
     "🛡️ เช็คประกัน & Serial Number",
     "📄 ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)",
@@ -319,52 +319,22 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. QR Code ติดต่อ & ลงทะเบียน (Line, FB, TikTok)
+# 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)
 # ==========================================
-elif menu == "📱 QR Code ติดต่อ & ลงทะเบียน (Line, FB, TikTok)":
-    st.header("📱 สร้างและแสดง QR Code ช่องทางติดต่อ & ลงทะเบียนออนไลน์")
-    st.markdown("ลูกค้าสามารถสแกน QR Code เพื่อติดต่อร้านผ่าน **Line**, **Facebook**, หรือ **TikTok** ได้ทันที (ตั้งค่าลิงก์ได้ที่เมนูตั้งค่าร้านค้า)")
+elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)":
+    st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code (แนบรูปภาพ & วิดีโอได้)")
+    st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
     
-    col_qr1, col_qr2, col_qr3 = st.columns(3)
+    # 📌 ลิงก์แอปจริงที่ใช้งานได้ถูกต้อง
+    qr_data = "https://zone-computer-pos.streamlit.app"
     
-    # 1. Line QR
-    with col_qr1:
-        st.subheader("💚 Line Official / Chat")
-        if STORE_LINE:
-            line_img = qrcode.make(STORE_LINE)
-            l_buf = BytesIO()
-            line_img.save(l_buf)
-            st.image(l_buf.getvalue(), caption="สแกนเพิ่มเพื่อน / แชท Line ร้าน", use_container_width=True)
-            st.markdown(f"🔗 [ลิงก์ Line]({STORE_LINE})")
-        else:
-            st.warning("ยังไม่ได้ตั้งค่าลิงก์ Line ในระบบตั้งค่า")
-            
-    # 2. Facebook QR
-    with col_qr2:
-        st.subheader("💙 Facebook Page")
-        if STORE_FB:
-            fb_img = qrcode.make(STORE_FB)
-            f_buf = BytesIO()
-            fb_img.save(f_buf)
-            st.image(f_buf.getvalue(), caption="สแกนเข้าเพจ Facebook ร้าน", use_container_width=True)
-            st.markdown(f"🔗 [ลิงก์ Facebook]({STORE_FB})")
-        else:
-            st.warning("ยังไม่ได้ตั้งค่าลิงก์ Facebook ในระบบตั้งค่า")
-
-    # 3. TikTok QR
-    with col_qr3:
-        st.subheader("🖤 TikTok Profile")
-        if STORE_TIKTOK:
-            tk_img = qrcode.make(STORE_TIKTOK)
-            t_buf = BytesIO()
-            tk_img.save(t_buf)
-            st.image(t_buf.getvalue(), caption="สแกนดู TikTok ของร้าน", use_container_width=True)
-            st.markdown(f"🔗 [ลิงก์ TikTok]({STORE_TIKTOK})")
-        else:
-            st.warning("ยังไม่ได้ตั้งค่าลิงก์ TikTok ในระบบตั้งค่า")
-
+    img = qrcode.make(qr_data)
+    buf = BytesIO()
+    img.save(buf)
+    st.image(buf.getvalue(), caption="สแกนเพื่อกรอกข้อมูลแจ้งซ่อมออนไลน์", width=220)
+    
     st.markdown("---")
-    st.subheader("📝 ฟอร์มลูกค้าลงทะเบียนแจ้งซ่อมออนไลน์ (ผ่านเว็บแอปนี้โดยตรง)")
+    st.subheader("📝 ฟอร์มลงทะเบียนสำหรับลูกค้า")
     
     with st.form("self_service_media_form"):
         c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
@@ -411,7 +381,52 @@ elif menu == "📱 QR Code ติดต่อ & ลงทะเบียน (Lin
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วน")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม + ใบคืนสินค้าและใบเสร็จ (เมื่อ COMPLETED)
+# 3. QR Code ช่องทางติดต่อ (Line, FB, TikTok - ขนาดเล็กกะทัดรัด)
+# ==========================================
+elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, TikTok)":
+    st.header("🌐 QR Code ช่องทางติดต่อโซเชียลมีเดียของร้าน")
+    st.markdown("แสดง QR Code สำหรับให้ลูกค้าสแกนติดต่อร้านผ่านช่องทางต่างๆ (ขนาดกะทัดรัด เหมาะสำหรับปริ้นท์ตั้งโต๊ะ)")
+    
+    col_qr1, col_qr2, col_qr3 = st.columns(3)
+    
+    # 1. Line QR (ลดขนาดเหลือ width=140)
+    with col_qr1:
+        st.subheader("💚 Line")
+        if STORE_LINE:
+            line_img = qrcode.make(STORE_LINE)
+            l_buf = BytesIO()
+            line_img.save(l_buf)
+            st.image(l_buf.getvalue(), caption="สแกนเพิ่มเพื่อน Line", width=140)
+            st.markdown(f"🔗 [ลิงก์ Line]({STORE_LINE})")
+        else:
+            st.warning("ยังไม่ได้ตั้งค่าลิงก์ Line")
+            
+    # 2. Facebook QR (ลดขนาดเหลือ width=140)
+    with col_qr2:
+        st.subheader("💙 Facebook")
+        if STORE_FB:
+            fb_img = qrcode.make(STORE_FB)
+            f_buf = BytesIO()
+            fb_img.save(f_buf)
+            st.image(f_buf.getvalue(), caption="สแกนเข้าเพจ Facebook", width=140)
+            st.markdown(f"🔗 [ลิงก์ Facebook]({STORE_FB})")
+        else:
+            st.warning("ยังไม่ได้ตั้งค่าลิงก์ Facebook")
+
+    # 3. TikTok QR (ลดขนาดเหลือ width=140)
+    with col_qr3:
+        st.subheader("🖤 TikTok")
+        if STORE_TIKTOK:
+            tk_img = qrcode.make(STORE_TIKTOK)
+            t_buf = BytesIO()
+            tk_img.save(t_buf)
+            st.image(t_buf.getvalue(), caption="สแกนดู TikTok", width=140)
+            st.markdown(f"🔗 [ลิงก์ TikTok]({STORE_TIKTOK})")
+        else:
+            st.warning("ยังไม่ได้ตั้งค่าลิงก์ TikTok")
+
+# ==========================================
+# 4. ติดตาม & อัปเดตสถานะงานซ่อม + ใบคืนสินค้าและใบเสร็จ (เมื่อ COMPLETED)
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกใบเสร็จส่งมอบ (COMPLETED)")
@@ -675,7 +690,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
-# 4. เช็คประกัน & Serial Number
+# 5. เช็คประกัน & Serial Number
 # ==========================================
 elif menu == "🛡️ เช็คประกัน & Serial Number":
     st.header("🛡️ ระบบตรวจสอบระยะเวลาประกันอุปกรณ์และชิ้นส่วน")
@@ -685,7 +700,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน! (ซื้อเมื่อ: 15 มกราคม 2026 / ประกันหมดอายุ: 15 มกราคม 2027)")
 
 # ==========================================
-# 5. ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)
+# 6. ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)
 # ==========================================
 elif menu == "📄 ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)":
     st.header("📄 ระบบออกเอกสารและใบกำกับภาษี (สไตล์ FlowAccount + QR Code ชำระเงิน)")
@@ -846,9 +861,9 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
         
         st.markdown("---")
         st.subheader("🌐 ตั้งค่าลิงก์ Social Media สำหรับสร้าง QR Code")
-        new_line = st.text_input("ลิงก์ Line Official / Add Friend (เช่น https://line.me/R/ti/p/@yourline)", value=STORE_LINE)
-        new_fb = st.text_input("ลิงก์ Facebook Page (เช่น https://facebook.com/yourpage)", value=STORE_FB)
-        new_tiktok = st.text_input("ลิงก์ TikTok Profile (เช่น https://tiktok.com/@yourtiktok)", value=STORE_TIKTOK)
+        new_line = st.text_input("ลิงก์ Line Official / Add Friend", value=STORE_LINE)
+        new_fb = st.text_input("ลิงก์ Facebook Page", value=STORE_FB)
+        new_tiktok = st.text_input("ลิงก์ TikTok Profile", value=STORE_TIKTOK)
         
         st.markdown("---")
         new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี", value=STORE_TAX)
