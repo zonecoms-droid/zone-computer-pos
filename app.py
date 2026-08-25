@@ -8,11 +8,27 @@ from io import BytesIO
 import streamlit.components.v1 as components
 import os
 import base64
+from PIL import Image, ImageDraw
 
 # สร้างโฟลเดอร์สำหรับเก็บบันทึกไฟล์รูป/วิดีโอที่ลูกค้าอัปโหลด
 UPLOAD_DIR = "uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
+
+# 🛠️ สร้างไฟล์โลโก้ .JPG มาตรฐานร้านอัตโนมัติ ถ้ายังไม่มี
+LOGO_DEFAULT_PATH = "logo.jpg"
+if not os.path.exists(LOGO_DEFAULT_PATH):
+    try:
+        img = Image.new('RGB', (600, 180), color=(255, 255, 255))
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([20, 20, 160, 160], fill=(15, 23, 42))
+        draw.rectangle([35, 35, 145, 145], outline=(2, 132, 199), width=4)
+        draw.text((185, 45), "ZONE COMPUTER", fill=(15, 23, 42))
+        draw.text((185, 85), "& SERVICE (ช่างดิด)", fill=(2, 132, 199))
+        draw.text((185, 125), "ศูนย์ซ่อมคอมพิวเตอร์และบริการไอที", fill=(100, 116, 139))
+        img.save(LOGO_DEFAULT_PATH, "JPEG")
+    except Exception:
+        pass
 
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(
@@ -21,12 +37,20 @@ st.set_page_config(
     layout="wide"
 )
 
-# ฟังก์ชันแปลงไฟล์รูปเป็น Base64 สำหรับใส่ใน HTML เอกสาร
+# ฟังก์ชันแปลงไฟล์รูปเป็น Data URI Base64 รองรับทั้ง JPG และ PNG อย่างถูกต้อง
 def get_img_base64(path):
     if path and isinstance(path, str) and os.path.exists(path):
         try:
+            ext = path.split('.')[-1].lower()
+            mime = "image/jpeg"
+            if ext == "png":
+                mime = "image/png"
+            elif ext in ["jpg", "jpeg"]:
+                mime = "image/jpeg"
+            
             with open(path, "rb") as img_file:
-                return base64.b64encode(img_file.read()).decode()
+                b64_data = base64.b64encode(img_file.read()).decode()
+                return f"data:{mime};base64,{b64_data}"
         except Exception:
             return ""
     return ""
@@ -65,7 +89,6 @@ def init_db(conn):
         )
     ''')
     
-    # อัปเดตตารางรองรับฟีเจอร์ตั้งค่าใหม่ๆ แบบปลอดภัย
     extra_cols = [
         ('prefix_qt', 'TEXT'), ('prefix_iv', 'TEXT'), ('prefix_tax', 'TEXT'),
         ('prefix_rc', 'TEXT'), ('prefix_cn', 'TEXT'), ('prefix_dn', 'TEXT'),
@@ -83,9 +106,12 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg')
         ''')
+        conn.commit()
+    else:
+        cursor.execute("UPDATE store_settings SET logo_path = 'logo.jpg' WHERE logo_path IS NULL OR logo_path = '';")
         conn.commit()
 
     cursor.execute('''
@@ -142,7 +168,7 @@ def init_db(conn):
 conn = init_connection()
 init_db(conn)
 
-# ดึงข้อมูลร้านค้ามาใช้แสดงผล พร้อมใส่ค่าป้องกัน None กัน Error
+# ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
 cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
@@ -156,9 +182,8 @@ else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1234567890123", "อุบลราชธานี", "ขอบคุณ", "0891234567"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
-    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, ""
+    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg"
 
-# ป้องกันค่า None ซ้ำอีกรอบ
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or ""
 STORE_TAX = STORE_TAX or ""
@@ -179,7 +204,7 @@ ACC_METHOD = ACC_METHOD or "เกณฑ์สิทธิ์ (Accrual)"
 ACC_PERIOD = ACC_PERIOD or "2026"
 LOCK_PER = LOCK_PER or "ยังไม่ล็อก"
 OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
-LOGO_PATH = LOGO_PATH or ""
+LOGO_PATH = LOGO_PATH or "logo.jpg"
 
 # ==========================================
 # 🔍 โหมดพิเศษ: หน้าจอเช็คสถานะสาธารณะผ่าน QR Code (?track=...)
@@ -978,7 +1003,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับโลโก้ร้าน)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - รองรับโลโก้ .jpg / .png สมบูรณ์)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -1158,9 +1183,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
             if not is_no_payment_doc:
                 payment_row_under_total = f'<tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{c_pay_method}</td></tr>'
 
-            # สร้าง HTML ของโลโก้ร้านถ้ามีไฟล์รูป
-            logo_b64 = get_img_base64(LOGO_PATH)
-            logo_img_tag = f'<img src="data:image/png;base64,{logo_b64}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_b64 else ''
+            logo_data_uri = get_img_base64(LOGO_PATH)
+            logo_img_tag = f'<img src="{logo_data_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_data_uri else ''
 
             commercial_html = f"""
             <html>
@@ -1426,7 +1450,7 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
         st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
         st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
 
-    # --- Tab 5: ตั้งค่าธุรกิจ (รวมเมนูใส่โลโก้ร้านที่หน้านี้ตามขอ) ---
+    # --- Tab 5: ตั้งค่าธุรกิจ ---
     with set_tab5:
         st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
         with st.form("settings_biz_form"):
@@ -1437,8 +1461,8 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
             new_address = st.text_area("ที่อยู่สถานประกอบการ", value=STORE_ADDRESS)
             
             st.markdown("---")
-            st.markdown("##### 🖼️ โลโก้ร้านค้า (สำหรับแสดงบนหัวเอกสารการค้า)")
-            uploaded_logo = st.file_uploader("อัปโหลดรูปโลโก้ร้าน (แนะนำไฟล์ PNG หรือ JPG ขนาดพอเหมาะ)", type=["png", "jpg", "jpeg"])
+            st.markdown("##### 🖼️ โลโก้ร้านค้า (รองรับไฟล์ JPG / PNG)")
+            uploaded_logo = st.file_uploader("อัปโหลดรูปโลโก้ร้าน (.jpg หรือ .png)", type=["jpg", "jpeg", "png"])
             if LOGO_PATH and os.path.exists(LOGO_PATH):
                 st.image(LOGO_PATH, width=150, caption="โลโก้ปัจจุบันของร้าน")
 
