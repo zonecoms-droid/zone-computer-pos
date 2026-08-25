@@ -73,7 +73,7 @@ def init_db(conn):
         cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech2', 'ช่างเสริม', 'technician')")
         conn.commit()
 
-    # 4. ตารางงานซ่อม (เพิ่มฟิลด์เก็บชื่อไฟล์ media_path)
+    # 4. ตารางงานซ่อม
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +106,7 @@ cursor.close()
 STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (รองรับอัปโหลดรูปและวิดีโออาการเสีย)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมระบบออกเอกสาร FlowAccount สไตล์ QR Code)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -116,7 +116,7 @@ menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำง�
     "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
     "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
     "🛡️ เช็คประกัน & Serial Number",
-    "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style)",
+    "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style + QR)",
     "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง",
     "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)"
 ])
@@ -315,7 +315,6 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.markdown("---")
     st.subheader("📝 ฟอร์มลงทะเบียนสำหรับลูกค้า")
     
-    # ใช้ st.form ร่วมกับการอัปเดตไฟล์ใน Streamlit
     with st.form("self_service_media_form"):
         c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
         c_phone = st.text_input("เบอร์โทรศัพท์ติดต่อกลับ")
@@ -323,7 +322,6 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
         c_problem = st.text_area("อาการเสียเบื้องต้น / สิ่งที่ต้องการให้ซ่อม")
         c_accessories = st.text_input("อุปกรณ์ที่ส่งมาด้วย (เช่น สายชาร์จ, เมาส์)")
         
-        # ฟิลด์อัปเดตไฟล์รูปภาพหรือวิดีโอ
         uploaded_file = st.file_uploader("📷 แนบรูปภาพ หรือ 🎥 วิดีโออาการเสีย (รองรับ JPG, PNG, MP4)", type=["jpg", "png", "jpeg", "mp4", "mov"])
         
         self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมและไฟล์หลักฐานเข้าร้าน")
@@ -332,7 +330,6 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
             if c_name and c_phone and c_device:
                 file_path = None
                 if uploaded_file is not None:
-                    # บันทึกไฟล์ลงในโฟลเดอร์ uploads
                     file_extension = uploaded_file.name.split(".")[-1]
                     file_name = f"MEDIA_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(100,999)}.{file_extension}"
                     file_path = os.path.join(UPLOAD_DIR, file_name)
@@ -363,7 +360,7 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วน")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม (พร้อมแสดงรูป/วิดีโอที่ลูกค้าแนบ)
+# 3. ติดตาม & อัปเดตสถานะงานซ่อม
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการ และอัปเดตสถานะงานซ่อม (พร้อมตรวจสอบไฟล์แนบ)")
@@ -387,7 +384,6 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
             st.subheader("🛠️ ตรวจสอบรายละเอียดและเปลี่ยนสถานะงานซ่อม")
             selected_job = st.selectbox("เลือกเลขใบงานที่ต้องการจัดการ", df['job_code'].tolist())
             
-            # ดึงข้อมูลเฉพาะใบงานที่เลือกมาโชว์รูปหรือวิดีโอที่ลูกค้าแนบมา
             selected_row = df[df['job_code'] == selected_job].iloc[0]
             
             col_info, col_media = st.columns(2)
@@ -439,12 +435,13 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน! (ซื้อเมื่อ: 15 มกราคม 2026 / ประกันหมดอายุ: 15 มกราคม 2027)")
 
 # ==========================================
-# 5. ออกเอกสารการค้า (FlowAccount Style)
+# 5. ออกเอกสารการค้า (FlowAccount Style + QR Code)
 # ==========================================
-elif menu == "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style)":
-    st.header("📄 ระบบออกเอกสารและใบกำกับภาษี (FlowAccount Style)")
+elif menu == "📄 ออกเอกสารการค้า / ใบเสร็จ (FlowAccount Style + QR)":
+    st.header("📄 ระบบออกเอกสารและใบกำกับภาษี (FlowAccount Style + QR Code)")
     doc_type = st.selectbox("เลือกประเภทเอกสาร", ["ใบเสนอราคา (Quotation)", "ใบเสร็จรับเงิน / ใบกำกับภาษี (Tax Invoice)", "บิลเงินสด (Cash Receipt)"])
     st.markdown("---")
+    
     col1, col2 = st.columns(2)
     with col1:
         cust_name = st.text_input("ชื่อลูกค้า / บริษัท")
@@ -452,10 +449,11 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
         cust_address = st.text_area("ที่อยู่ลูกค้า")
     with col2:
         doc_date = st.date_input("วันที่เอกสาร", datetime.today())
-        payment_method = st.selectbox("ช่องทางการชำระเงิน", ["เงินสด", "โอนเงิน (QR Code)", "บัตรเครดิต"])
+        payment_method = st.selectbox("ช่องทางการชำระเงิน", ["เงินสด", "โอนเงินผ่าน QR Code (PromptPay)", "บัตรเครดิต"])
 
     num_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
     subtotal = 0.0
+    
     for i in range(int(num_items)):
         cols = st.columns([3, 1, 1, 1])
         with cols[0]: item_desc = st.text_input(f"รายการที่ {i+1}", key=f"desc_{i}")
@@ -468,7 +466,26 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
 
     st.markdown("---")
     col_a, col_b = st.columns([2, 1])
-    with col_a: notes = st.text_area("หมายเหตุ", value=STORE_NOTE)
+    with col_a: 
+        notes = st.text_area("หมายเหตุ", value=STORE_NOTE)
+        
+        # เพิ่มส่วนสร้าง QR Code สำหรับให้ลูกค้าสแกนชำระเงินหรือลงทะเบียนจากบิลนี้
+        st.markdown("### 📱 QR Code แนบท้ายเอกสาร (สำหรับให้ลูกค้าสแกน)")
+        qr_option = st.radio("เลือกประเภท QR Code ที่ต้องการฝังในใบเสร็จ", ["ลิงก์ระบบลงทะเบียน/เช็คสถานะร้าน", "พร้อมเพย์ (PromptPay) สำหรับชำระเงิน"])
+        
+        if qr_option == "ลิงก์ระบบลงทะเบียน/เช็คสถานะร้าน":
+            target_url = "https://share.streamlit.io/"
+            qr_caption = "สแกนเพื่อลงทะเบียนซ่อม / เช็คสถานะออนไลน์"
+        else:
+            target_url = f"PROMPTPAY:{STORE_PHONE}" # ตัวอย่างสตริงพร้อมเพย์เบอร์ร้าน
+            qr_caption = f"สแกนเพื่อโอนชำระเงินผ่านพร้อมเพย์ ({STORE_PHONE})"
+            
+        # สร้างรูป QR Code แสดงผลในหน้าจอทันที
+        qr_img = qrcode.make(target_url)
+        qr_buf = BytesIO()
+        qr_img.save(qr_buf)
+        st.image(qr_buf.getvalue(), caption=qr_caption, width=150)
+
     with col_b:
         st.markdown(f"**มูลค่ารวม:** `{subtotal:,.2f} บาท`")
         include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
@@ -476,9 +493,9 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
         if include_vat: st.markdown(f"**VAT 7%:** `{subtotal * 0.07:,.2f} บาท`")
         st.markdown(f"### **ยอดสุทธิ:** `{grand_total:,.2f} บาท`")
         
-    if st.button("💾 บันทึกและออกเอกสาร"):
+    if st.button("💾 บันทึกและออกเอกสารอย่างเป็นทางการ"):
         if cust_name:
-            st.success(f"🎉 ออกเอกสารประเภท **{doc_type}** ยอดสุทธิ **{grand_total:,.2f} บาท** สำเร็จ!")
+            st.success(f"🎉 ออกเอกสารประเภท **{doc_type}** ยอดสุทธิ **{grand_total:,.2f} บาท** สำเร็จ! (พร้อมฝัง QR Code บนเอกสาร)")
             st.balloons()
         else:
             st.warning("⚠️ กรุณากรอกชื่อลูกค้าก่อน")
