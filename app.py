@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ฟังก์ชันเชื่อมต่อและสร้างฐานข้อมูล SQLite แบบอัตโนมัติ
+# ฟังก์ชันเชื่อมต่อและสร้างฐานข้อมูล SQLite แบบอัตโนมัติ (พร้อมอัปเดตโครงสร้างอัตโนมัติ)
 def init_connection():
     conn = sqlite3.connect('zone_online.db', check_same_thread=False)
     return conn
@@ -40,6 +40,14 @@ def init_db(conn):
             promptpay TEXT
         )
     ''')
+    
+    # เช็คเผื่อกรณีมีตารางเก่าอยู่แล้วแต่ยังไม่มีคอลัมน์ promptpay ให้เพิ่มเข้าไปอัตโนมัติ
+    try:
+        cursor.execute("ALTER TABLE store_settings ADD COLUMN promptpay TEXT;")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # ถ้ามีคอลัมน์อยู่แล้ว ข้ามได้เลย
+
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
@@ -94,6 +102,14 @@ def init_db(conn):
             FOREIGN KEY (technician_id) REFERENCES staff(id)
         )
     ''')
+    
+    # เช็คเผื่อกรณีตาราง repairs เก่าไม่มีคอลัมน์ media_file ให้เพิ่มเข้าไปอัตโนมัติ
+    try:
+        cursor.execute("ALTER TABLE repairs ADD COLUMN media_file TEXT;")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
     cursor.close()
 
 conn = init_connection()
@@ -484,7 +500,6 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
         if cust_name:
             st.success(f"🎉 สร้างเอกสาร **{doc_type}** เรียบร้อยแล้ว! ดูตัวอย่างด้านล่างได้เลยครับ")
             
-            # สร้าง QR Code สำหรับ PromptPay (จำลองลิงก์หรือพร้อมเพย์)
             qr_img_tag = ""
             if include_qr:
                 qr_content = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
@@ -495,7 +510,6 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
                 qr_base64 = base64.b64encode(q_buf.getvalue()).decode()
                 qr_img_tag = f'<img src="data:image/png;base64,{qr_base64}" width="120px"><br><span style="font-size:10px;">สแกนจ่ายผ่าน PromptPay: {STORE_PROMPTPAY}</span>'
 
-            # สร้างตารางรายการสินค้า HTML
             items_html = ""
             for idx, itm in enumerate(items_list):
                 items_html += f"<tr><td style='border-bottom:1px solid #ddd; padding:5px;'>{idx+1}. {itm[0]}</td><td style='border-bottom:1px solid #ddd; padding:5px; text-align:center;'>{itm[1]}</td><td style='border-bottom:1px solid #ddd; padding:5px; text-align:right;'>{itm[2]:,.2f}</td><td style='border-bottom:1px solid #ddd; padding:5px; text-align:right;'>{itm[3]:,.2f}</td></tr>"
