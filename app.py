@@ -16,7 +16,7 @@ if not os.path.exists(UPLOAD_DIR):
 
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(
-    page_title="ZoneOnline Service - Ultimate Edition", 
+    page_title="ZoneOnline Service - Enterprise Edition", 
     page_icon="⚡", 
     layout="wide"
 )
@@ -39,12 +39,31 @@ def init_db(conn):
             promptpay TEXT,
             line_link TEXT,
             fb_link TEXT,
-            tiktok_link TEXT
+            tiktok_link TEXT,
+            prefix_qt TEXT DEFAULT 'QT',
+            prefix_iv TEXT DEFAULT 'IV',
+            prefix_tax TEXT DEFAULT 'TAX',
+            prefix_rc TEXT DEFAULT 'RC',
+            prefix_cn TEXT DEFAULT 'CN',
+            prefix_dn TEXT DEFAULT 'DN',
+            default_currency TEXT DEFAULT 'THB',
+            accounting_method TEXT DEFAULT 'เกณฑ์สิทธิ์ (Accrual)',
+            accounting_period TEXT DEFAULT '2026',
+            lock_period TEXT DEFAULT 'ยังไม่ล็อก',
+            opening_balance REAL DEFAULT 0.0
         )
     ''')
-    for col in ['promptpay', 'line_link', 'fb_link', 'tiktok_link']:
+    
+    # อัปเดตตารางรองรับฟีเจอร์ตั้งค่าใหม่ๆ แบบปลอดภัย
+    extra_cols = [
+        ('prefix_qt', 'TEXT'), ('prefix_iv', 'TEXT'), ('prefix_tax', 'TEXT'),
+        ('prefix_rc', 'TEXT'), ('prefix_cn', 'TEXT'), ('prefix_dn', 'TEXT'),
+        ('default_currency', 'TEXT'), ('accounting_method', 'TEXT'), 
+        ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL')
+    ]
+    for col, col_type in extra_cols:
         try:
-            cursor.execute(f"ALTER TABLE store_settings ADD COLUMN {col} TEXT;")
+            cursor.execute(f"ALTER TABLE store_settings ADD COLUMN {col} {col_type};")
             conn.commit()
         except sqlite3.OperationalError:
             pass
@@ -52,8 +71,8 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB')
         ''')
         conn.commit()
 
@@ -113,10 +132,12 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
-STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, STORE_LINE, STORE_FB, STORE_TIKTOK = store_info
+(STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
+ STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
+ DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL) = store_info
 
 # ==========================================
 # 🔍 โหมดพิเศษ: หน้าจอเช็คสถานะสาธารณะผ่าน QR Code (?track=...)
@@ -225,13 +246,13 @@ if track_code:
 # 🖥️ หน้าแอดมินปกติ (Admin Dashboard)
 # ==========================================
 st.set_page_config(
-    page_title="ZoneOnline Service - Ultimate Edition", 
+    page_title="ZoneOnline Service - Enterprise Edition", 
     page_icon="⚡", 
     layout="wide"
 )
 
-st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ระบบเอกสารการค้า FlowAccount ครบชุด 6 ประเภท)")
+st.title(f"⚡ {STORE_NAME} [Enterprise Edition]")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมศูนย์กลางการตั้งค่า FlowAccount & ERP Style)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -859,7 +880,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                                     <div>
                                         <div class="footer-box">
-                                            <div style="width: 70%;">
+                                            <div style="width: 65%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
                                                         <td style="padding-bottom: 5px; width: 50%;">
@@ -915,7 +936,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับปรุงลายเซ็นคู่ขนานตามประเภทเอกสาร)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - อัปเดตศูนย์กลางการตั้งค่าร้านค้าครบถ้วน)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -963,7 +984,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                 """
             
             salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
-            currency = st.selectbox("สกุลเงิน", ["THB", "USD", "EUR"])
+            currency = st.selectbox("สกุลเงิน", [DEF_CURR, "THB", "USD", "EUR"])
             
             is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
             c_pay_method = "โอนเงินผ่าน PromptPay QR"
@@ -1052,32 +1073,32 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
 
             if "1." in doc_type_selected:
                 doc_title_str = "ใบเสนอราคา / QUOTATION"
-                doc_code_prefix = "QT"
+                doc_code_prefix = P_QT
                 left_sign_title = "ผู้เสนอ / ผู้ออกเอกสาร"
                 right_sign_title = "ผู้อนุมัติ / ลูกค้า"
             elif "2." in doc_type_selected:
                 doc_title_str = "ใบส่งสินค้า / ใบแจ้งหนี้ / DELIVERY ORDER & INVOICE"
-                doc_code_prefix = "IV"
+                doc_code_prefix = P_IV
                 left_sign_title = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                 right_sign_title = "ผู้รับสินค้า / ลูกค้า"
             elif "3." in doc_type_selected:
                 doc_title_str = "ใบกำกับภาษี / TAX INVOICE"
-                doc_code_prefix = "TAX"
+                doc_code_prefix = P_TAX
                 left_sign_title = "ผู้มีอำนาจออกเอกสาร"
                 right_sign_title = "ผู้รับบริการ / ลูกค้า"
             elif "4." in doc_type_selected:
                 doc_title_str = "ใบเสร็จรับเงิน / CASH RECEIPT"
-                doc_code_prefix = "RC"
+                doc_code_prefix = P_RC
                 left_sign_title = "ผู้รับเงิน / ผู้ออกเอกสาร"
                 right_sign_title = "ผู้จ่ายเงิน / ลูกค้า"
             elif "5." in doc_type_selected:
                 doc_title_str = "ใบลดหนี้ / CREDIT NOTE"
-                doc_code_prefix = "CN"
+                doc_code_prefix = P_CN
                 left_sign_title = "ผู้ออกใบลดหนี้"
                 right_sign_title = "ผู้รับใบลดหนี้ / ลูกค้า"
             else:
                 doc_title_str = "ใบเพิ่มหนี้ / DEBIT NOTE"
-                doc_code_prefix = "DN"
+                doc_code_prefix = P_DN
                 left_sign_title = "ผู้ออกใบเพิ่มหนี้"
                 right_sign_title = "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
 
@@ -1240,29 +1261,159 @@ elif menu == "💰 สรุปยอดซ่อม & ค่าคอมมิ�
     st.info("ส่วนแสดงรายงานและคำนวณค่าคอมมิชชั่นช่างอัตโนมัติ")
 
 # ==========================================
-# 8. ตั้งค่าข้อมูลร้านค้า
+# 8. ตั้งค่าข้อมูลร้านค้า (Enterprise Settings Hub)
 # ==========================================
 elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)":
-    st.header("⚙️ ตั้งค่าข้อมูลร้านค้า")
-    with st.form("settings_form"):
-        new_store_name = st.text_input("ชื่อร้านค้า", value=STORE_NAME)
-        new_phone = st.text_input("เบอร์โทรศัพท์", value=STORE_PHONE)
-        new_promptpay = st.text_input("เลขพร้อมเพย์", value=STORE_PROMPTPAY)
-        new_line = st.text_input("ลิงก์ Line", value=STORE_LINE)
-        new_fb = st.text_input("ลิงก์ Facebook", value=STORE_FB)
-        new_tiktok = st.text_input("ลิงก์ TikTok", value=STORE_TIKTOK)
-        new_tax = st.text_input("เลขผู้เสียภาษี", value=STORE_TAX)
-        new_address = st.text_area("ที่อยู่", value=STORE_ADDRESS)
-        new_note = st.text_input("หมายเหตุ", value=STORE_NOTE)
+    st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
+    st.markdown("ปรับแต่งค่าระบบเอกสาร บัญชี ผู้ใช้งาน สินค้า ธุรกิจ และคีย์ลัดของร้านค้า")
+    
+    set_tab1, set_tab2, set_tab3, set_tab4, set_tab5, set_tab6 = st.tabs([
+        "📄 ตั้งค่าเอกสาร", 
+        "📊 ตั้งค่าด้านบัญชี", 
+        "👤 ตั้งค่าผู้ใช้งาน", 
+        "📦 ตั้งค่าสินค้า", 
+        "🏢 ตั้งค่าธุรกิจ", 
+        "⌨️ แป้นพิมพ์ลัด"
+    ])
+    
+    # --- Tab 1: ตั้งค่าเอกสาร ---
+    with set_tab1:
+        st.subheader("📄 ตั้งค่าเอกสาร & เลขรัน / ดีไซน์ / โลโก้")
+        with st.form("settings_doc_form"):
+            st.markdown("##### 🔢 เลขรันเอกสาร (Document Prefix)")
+            col_p1, col_p2, col_p3 = st.columns(3)
+            with col_p1:
+                p_qt_val = st.text_input("Prefix ใบเสนอราคา (QT)", value=P_QT)
+                p_rc_val = st.text_input("Prefix ใบเสร็จรับเงิน (RC)", value=P_RC)
+            with col_p2:
+                p_iv_val = st.text_input("Prefix ใบแจ้งหนี้ (IV)", value=P_IV)
+                p_cn_val = st.text_input("Prefix ใบลดหนี้ (CN)", value=P_CN)
+            with col_p3:
+                p_tax_val = st.text_input("Prefix ใบกำกับภาษี (TAX)", value=P_TAX)
+                p_dn_val = st.text_input("Prefix ใบเพิ่มหนี้ (DN)", value=P_DN)
+                
+            st.markdown("---")
+            st.markdown("##### 🎨 รูปแบบดีไซน์เอกสาร & ค่าเริ่มต้น")
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                doc_style = st.selectbox("รูปแบบดีไซน์เอกสาร", ["FlowAccount Corporate Modern", "Classic Minimalist"])
+                def_curr_val = st.selectbox("สกุลเงินหลัก", ["THB", "USD", "EUR"], index=0 if DEF_CURR=='THB' else 0)
+            with col_d2:
+                logo_text = st.text_input("ข้อความหัวโลโก้ร้าน", value=STORE_NAME)
+                def_note_val = st.text_area("หมายเหตุเอกสารเริ่มต้น", value=STORE_NOTE)
+                
+            if st.form_submit_button("💾 บันทึกการตั้งค่าเอกสาร"):
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE store_settings 
+                    SET prefix_qt = ?, prefix_iv = ?, prefix_tax = ?, prefix_rc = ?, prefix_cn = ?, prefix_dn = ?, default_currency = ?, note = ?
+                    WHERE id = 1
+                """, (p_qt_val, p_iv_val, p_tax_val, p_rc_val, p_cn_val, p_dn_val, def_curr_val, def_note_val))
+                conn.commit()
+                cursor.close()
+                st.success("บันทึกการตั้งค่าเอกสารสำเร็จ!")
+                st.rerun()
+
+    # --- Tab 2: ตั้งค่าด้านบัญชี ---
+    with set_tab2:
+        st.subheader("📊 ตั้งค่าด้านบัญชีและงวดบัญชี")
+        with st.form("settings_acc_form"):
+            acc_method = st.selectbox("ตั้งค่าบันทึกบัญชี", ["เกณฑ์สิทธิ์ (Accrual)", "เกณฑ์เงินสด (Cash Basis)"], index=0 if 'Accrual' in ACC_METHOD else 1)
+            acc_period = st.text_input("ตั้งค่างวดบัญชี (ปี/รอบ)", value=ACC_PERIOD)
+            lock_period = st.selectbox("ล็อกงวดบัญชี", ["ยังไม่ล็อก", "ล็อกงวดเดือนปัจจุบัน", "ล็อกงวดปีปัจจุบัน"], index=0 if LOCK_PER=='ยังไม่ล็อก' else 1)
+            opening_bal = st.number_input("ตั้งค่ายอดเริ่มต้น (Opening Balance)", min_value=0.0, value=float(OPEN_BAL), step=1000.0)
+            
+            if st.form_submit_button("💾 บันทึกการตั้งค่าบัญชี"):
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE store_settings 
+                    SET accounting_method = ?, accounting_period = ?, lock_period = ?, opening_balance = ?
+                    WHERE id = 1
+                """, (acc_method, acc_period, lock_period, opening_bal))
+                conn.commit()
+                cursor.close()
+                st.success("บันทึกการตั้งค่าบัญชีสำเร็จ!")
+                st.rerun()
+
+    # --- Tab 3: ตั้งค่าผู้ใช้งาน ---
+    with set_tab3:
+        st.subheader("👤 ข้อมูลส่วนตัว & จัดการผู้ใช้งานระบบ")
+        st.markdown("##### 🔑 รายชื่อผู้ใช้งานในระบบ (Staff / Technicians)")
         
-        if st.form_submit_button("💾 บันทึกการตั้งค่า"):
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE store_settings 
-                SET store_name = ?, phone = ?, tax_id = ?, address = ?, note = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ? 
-                WHERE id = 1
-            """, (new_store_name, new_phone, new_tax, new_address, new_note, new_promptpay, new_line, new_fb, new_tiktok))
-            conn.commit()
-            cursor.close()
-            st.success("บันทึกการตั้งค่าสำเร็จ!")
-            st.rerun()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, full_name, role FROM staff")
+        staff_list = cursor.fetchall()
+        cursor.close()
+        
+        if staff_list:
+            staff_df = pd.DataFrame(staff_list, columns=["ID", "Username", "ชื่อ-นามสกุล", "บทบาท"])
+            st.dataframe(staff_df, use_container_width=True)
+            
+        st.markdown("---")
+        with st.form("add_user_form"):
+            st.markdown("##### ➕ เพิ่มผู้ใช้งานใหม่")
+            new_user = st.text_input("Username (ชื่อผู้ใช้เข้าสู่ระบบ)")
+            new_name = st.text_input("ชื่อ-นามสกุลเต็ม")
+            new_role = st.selectbox("บทบาทหน้าที่", ["admin", "cashier", "technician"])
+            
+            if st.form_submit_button("➕ บันทึกผู้ใช้งานใหม่"):
+                if new_user and new_name:
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO staff (username, full_name, role) VALUES (?, ?, ?)", (new_user, new_name, new_role))
+                        conn.commit()
+                        cursor.close()
+                        st.success(f"เพิ่มผู้ใช้งาน {new_name} สำเร็จ!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"เกิดข้อผิดพลาด (Username อาจซ้ำ): {e}")
+                else:
+                    st.warning("กรุณากรอกข้อมูลให้ครบถ้วน")
+
+    # --- Tab 4: ตั้งค่าสินค้า ---
+    with set_tab4:
+        st.subheader("📦 ตั้งค่าสินค้าและคลังสินค้า")
+        st.info("ตั้งค่าหมวดหมู่สินค้า, หน่วยนับ และอัตราภาษีเริ่มต้นสำหรับสินค้าและอะไหล่")
+        st.text_input("หมวดหมู่สินค้าเริ่มต้น", value="อะไหล่คอมพิวเตอร์ และอุปกรณ์ไอที")
+        st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
+        st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
+
+    # --- Tab 5: ตั้งค่าธุรกิจ ---
+    with set_tab5:
+        st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
+        with st.form("settings_biz_form"):
+            new_store_name = st.text_input("ชื่อร้านค้า / ธุรกิจ", value=STORE_NAME)
+            new_phone = st.text_input("เบอร์โทรศัพท์", value=STORE_PHONE)
+            new_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value=STORE_TAX)
+            new_promptpay = st.text_input("เลขพร้อมเพย์ (สำหรับสร้าง QR Code รับเงิน)", value=STORE_PROMPTPAY)
+            new_address = st.text_area("ที่อยู่สถานประกอบการ", value=STORE_ADDRESS)
+            
+            st.markdown("---")
+            st.markdown("##### 🌐 ช่องทางโซเชียลมีเดียของร้าน")
+            new_line = st.text_input("ลิงก์ Line Official", value=STORE_LINE)
+            new_fb = st.text_input("ลิงก์ Facebook Page", value=STORE_FB)
+            new_tiktok = st.text_input("ลิงก์ TikTok", value=STORE_TIKTOK)
+            
+            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจ"):
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE store_settings 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ? 
+                    WHERE id = 1
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok))
+                conn.commit()
+                cursor.close()
+                st.success("บันทึกข้อมูลธุรกิจสำเร็จ!")
+                st.rerun()
+
+    # --- Tab 6: แป้นพิมพ์ลัด ---
+    with set_tab6:
+        st.subheader("⌨️ แป้นพิมพ์ลัด (Keyboard Shortcuts)")
+        st.markdown("""
+        ใช้งานระบบได้สะดวกรวดเร็วยิ่งขึ้นด้วยคีย์ลัดมาตรฐาน:
+        * `Ctrl + P` : สั่งพิมพ์เอกสารปัจจุบันทันที
+        * `Ctrl + F` : ค้นหาข้อมูลงานซ่อม / ลูกค้า
+        * `Alt + N` : สร้างใบงานรับซ่อมใหม่
+        * `Alt + S` : บันทึกข้อมูลฟอร์ม
+        * `Esc` : ยกเลิก / ปิดหน้าต่างป๊อปอัป
+        """)
