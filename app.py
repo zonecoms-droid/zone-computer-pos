@@ -844,14 +844,14 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                             <tr>
                                                 <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
                                                     <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
-                                                    {custom_notes}
+                                                    {custom_notes}<br><br>
+                                                    <b>ช่องทางชำระเงิน:</b> {pay_chanel}
                                                 </td>
                                                 <td style="width: 45%;">
                                                     <table class="summary-tbl">
                                                         <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: #0284c7;"><b>{grand_total:,.2f} บาท</b></td></tr>
-                                                        <tr><td style="text-align: right; font-size: 12px; color: #475569; padding-top: 8px;"><b>ช่องทางชำระเงิน:</b></td><td style="text-align: right; font-size: 12px; color: #1e293b; padding-top: 8px;">{pay_chanel}</td></tr>
                                                     </table>
                                                 </td>
                                             </tr>
@@ -860,16 +860,14 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                                     <div>
                                         <div class="footer-box">
-                                            <div style="width: 45%;">
-                                                <table style="width: 100%; text-align: left; font-size: 11px;">
+                                            <div style="width: 65%;">
+                                                <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
-                                                        <td style="border-top: none; padding-top: 2px;">
+                                                        <td style="padding-bottom: 25px;">
                                                             ลงชื่อ......................................................<br>
                                                             ผู้รับเงิน / ผู้ออกเอกสาร วันที่....................
                                                         </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style="border-top: none; padding-top: 15px;">
+                                                        <td style="padding-bottom: 25px;">
                                                             ลงชื่อ......................................................<br>
                                                             ผู้จ่ายเงิน / ลูกค้า วันที่.........................
                                                         </td>
@@ -912,7 +910,7 @@ elif menu == "🛡️ เช็คประกัน & Serial Number":
         st.success("✅ สินค้าชิ้นนี้อยู่ในประกันร้าน!")
 
 # ==========================================
-# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - อัปเดตลายเซ็นและตำแหน่งชำระเงินตามต้องการ)
+# 6. ระบบออกเอกสารการค้าครบชุด 6 ประเภท (FlowAccount Style - ปรับปรุงลายเซ็นคู่ขนาน)
 # ==========================================
 elif menu == "📄 ระบบออกเอกสารการค้า (FlowAccount Style)":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Corporate Style)")
@@ -1177,16 +1175,14 @@ elif menu == "📄 ระบบออกเอกสารการค้า (Fl
                     <!-- Footer Signatures & QR & Social Media at the Very Bottom -->
                     <div>
                         <div class="footer-box">
-                            <div style="width: 45%;">
-                                <table style="width: 100%; text-align: left; font-size: 11px;">
+                            <div style="width: 65%;">
+                                <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                     <tr>
-                                        <td style="border-top: none; padding-top: 2px;">
+                                        <td style="padding-bottom: 25px;">
                                             ลงชื่อ......................................................<br>
                                             ผู้รับเงิน / ผู้ออกเอกสาร วันที่....................
                                         </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="border-top: none; padding-top: 15px;">
+                                        <td style="padding-bottom: 25px;">
                                             ลงชื่อ......................................................<br>
                                             ผู้จ่ายเงิน / ลูกค้า วันที่.........................
                                         </td>
