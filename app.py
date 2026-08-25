@@ -231,7 +231,7 @@ st.set_page_config(
 )
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (แยกใบเสร็จ ใบกำกับภาษี และ QR ยอดเงินเป๊ะ)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (ใบเสร็จและใบกำกับภาษีขนาดเต็มแผ่น พร้อม QR โซเชียล)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -517,7 +517,7 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
             st.image(buf.getvalue(), width=140)
 
 # ==========================================
-# 4. ติดตาม & อัปเดตสถานะงานซ่อม (แยก ใบคืนสินค้า, ใบเสร็จรับเงิน, ใบกำกับภาษี)
+# 4. ติดตาม & อัปเดตสถานะงานซ่อม
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -573,19 +573,18 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 st.success(f"อัปเดตสถานะสำเร็จ!")
                 st.rerun()
 
-            # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร (ใบคืนสินค้า / ใบเสร็จรับเงิน / ใบกำกับภาษี) ---
+            # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
             if selected_row['status'].startswith('COMPLETED'):
                 st.markdown("---")
                 st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! กรุณาเลือกประเภทเอกสารที่ต้องการออกด้านล่างนี้ครับ")
                 
                 doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
-                    "📦 ใบคืนสินค้า (Delivery Slip)", 
-                    "💵 ใบเสร็จรับเงิน (Receipt)", 
-                    "📄 ใบกำกับภาษี (Tax Invoice)"
+                    "📦 ใบคืนสินค้า (Delivery Slip - A4 ครึ่งหน้า)", 
+                    "💵 ใบเสร็จรับเงิน (Receipt - A4 เต็มแผ่น)", 
+                    "📄 ใบกำกับภาษี (Tax Invoice - A4 เต็มแผ่น)"
                 ])
                 
                 with st.form(f"form_doc_{selected_job}"):
-                    # ถ้าเลือกใบกำกับภาษี ให้กรอกข้อมูลภาษีลูกค้าเพิ่ม
                     tax_cust_name = selected_row['customer_name']
                     tax_cust_id = ""
                     tax_cust_branch = "สำนักงานใหญ่"
@@ -632,7 +631,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                     custom_notes = st.text_area("📝 ช่องหมายเหตุ / เงื่อนไขการรับประกัน", value=f"รับประกันงานซ่อมและอะไหล่ {warrant_days} วัน นับจากวันที่ส่งมอบเครื่อง")
                     
-                    generate_btn = st.form_submit_button("🖨️ สร้างเอกสารพร้อมพิมพ์ (A4 แนวตั้ง ครึ่งหน้า สำหรับลูกค้า & ร้านค้า)")
+                    generate_btn = st.form_submit_button("🖨️ สร้างเอกสารพร้อมพิมพ์อย่างเป็นทางการ")
                     
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
@@ -645,161 +644,245 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                             q_stream = BytesIO()
                             qr_obj.save(q_stream)
                             b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="90px"><br><span style="font-size:8px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
+                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
+
+                        # สร้าง QR Code สำหรับ Social Media (Line, FB, TikTok)
+                        def make_social_qr(link, label):
+                            if not link: return ""
+                            sq = qrcode.make(link)
+                            s_buf = BytesIO()
+                            sq.save(s_buf)
+                            s_b64 = base64.b64encode(s_buf.getvalue()).decode()
+                            return f'<div style="text-align:center; display:inline-block; margin: 0 8px;"><img src="data:image/png;base64,{s_b64}" width="45px"><br><span style="font-size:8px;">{label}</span></div>'
+
+                        social_html = ""
+                        if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
+                        if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
+                        if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
 
                         items_html = ""
                         for idx, val in enumerate(items_data):
-                            items_html += f"<tr><td style='border-bottom:1px solid #ddd; padding:2px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #ddd; padding:2px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #ddd; padding:2px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #ddd; padding:2px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+                            items_html += f"<tr><td style='border-bottom:1px solid #ddd; padding:6px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #ddd; padding:6px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #ddd; padding:6px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #ddd; padding:6px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
-                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:2px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:2px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
+                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:6px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:6px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        # กำหนดหัวข้อเอกสารตามที่เลือก
+                        # -------------------------------------------------------------------------
+                        # 📦 กรณีเลือก "ใบคืนสินค้า" (A4 ครึ่งหน้า แบบเดิม)
+                        # -------------------------------------------------------------------------
                         if "ใบคืนสินค้า" in doc_choice:
-                            doc_main_title = "ใบคืนสินค้าและส่งมอบงานซ่อม (Delivery Slip)"
-                        elif "ใบเสร็จรับเงิน" in doc_choice:
-                            doc_main_title = "ใบเสร็จรับเงิน (Cash Receipt / Receipt)"
-                        else:
-                            doc_main_title = "ใบกำกับภาษี / ใบเสร็จรับเงิน (Tax Invoice / Receipt)"
-
-                        tax_info_html = ""
-                        if "ใบกำกับภาษี" in doc_choice:
-                            tax_info_html = f"""
-                            <tr><td colspan="2"><b>ชื่อผู้ซื้อ:</b> {tax_cust_name} &nbsp;&nbsp;&nbsp; <b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'} ({tax_cust_branch})</td></tr>
-                            <tr><td colspan="2"><b>ที่อยู่ผู้ซื้อ:</b> {tax_cust_address if tax_cust_address else '-'}</td></tr>
+                            final_html = f"""
+                            <html>
+                            <head>
+                            <style>
+                                @page {{ size: A4 portrait; margin: 5mm; }}
+                                body {{ background: #f0f2f5; font-family: sans-serif; color: black; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                                .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                                .print-btn:hover {{ background-color: #218838; }}
+                                .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+                                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
+                                .tbl {{ width: 100%; border-collapse: collapse; }}
+                                .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }}
+                                .itm-tbl th {{ background: #333; color: white; padding: 4px; text-align: left; }}
+                                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
+                                .ftr {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; align-items: flex-end; }}
+                                @media print {{
+                                    body {{ background: white; padding: 0; }}
+                                    .print-btn {{ display: none; }}
+                                    .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
+                                }}
+                            </style>
+                            </head>
+                            <body>
+                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (A4 ครึ่งหน้า)</button>
+                                <div class="doc-box">
+                                    <!-- สำหรับลูกค้า -->
+                                    <div class="section-box">
+                                        <div>
+                                            <table class="tbl">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
+                                                        <p style="font-size: 10px; margin: 1px 0;">{STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                                                    </td>
+                                                    <td style="text-align: right; vertical-align: top;">
+                                                        <h4 style="color: #333; margin: 0;"><b>ใบคืนสินค้าและส่งมอบงานซ่อม (สำหรับลูกค้า)</b></h4>
+                                                        <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <table class="tbl" style="font-size: 11px; margin-top: 4px;">
+                                                <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
+                                                <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
+                                            </table>
+                                            <table class="itm-tbl">
+                                                <tr><th>รายการซ่อม / อะไหล่</th><th style="text-align: center;">จำนวน</th><th style="text-align: right;">ราคา/หน่วย</th><th style="text-align: right;">จำนวนเงิน (บาท)</th></tr>
+                                                {items_html}
+                                                <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f} บาท</td></tr>
+                                                {vat_html}
+                                                <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            </table>
+                                        </div>
+                                        <div class="ftr">
+                                            <div style="width: 70%;">
+                                                <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
+                                                <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
+                                            </div>
+                                            <div style="text-align: center; width: 30%;">
+                                                {qr_tag}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="perforation">✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกระหว่างลูกค้าและร้านค้า - - - - - - - - - - - - - - - - - ✂️</div>
+                                    <!-- สำหรับร้านค้า -->
+                                    <div class="section-box">
+                                        <div>
+                                            <table class="tbl">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
+                                                        <p style="font-size: 10px; margin: 1px 0;">ใบควบคุมการส่งมอบและรับเงิน (สำหรับร้านค้าเก็บไว้)</p>
+                                                    </td>
+                                                    <td style="text-align: right; vertical-align: top;">
+                                                        <h4 style="color: #333; margin: 0;"><b>ใบคืนสินค้าและส่งมอบงานซ่อม (สำหรับร้านค้า)</b></h4>
+                                                        <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <table class="tbl" style="font-size: 11px; margin-top: 4px;">
+                                                <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
+                                                <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
+                                            </table>
+                                            <table class="itm-tbl">
+                                                <tr><th>รายการซ่อม / อะไหล่</th><th style="text-align: center;">จำนวน</th><th style="text-align: right;">ราคา/หน่วย</th><th style="text-align: right;">จำนวนเงิน (บาท)</th></tr>
+                                                {items_html}
+                                                <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f} บาท</td></tr>
+                                                {vat_html}
+                                                <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            </table>
+                                        </div>
+                                        <div class="ftr">
+                                            <div style="width: 100%;">
+                                                <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
+                                                <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อลูกค้า (ตรวจรับเรียบร้อย): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้ส่งมอบ: ......................................................</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </body>
+                            </html>
                             """
+                        # -------------------------------------------------------------------------
+                        # 💵 / 📄 กรณีเลือก "ใบเสร็จรับเงิน" หรือ "ใบกำกับภาษี" (ขนาดเต็มแผ่น A4 Full Page)
+                        # -------------------------------------------------------------------------
                         else:
-                            tax_info_html = f"""
-                            <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
-                            """
+                            is_tax = "ใบกำกับภาษี" in doc_choice
+                            doc_title = "ใบกำกับภาษี / Tax Invoice" if is_tax else "ใบเสร็จรับเงิน / Cash Receipt"
+                            
+                            tax_section_html = ""
+                            if is_tax:
+                                tax_section_html = f"""
+                                <table class="tbl" style="background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                                    <tr><td colspan="2"><b>นามผู้ซื้อสินค้า / ผู้รับบริการ:</b> {tax_cust_name}</td></tr>
+                                    <tr><td><b>เลขประจำตัวผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'}</td><td><b>สาขา:</b> {tax_cust_branch}</td></tr>
+                                    <tr><td colspan="2"><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td></tr>
+                                </table>
+                                """
+                            else:
+                                tax_section_html = f"""
+                                <table class="tbl" style="background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                                    <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
+                                    <tr><td colspan="2"><b>อุปกรณ์ที่ซ่อม:</b> {selected_row['device_name']}</td></tr>
+                                </table>
+                                """
 
-                        final_html = f"""
-                        <html>
-                        <head>
-                        <style>
-                            @page {{ size: A4 portrait; margin: 5mm; }}
-                            body {{ background: #f0f2f5; font-family: sans-serif; color: black; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
-                            .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                            .print-btn:hover {{ background-color: #218838; }}
-                            .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-                            .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
-                            .tbl {{ width: 100%; border-collapse: collapse; }}
-                            .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }}
-                            .itm-tbl th {{ background: #333; color: white; padding: 4px; text-align: left; }}
-                            .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
-                            .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
-                            @media print {{
-                                body {{ background: white; padding: 0; }}
-                                .print-btn {{ display: none; }}
-                                .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
-                            }}
-                        </style>
-                        </head>
-                        <body>
-                            <button class="print-btn" onclick="window.print()">🖨️ คลิกที่นี่เพื่อพิมพ์เอกสาร (A4 แนวตั้ง)</button>
-                            <div class="doc-box">
-                                
-                                <!-- ส่วนที่ 1: สำหรับลูกค้า -->
-                                <div class="section-box">
+                            final_html = f"""
+                            <html>
+                            <head>
+                            <style>
+                                @page {{ size: A4 portrait; margin: 15mm; }}
+                                body {{ background: #f0f2f5; font-family: sans-serif; color: #333; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                                .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                                .print-btn:hover {{ background-color: #218838; }}
+                                .full-page {{ background: white; border: 1px solid #ccc; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }}
+                                .tbl {{ width: 100%; border-collapse: collapse; }}
+                                .full-items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
+                                .full-items-tbl th {{ background: #1e293b; color: white; padding: 8px; text-align: left; }}
+                                .full-items-tbl td {{ padding: 8px; border-bottom: 1px solid #e2e8f0; }}
+                                .footer-content {{ display: flex; justify-content: space-between; margin-top: 30px; align-items: flex-start; border-top: 1px solid #cbd5e1; padding-top: 20px; font-size: 12px; }}
+                                @media print {{
+                                    body {{ background: white; padding: 0; }}
+                                    .print-btn {{ display: none; }}
+                                    .full-page {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
+                                }}
+                            </style>
+                            </head>
+                            <body>
+                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารขนาดเต็มแผ่น A4</button>
+                                <div class="full-page">
                                     <div>
+                                        <!-- Header -->
                                         <table class="tbl">
                                             <tr>
                                                 <td>
-                                                    <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
-                                                    <p style="font-size: 10px; margin: 1px 0;">{STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                                                    <h2 style="margin: 0; color: #1e293b;"><b>{STORE_NAME}</b></h2>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #555;">{STORE_ADDRESS}</p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #555;">โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
-                                                    <h4 style="color: #333; margin: 0;"><b>{doc_main_title} (สำหรับลูกค้า)</b></h4>
-                                                    <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                    <h2 style="color: #0284c7; margin: 0;"><b>{doc_title}</b></h2>
+                                                    <p style="font-size: 12px; margin: 4px 0;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
+                                                    <p style="font-size: 12px; margin: 4px 0;"><b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
                                                 </td>
                                             </tr>
                                         </table>
-                                        <table class="tbl" style="font-size: 11px; margin-top: 4px;">
-                                            {tax_info_html}
-                                            <tr>
-                                                <td><b>อุปกรณ์:</b> {selected_row['device_name']}</td>
-                                                <td><b>รับประกันหลังซ่อม:</b> {warrant_days} วัน</td>
-                                            </tr>
-                                        </table>
+                                        <hr style="border: 0; border-top: 2px solid #e2e8f0; margin: 15px 0;">
                                         
-                                        <table class="itm-tbl">
+                                        {tax_section_html}
+                                        
+                                        <!-- Items Table -->
+                                        <table class="full-items-tbl">
                                             <tr>
-                                                <th>รายการสินค้า / บริการ</th>
-                                                <th style="text-align: center;">จำนวน</th>
-                                                <th style="text-align: right;">ราคา/หน่วย</th>
-                                                <th style="text-align: right;">จำนวนเงิน (บาท)</th>
+                                                <th>รายการสินค้า / บริการ / อะไหล่</th>
+                                                <th style="text-align: center; width: 60px;">จำนวน</th>
+                                                <th style="text-align: right; width: 100px;">ราคา/หน่วย</th>
+                                                <th style="text-align: right; width: 120px;">จำนวนเงิน (บาท)</th>
                                             </tr>
                                             {items_html}
-                                            <tr><td colspan="3" style="text-align: right; padding-top: 3px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 3px;">{subtotal:,.2f} บาท</td></tr>
+                                            <tr><td colspan="3" style="text-align: right; padding-top: 12px;"><b>มูลค่ารวมสินค้า (Subtotal):</b></td><td style="text-align: right; padding-top: 12px;">{subtotal:,.2f} บาท</td></tr>
                                             {vat_html}
-                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิทั้งสิ้น:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            <tr><td colspan="3" style="text-align: right; padding: 10px; font-size: 15px; color: #0284c7;"><b>ยอดชำระสุทธิทั้งสิ้น (Grand Total):</b></td><td style="text-align: right; padding: 10px; font-size: 15px; color: #0284c7;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                         </table>
                                     </div>
 
-                                    <div class="ftr">
-                                        <div style="width: 75%;">
-                                            <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
-                                            <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อรับสินค้าคืน / ชำระเงิน: ...................................................... (ลูกค้า)</p>
+                                    <!-- Footer -->
+                                    <div class="footer-content">
+                                        <div style="width: 55%;">
+                                            <p style="margin: 0 0 8px 0;"><b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b></p>
+                                            <p style="margin: 0; color: #555; font-size: 11px;">{custom_notes}</p>
+                                            
+                                            <table style="width: 100%; margin-top: 35px; font-size: 11px;">
+                                                <tr>
+                                                    <td style="text-align: center; border-top: 1px solid #999; padding-top: 6px;">ลงชื่อ......................................................<br>(ผู้รับสินค้า / ลูกค้า)</td>
+                                                    <td style="text-align: center; border-top: 1px solid #999; padding-top: 6px;">ลงชื่อ......................................................<br>(ผู้ออกเอกสาร / ร้านค้า)</td>
+                                                </tr>
+                                            </table>
                                         </div>
-                                        <div style="text-align: center; width: 25%;">
+
+                                        <div style="width: 40%; text-align: right;">
                                             {qr_tag}
+                                            <div style="margin-top: 20px; text-align: center; font-size: 10px; color: #555;">
+                                                <b>ช่องทางติดต่อ & ติดตามร้านเรา:</b><br>
+                                                <div style="margin-top: 6px;">
+                                                    {social_html}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            </body>
+                            </html>
+                            """
 
-                                <!-- รอยฉีก -->
-                                <div class="perforation">
-                                    ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
-                                </div>
-
-                                <!-- ส่วนที่ 2: สำหรับร้านค้า -->
-                                <div class="section-box">
-                                    <div>
-                                        <table class="tbl">
-                                            <tr>
-                                                <td>
-                                                    <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
-                                                    <p style="font-size: 10px; margin: 1px 0;">ใบควบคุมการส่งมอบและรับเงิน (สำหรับร้านค้าเก็บไว้)</p>
-                                                </td>
-                                                <td style="text-align: right; vertical-align: top;">
-                                                    <h4 style="color: #333; margin: 0;"><b>{doc_main_title} (สำหรับร้านค้า)</b></h4>
-                                                    <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                        <table class="tbl" style="font-size: 11px; margin-top: 4px;">
-                                            {tax_info_html}
-                                            <tr>
-                                                <td><b>อุปกรณ์:</b> {selected_row['device_name']}</td>
-                                                <td><b>รับประกันหลังซ่อม:</b> {warrant_days} วัน</td>
-                                            </tr>
-                                        </table>
-                                        
-                                        <table class="itm-tbl">
-                                            <tr>
-                                                <th>รายการสินค้า / บริการ</th>
-                                                <th style="text-align: center;">จำนวน</th>
-                                                <th style="text-align: right;">ราคา/หน่วย</th>
-                                                <th style="text-align: right;">จำนวนเงิน (บาท)</th>
-                                            </tr>
-                                            {items_html}
-                                            <tr><td colspan="3" style="text-align: right; padding-top: 3px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 3px;">{subtotal:,.2f} บาท</td></tr>
-                                            {vat_html}
-                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิทั้งสิ้น:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
-                                        </table>
-                                    </div>
-
-                                    <div class="ftr">
-                                        <div style="width: 100%;">
-                                            <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
-                                            <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อลูกค้า (ตรวจสอบสภาพเรียบร้อย): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้ส่งมอบ: ......................................................</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </body>
-                        </html>
-                        """
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
