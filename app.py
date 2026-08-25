@@ -38,20 +38,25 @@ def init_db(conn):
             tax_id TEXT,
             address TEXT,
             note TEXT,
-            promptpay TEXT
+            promptpay TEXT,
+            line_link TEXT,
+            fb_link TEXT,
+            tiktok_link TEXT
         )
     ''')
-    try:
-        cursor.execute("ALTER TABLE store_settings ADD COLUMN promptpay TEXT;")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
+    # Auto Migration เผื่อฐานข้อมูลเก่าไม่มีคอลัมน์เหล่านี้
+    for col in ['promptpay', 'line_link', 'fb_link', 'tiktok_link']:
+        try:
+            cursor.execute(f"ALTER TABLE store_settings ADD COLUMN {col} TEXT;")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
 
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com')
         ''')
         conn.commit()
 
@@ -114,20 +119,20 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
-STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = store_info
+STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, STORE_LINE, STORE_FB, STORE_TIKTOK = store_info
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (เวอร์ชันสมบูรณ์แบบ)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (รองรับ QR Code หลากหลายช่องทาง)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
 
 menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", [
     "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม", 
-    "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
+    "📱 QR Code ติดต่อ & ลงทะเบียน (Line, FB, TikTok)",
     "🔍 ติดตาม & อัปเดตสถานะงานซ่อม", 
     "🛡️ เช็คประกัน & Serial Number",
     "📄 ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)",
@@ -314,22 +319,52 @@ if menu == "📥 รับเครื่องซ่อมใหม่ & พิ
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. ระบบลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)
+# 2. QR Code ติดต่อ & ลงทะเบียน (Line, FB, TikTok)
 # ==========================================
-elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)":
-    st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code (แนบรูปภาพ & วิดีโอได้)")
-    st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
+elif menu == "📱 QR Code ติดต่อ & ลงทะเบียน (Line, FB, TikTok)":
+    st.header("📱 สร้างและแสดง QR Code ช่องทางติดต่อ & ลงทะเบียนออนไลน์")
+    st.markdown("ลูกค้าสามารถสแกน QR Code เพื่อติดต่อร้านผ่าน **Line**, **Facebook**, หรือ **TikTok** ได้ทันที (ตั้งค่าลิงก์ได้ที่เมนูตั้งค่าร้านค้า)")
     
-    # 📌 คำแนะนำ: เปลี่ยนลิงก์ด้านล่างนี้ให้เป็น URL จริงของแอปเพื่อนบน Streamlit Cloud (เช่น https://ชื่อแอปของคุณ.streamlit.app)
-    qr_data = "https://zone-computer-pos.streamlit.app" 
+    col_qr1, col_qr2, col_qr3 = st.columns(3)
     
-    img = qrcode.make(qr_data)
-    buf = BytesIO()
-    img.save(buf)
-    st.image(buf.getvalue(), caption="สแกนเพื่อกรอกข้อมูลแจ้งซ่อมออนไลน์", width=250)
-    
+    # 1. Line QR
+    with col_qr1:
+        st.subheader("💚 Line Official / Chat")
+        if STORE_LINE:
+            line_img = qrcode.make(STORE_LINE)
+            l_buf = BytesIO()
+            line_img.save(l_buf)
+            st.image(l_buf.getvalue(), caption="สแกนเพิ่มเพื่อน / แชท Line ร้าน", use_container_width=True)
+            st.markdown(f"🔗 [ลิงก์ Line]({STORE_LINE})")
+        else:
+            st.warning("ยังไม่ได้ตั้งค่าลิงก์ Line ในระบบตั้งค่า")
+            
+    # 2. Facebook QR
+    with col_qr2:
+        st.subheader("💙 Facebook Page")
+        if STORE_FB:
+            fb_img = qrcode.make(STORE_FB)
+            f_buf = BytesIO()
+            fb_img.save(f_buf)
+            st.image(f_buf.getvalue(), caption="สแกนเข้าเพจ Facebook ร้าน", use_container_width=True)
+            st.markdown(f"🔗 [ลิงก์ Facebook]({STORE_FB})")
+        else:
+            st.warning("ยังไม่ได้ตั้งค่าลิงก์ Facebook ในระบบตั้งค่า")
+
+    # 3. TikTok QR
+    with col_qr3:
+        st.subheader("🖤 TikTok Profile")
+        if STORE_TIKTOK:
+            tk_img = qrcode.make(STORE_TIKTOK)
+            t_buf = BytesIO()
+            tk_img.save(t_buf)
+            st.image(t_buf.getvalue(), caption="สแกนดู TikTok ของร้าน", use_container_width=True)
+            st.markdown(f"🔗 [ลิงก์ TikTok]({STORE_TIKTOK})")
+        else:
+            st.warning("ยังไม่ได้ตั้งค่าลิงก์ TikTok ในระบบตั้งค่า")
+
     st.markdown("---")
-    st.subheader("📝 ฟอร์มลงทะเบียนสำหรับลูกค้า")
+    st.subheader("📝 ฟอร์มลูกค้าลงทะเบียนแจ้งซ่อมออนไลน์ (ผ่านเว็บแอปนี้โดยตรง)")
     
     with st.form("self_service_media_form"):
         c_name = st.text_input("ชื่อ-นามสกุลของคุณ")
@@ -439,7 +474,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 st.success(f"อัปเดตสถานะใบงาน {selected_job} เรียบร้อยแล้ว!")
                 st.rerun()
 
-            # --- ถ้าสถานะเป็น COMPLETED ให้แสดงฟังก์ชันออกใบคืนสินค้าและใบเสร็จ (A4 ครึ่งหน้า พร้อมรอยฉีก) ---
+            # --- ถ้าสถานะเป็น COMPLETED ให้แสดงฟังก์ชันออกใบคืนสินค้าและใบเสร็จ ---
             if selected_row['status'].startswith('COMPLETED'):
                 st.markdown("---")
                 st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! สามารถแก้ไขรายการ ราคา และออกใบคืนสินค้า / ใบเสร็จรับเงิน (ฟอร์ม A4 ครึ่งหน้า สำหรับลูกค้าและร้านค้า) ได้ด้านล่างนี้ครับ")
@@ -483,7 +518,6 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                     if generate_doc_btn:
                         r_grand_total = r_subtotal * 1.07 if include_vat_rcpt else r_subtotal
                         
-                        # สร้าง QR Code พร้อมเพย์
                         rcpt_qr_tag = ""
                         if pay_chanel == "โอนเงินผ่าน PromptPay QR":
                             q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{r_grand_total:.2f}"
@@ -525,7 +559,7 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                             <button class="print-btn" onclick="window.print()">🖨️ คลิกที่นี่เพื่อพิมพ์ใบคืนสินค้า / ใบเสร็จ (A4 แนวตั้ง)</button>
                             <div class="doc-box">
                                 
-                                <!-- ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
+                                <!-- ส่วนที่ 1: สำหรับลูกค้า -->
                                 <div class="section-box">
                                     <div>
                                         <table class="tbl">
@@ -576,12 +610,12 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                     </div>
                                 </div>
 
-                                <!-- รอยฉีกตรงกลาง -->
+                                <!-- รอยฉีก -->
                                 <div class="perforation">
                                     ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
                                 </div>
 
-                                <!-- ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
+                                <!-- ส่วนที่ 2: สำหรับร้านค้า -->
                                 <div class="section-box">
                                     <div>
                                         <table class="tbl">
@@ -802,13 +836,21 @@ elif menu == "💰 สรุปยอดซ่อม & ค่าคอมมิ�
 # 7. ตั้งค่าข้อมูลร้านค้า (Store Settings)
 # ==========================================
 elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)":
-    st.header("⚙️ ตั้งค่าข้อมูลร้านค้าและเลขพร้อมเพย์")
-    st.markdown("แก้ไขข้อมูลร้านค้า เบอร์พร้อมเพย์ และข้อความบนเอกสารได้อย่างอิสระเสรี")
+    st.header("⚙️ ตั้งค่าข้อมูลร้านค้า, พร้อมเพย์ และช่องทาง Social Media")
+    st.markdown("แก้ไขข้อมูลร้านค้า ลิงก์ Line, Facebook, TikTok และเบอร์พร้อมเพย์ได้อย่างอิสระเสรี")
     
     with st.form("settings_form"):
         new_store_name = st.text_input("ชื่อร้านค้า / บริษัท", value=STORE_NAME)
         new_phone = st.text_input("เบอร์โทรศัพท์ร้าน", value=STORE_PHONE)
         new_promptpay = st.text_input("เบอร์มือถือหรือเลขพร้อมเพย์ (PromptPay สำหรับ QR Code)", value=STORE_PROMPTPAY)
+        
+        st.markdown("---")
+        st.subheader("🌐 ตั้งค่าลิงก์ Social Media สำหรับสร้าง QR Code")
+        new_line = st.text_input("ลิงก์ Line Official / Add Friend (เช่น https://line.me/R/ti/p/@yourline)", value=STORE_LINE)
+        new_fb = st.text_input("ลิงก์ Facebook Page (เช่น https://facebook.com/yourpage)", value=STORE_FB)
+        new_tiktok = st.text_input("ลิงก์ TikTok Profile (เช่น https://tiktok.com/@yourtiktok)", value=STORE_TIKTOK)
+        
+        st.markdown("---")
         new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี", value=STORE_TAX)
         new_address = st.text_area("ที่อยู่ร้านค้า", value=STORE_ADDRESS)
         new_note = st.text_input("ข้อความท้ายบิล / หมายเหตุ", value=STORE_NOTE)
@@ -819,9 +861,9 @@ elif menu == "⚙️ ตั้งค่าข้อมูลร้านค้�
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE store_settings 
-                SET store_name = ?, phone = ?, tax_id = ?, address = ?, note = ?, promptpay = ? 
+                SET store_name = ?, phone = ?, tax_id = ?, address = ?, note = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ? 
                 WHERE id = 1
-            """, (new_store_name, new_phone, new_tax_id, new_address, new_note, new_promptpay))
+            """, (new_store_name, new_phone, new_tax_id, new_address, new_note, new_promptpay, new_line, new_fb, new_tiktok))
             conn.commit()
             cursor.close()
             st.success("🎉 บันทึกการตั้งค่าเรียบร้อยแล้ว! กรุณารีเฟรชหน้าเว็บเพื่ออัปเดตข้อมูล")
