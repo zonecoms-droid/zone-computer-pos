@@ -129,7 +129,8 @@ st.markdown("ระบบบริหารจัดการร้านคอ�
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
 
-menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", [
+# รายการเมนูด้านข้าง
+menu_options = [
     "📥 รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม", 
     "📱 ลูกค้าสแกน QR ลงทะเบียนเอง (พร้อมแนบรูป/วิดีโอ)",
     "🌐 QR Code ช่องทางติดต่อ (Line, FB, TikTok)",
@@ -138,7 +139,15 @@ menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำง�
     "📄 ออกเอกสารการค้า / ใบเสร็จ (พร้อม QR Code)",
     "💰 สรุปยอดซ่อม & ค่าคอมมิชชั่นช่าง",
     "⚙️ ตั้งค่าข้อมูลร้านค้า (Store Settings)"
-])
+]
+
+# เช็คว่าถ้ามี URL พ่วงมาด้วย เช่น ?page=register ให้เปิดหน้าลงทะเบียนอัตโนมัติ
+query_params = st.query_params
+default_index = 0
+if query_params.get("page") == "register":
+    default_index = 1 # ตรงกับเมนู "📱 ลูกค้าสแกน QR ลงทะเบียนเอง..."
+
+menu = st.sidebar.selectbox("🎯 เลือกเมนูการทำงาน", menu_options, index=default_index)
 
 # ==========================================
 # 1. รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม
@@ -325,12 +334,13 @@ elif menu == "📱 ลูกค้าสแกน QR ลงทะเบียน
     st.header("📱 ระบบลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code (แนบรูปภาพ & วิดีโอได้)")
     st.markdown("ให้ลูกค้าสแกน QR Code แล้วกรอกข้อมูล พร้อมแนบรูปถ่ายหรือคลิปวิดีโออาการเสียของเครื่องส่งตรงเข้าระบบได้ทันที")
     
-    # 📌 ลิงก์แอปจริงที่ใช้งานได้ถูกต้อง
-        qr_data = "https://zone-computer-pos.streamlit.app/?page=register"
+    # 📌 ลิงก์ตรงสำหรับ QR Code ลงทะเบียน (เติม ?page=register ต่อท้าย)
+    qr_data = "https://zone-computer-pos.streamlit.app/?page=register"
+    
     img = qrcode.make(qr_data)
     buf = BytesIO()
     img.save(buf)
-    st.image(buf.getvalue(), caption="สแกนเพื่อกรอกข้อมูลแจ้งซ่อมออนไลน์", width=220)
+    st.image(buf.getvalue(), caption="สแกนเพื่อเปิดหน้าลงทะเบียนแจ้งซ่อมออนไลน์", width=220)
     
     st.markdown("---")
     st.subheader("📝 ฟอร์มลงทะเบียนสำหรับลูกค้า")
@@ -388,7 +398,6 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
     
     col_qr1, col_qr2, col_qr3 = st.columns(3)
     
-    # 1. Line QR (ลดขนาดเหลือ width=140)
     with col_qr1:
         st.subheader("💚 Line")
         if STORE_LINE:
@@ -400,7 +409,6 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
         else:
             st.warning("ยังไม่ได้ตั้งค่าลิงก์ Line")
             
-    # 2. Facebook QR (ลดขนาดเหลือ width=140)
     with col_qr2:
         st.subheader("💙 Facebook")
         if STORE_FB:
@@ -412,7 +420,6 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
         else:
             st.warning("ยังไม่ได้ตั้งค่าลิงก์ Facebook")
 
-    # 3. TikTok QR (ลดขนาดเหลือ width=140)
     with col_qr3:
         st.subheader("🖤 TikTok")
         if STORE_TIKTOK:
@@ -818,7 +825,7 @@ elif menu == "📄 ออกเอกสารการค้า / ใบเส�
                         {items_html}
                         <tr><td colspan="3" style="text-align: right; padding-top: 10px;"><b>มูลค่ารวมสินค้า:</b></td><td style="text-align: right; padding-top: 10px;">{subtotal:,.2f} บาท</td></tr>
                         {vat_text}
-                        <tr><td colspan="3" style="text-align: right; padding: 5px; font-size: 14px;"><b>ยอดชำระสุทธิ:</b></td><td style="text-align: right; padding: 5px; font-size: 14px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                        <tr><td colspan="3" style="text-align: right; padding: 5px; font-size: 14px;"><b>ยอดชำระสุทธิ:</b></td><td style="text-align: right; padding-top: 5px; font-size: 14px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
                     </table>
 
                     <div class="footer-box">
