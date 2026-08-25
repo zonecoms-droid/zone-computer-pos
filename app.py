@@ -397,7 +397,7 @@ if track_doc:
         st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
     st.stop()
 
-# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code พร้อมปุ่มดาวน์โหลด QR Code และแสดงชื่อ/เบอร์โทรใต้ QR
+# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
 if page_param == "register":
     st.set_page_config(page_title=f"ลงทะเบียนแจ้งซ่อม - {STORE_NAME}", page_icon="📱", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
@@ -457,32 +457,23 @@ if page_param == "register":
         j_c = st.session_state['public_registered_job']
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
-        st.markdown("คุณสามารถบันทึกหรือสแกน QR Code นี้เพื่อตรวจสอบสถานะงานซ่อมแบบเรียลไทม์ได้ตลอดเวลาครับ")
-        
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         qr_img = qrcode.make(track_url)
         qr_buf = BytesIO()
         qr_img.save(qr_buf)
-        
-        # แสดงรูป QR Code
         st.image(qr_buf.getvalue(), width=220)
-        
-        # แสดงชื่อร้านและเบอร์โทรใต้ QR Code ตามที่ลูกค้าขอ
         st.markdown(f"""
         <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
             <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
             <span style="color: #475569; font-size: 12px;">📞 โทร: {STORE_PHONE}</span>
         </div>
         """, unsafe_allow_html=True)
-        
-        # ปุ่มบันทึก QR Code ลงเครื่องลูกค้า
         st.download_button(
             label="📥 บันทึก QR Code ลงเครื่อง",
             data=qr_buf.getvalue(),
             file_name=f"QR_Tracking_{j_c}.png",
             mime="image/png"
         )
-        
         st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะงานซ่อม]({track_url})")
 
     st.stop()
@@ -569,7 +560,19 @@ if page_param == "commercial_request":
         qr_img = qrcode.make(track_doc_url)
         qr_buf = BytesIO()
         qr_img.save(qr_buf)
-        st.image(qr_buf.getvalue(), width=220, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
+        st.image(qr_buf.getvalue(), width=220)
+        st.markdown(f"""
+        <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
+            <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
+            <span style="color: #475569; font-size: 12px;">📞 โทร: {STORE_PHONE}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        st.download_button(
+            label="📥 บันทึก QR Code ลงเครื่อง",
+            data=qr_buf.getvalue(),
+            file_name=f"QR_Document_{d_c}.png",
+            mime="image/png"
+        )
         st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะเอกสาร]({track_doc_url})")
 
     st.stop()
@@ -669,7 +672,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     st.markdown("---")
-    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (พร้อม QR Code เช็คสถานะเรียลไทม์)")
+    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (พร้อม QR Code เช็คสถานะเรียลไทม์ และ QR โซเชียล)")
     
     cursor = conn.cursor()
     cursor.execute("SELECT job_code FROM repairs ORDER BY created_at DESC LIMIT 50")
@@ -696,12 +699,27 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             cost = float(cost) if cost is not None else 0.0
             
+            # QR เช็คสถานะ (ขยายใหญ่ขึ้น)
             track_url = f"https://zone-computer-pos.streamlit.app/?track={j_code}"
             qr_track_obj = qrcode.make(track_url)
             track_stream = BytesIO()
             qr_track_obj.save(track_stream)
             track_b64 = base64.b64encode(track_stream.getvalue()).decode()
-            qr_track_tag = f'<img src="data:image/png;base64,{track_b64}" width="75px"><br><span style="font-size:8px;">สแกนเช็คสถานะ</span>'
+            qr_track_tag = f'<img src="data:image/png;base64,{track_b64}" width="110px"><br><span style="font-size:9px; font-weight:bold;">สแกนเช็คสถานะงานซ่อม</span>'
+            
+            # QR โซเชียลมีเดียของร้าน (Line, FB, TikTok)
+            def make_social_qr_inline(link, label):
+                if not link: return ""
+                sq = qrcode.make(link)
+                s_buf = BytesIO()
+                sq.save(s_buf)
+                s_b64 = base64.b64encode(s_buf.getvalue()).decode()
+                return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="45px"><br><span style="font-size:7px;">{label}</span></div>'
+
+            social_qr_html = ""
+            if STORE_LINE: social_qr_html += make_social_qr_inline(STORE_LINE, "Line")
+            if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
+            if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
             portrait_a4_html = f"""
             <html>
@@ -719,7 +737,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 table {{ width: 100%; font-size: 13px; margin-top: 5px; border-collapse: collapse; }}
                 td {{ padding: 3px 0; }}
                 .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
-                .signature-row {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; align-items: flex-end; }}
+                .signature-row {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; align-items: flex-end; border-top: 1px solid #eee; padding-top: 5px; }}
                 @media print {{
                     body {{ background: white; padding: 0; }}
                     .print-btn-container {{ display: none; }}
@@ -749,12 +767,18 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
                         </div>
                         <div class="signature-row">
-                            <div style="width: 75%;">
+                            <div style="width: 50%;">
                                 <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                <span style="font-size:11px; color:#555;">(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)</span>
+                                <span style="font-size:10px; color:#555;">(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)</span>
                             </div>
-                            <div style="text-align: center; width: 25%;">
-                                {qr_track_tag}
+                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                                <div style="text-align: center;">
+                                    {social_qr_html}
+                                    <div style="font-size:6px; color:#666; margin-top:1px;">ติดตามโซเชียลร้าน</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -780,8 +804,14 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
                         </div>
                         <div class="signature-row">
-                            <div style="width: 100%;">
-                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้รับซ่อม: ......................................................</span>
+                            <div style="width: 60%;">
+                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br>
+                                <span>ช่างผู้รับซ่อม: ......................................................</span>
+                            </div>
+                            <div style="text-align: right; width: 40%; display: flex; justify-content: flex-end; align-items: flex-end;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
+                                </div>
                             </div>
                         </div>
                     </div>
