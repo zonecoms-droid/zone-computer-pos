@@ -231,7 +231,7 @@ st.set_page_config(
 )
 
 st.title(f"⚡ {STORE_NAME} [Ultimate Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (แยกระบบพิมพ์ใบคืนสินค้าและใบเสร็จสมบูรณ์)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (แยกใบเสร็จ ใบกำกับภาษี และ QR ยอดเงินเป๊ะ)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
@@ -517,7 +517,7 @@ elif menu == "🌐 QR Code ช่องทางติดต่อ (Line, FB, Ti
             st.image(buf.getvalue(), width=140)
 
 # ==========================================
-# 4. ติดตาม & อัปเดตสถานะงานซ่อม (ปลอดภัยจาก Error ไฟล์รูปซ่อม)
+# 4. ติดตาม & อัปเดตสถานะงานซ่อม (แยก ใบคืนสินค้า, ใบเสร็จรับเงิน, ใบกำกับภาษี)
 # ==========================================
 elif menu == "🔍 ติดตาม & อัปเดตสถานะงานซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -547,10 +547,8 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 st.markdown(f"**อุปกรณ์:** {selected_row['device_name']}")
                 st.markdown(f"**อาการเสีย:** {selected_row['problem_description']}")
                 st.markdown(f"**สถานะปัจจุบัน:** 📌 **{selected_row['status']}**")
-            
             with col_media:
                 m_file = selected_row.get('media_file')
-                # 🛠️ ป้องกัน Error แบบรัดกุม เช็คว่าเป็น string และมีไฟล์อยู่จริง
                 if m_file and isinstance(m_file, str) and os.path.exists(m_file):
                     ext = m_file.split('.')[-1].lower()
                     if ext in ['jpg', 'jpeg', 'png']:
@@ -575,20 +573,41 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                 st.success(f"อัปเดตสถานะสำเร็จ!")
                 st.rerun()
 
-            # --- ถ้าสถานะเป็น COMPLETED ให้แยกปุ่มพิมพ์ "ใบคืนสินค้า" และ "ใบเสร็จรับเงิน" ออกจากกัน ---
+            # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร (ใบคืนสินค้า / ใบเสร็จรับเงิน / ใบกำกับภาษี) ---
             if selected_row['status'].startswith('COMPLETED'):
                 st.markdown("---")
-                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! สามารถเลือกพิมพ์ **ใบคืนสินค้า** หรือ **ใบเสร็จรับเงิน** พร้อมแก้ไขรายการ ราคา และช่องหมายเหตุได้ด้านล่างครับ")
+                st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! กรุณาเลือกประเภทเอกสารที่ต้องการออกด้านล่างนี้ครับ")
                 
-                doc_choice = st.radio("🖨️ เลือกประเภทเอกสารที่ต้องการพิมพ์:", ["📦 พิมพ์ใบคืนสินค้า (Delivery Slip)", "💵 พิมพ์ใบเสร็จรับเงิน / ใบกำกับภาษี (Receipt / Tax Invoice)"])
+                doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
+                    "📦 ใบคืนสินค้า (Delivery Slip)", 
+                    "💵 ใบเสร็จรับเงิน (Receipt)", 
+                    "📄 ใบกำกับภาษี (Tax Invoice)"
+                ])
                 
                 with st.form(f"form_doc_{selected_job}"):
+                    # ถ้าเลือกใบกำกับภาษี ให้กรอกข้อมูลภาษีลูกค้าเพิ่ม
+                    tax_cust_name = selected_row['customer_name']
+                    tax_cust_id = ""
+                    tax_cust_branch = "สำนักงานใหญ่"
+                    tax_cust_address = ""
+                    
+                    if "ใบกำกับภาษี" in doc_choice:
+                        st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (สำหรับออกใบกำกับภาษี)")
+                        tc_col1, tc_col2 = st.columns(2)
+                        with tc_col1:
+                            tax_cust_name = st.text_input("ชื่อลูกค้า / บริษัท", value=selected_row['customer_name'])
+                            tax_cust_id = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="")
+                        with tc_col2:
+                            tax_cust_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
+                            tax_cust_address = st.text_area("ที่อยู่ตามทะเบียนภาษี", value="")
+                        st.markdown("---")
+
                     c_col1, c_col2 = st.columns(2)
                     with c_col1:
-                        pay_chanel = st.selectbox("ช่องทางชำระเงิน", ["เงินสด", "โอนเงินผ่าน PromptPay QR", "บัตรเครดิต"])
+                        pay_chanel = st.selectbox("ช่องทางชำระเงิน", ["โอนเงินผ่าน PromptPay QR (ระบุยอดเป๊ะ)", "เงินสด", "บัตรเครดิต"])
                     with c_col2:
                         warrant_days = st.number_input("ระยะเวลารับประกันหลังซ่อม (วัน)", min_value=0, value=30)
-                        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
+                        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True if "ใบกำกับภาษี" in doc_choice else False)
 
                     st.markdown("#### 🛒 ปรับแต่งรายการค่าบริการและอะไหล่ (แก้ไขได้อย่างอิสระ)")
                     num_items = st.number_input("จำนวนรายการ", min_value=1, max_value=10, value=1, key=f"num_{selected_job}")
@@ -618,14 +637,15 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
+                        # สร้าง QR Code พร้อมเพย์ระบุยอดเงินเป๊ะๆ
                         qr_tag = ""
-                        if pay_chanel == "โอนเงินผ่าน PromptPay QR":
+                        if "PromptPay" in pay_chanel:
                             q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
                             qr_obj = qrcode.make(q_cont)
                             q_stream = BytesIO()
                             qr_obj.save(q_stream)
                             b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="85px"><br><span style="font-size:8px;">สแกนชำระ PromptPay</span>'
+                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="90px"><br><span style="font-size:8px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
 
                         items_html = ""
                         for idx, val in enumerate(items_data):
@@ -633,7 +653,24 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:2px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:2px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        doc_title_text = "ใบคืนสินค้าและส่งมอบงานซ่อม (Delivery Slip)" if "ใบคืนสินค้า" in doc_choice else "ใบเสร็จรับเงิน / ใบกำกับภาษี (Receipt / Tax Invoice)"
+                        # กำหนดหัวข้อเอกสารตามที่เลือก
+                        if "ใบคืนสินค้า" in doc_choice:
+                            doc_main_title = "ใบคืนสินค้าและส่งมอบงานซ่อม (Delivery Slip)"
+                        elif "ใบเสร็จรับเงิน" in doc_choice:
+                            doc_main_title = "ใบเสร็จรับเงิน (Cash Receipt / Receipt)"
+                        else:
+                            doc_main_title = "ใบกำกับภาษี / ใบเสร็จรับเงิน (Tax Invoice / Receipt)"
+
+                        tax_info_html = ""
+                        if "ใบกำกับภาษี" in doc_choice:
+                            tax_info_html = f"""
+                            <tr><td colspan="2"><b>ชื่อผู้ซื้อ:</b> {tax_cust_name} &nbsp;&nbsp;&nbsp; <b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'} ({tax_cust_branch})</td></tr>
+                            <tr><td colspan="2"><b>ที่อยู่ผู้ซื้อ:</b> {tax_cust_address if tax_cust_address else '-'}</td></tr>
+                            """
+                        else:
+                            tax_info_html = f"""
+                            <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
+                            """
 
                         final_html = f"""
                         <html>
@@ -646,10 +683,10 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                             .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
                             .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
                             .tbl {{ width: 100%; border-collapse: collapse; }}
-                            .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }}
+                            .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }}
                             .itm-tbl th {{ background: #333; color: white; padding: 4px; text-align: left; }}
                             .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
-                            .ftr {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; align-items: flex-end; }}
+                            .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                             @media print {{
                                 body {{ background: white; padding: 0; }}
                                 .print-btn {{ display: none; }}
@@ -671,16 +708,13 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                                     <p style="font-size: 10px; margin: 1px 0;">{STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
-                                                    <h4 style="color: #333; margin: 0;"><b>{doc_title_text} (สำหรับลูกค้า)</b></h4>
+                                                    <h4 style="color: #333; margin: 0;"><b>{doc_main_title} (สำหรับลูกค้า)</b></h4>
                                                     <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
                                                 </td>
                                             </tr>
                                         </table>
                                         <table class="tbl" style="font-size: 11px; margin-top: 4px;">
-                                            <tr>
-                                                <td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td>
-                                                <td><b>ช่องทางชำระ:</b> {pay_chanel}</td>
-                                            </tr>
+                                            {tax_info_html}
                                             <tr>
                                                 <td><b>อุปกรณ์:</b> {selected_row['device_name']}</td>
                                                 <td><b>รับประกันหลังซ่อม:</b> {warrant_days} วัน</td>
@@ -695,16 +729,16 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                                 <th style="text-align: right;">จำนวนเงิน (บาท)</th>
                                             </tr>
                                             {items_html}
-                                            <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f} บาท</td></tr>
+                                            <tr><td colspan="3" style="text-align: right; padding-top: 3px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 3px;">{subtotal:,.2f} บาท</td></tr>
                                             {vat_html}
-                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิทั้งสิ้น:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                         </table>
                                     </div>
 
                                     <div class="ftr">
                                         <div style="width: 75%;">
                                             <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
-                                            <p style="font-size: 10px; margin: 10px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
+                                            <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อรับสินค้าคืน / ชำระเงิน: ...................................................... (ลูกค้า)</p>
                                         </div>
                                         <div style="text-align: center; width: 25%;">
                                             {qr_tag}
@@ -727,16 +761,13 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                                     <p style="font-size: 10px; margin: 1px 0;">ใบควบคุมการส่งมอบและรับเงิน (สำหรับร้านค้าเก็บไว้)</p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
-                                                    <h4 style="color: #333; margin: 0;"><b>{doc_title_text} (สำหรับร้านค้า)</b></h4>
+                                                    <h4 style="color: #333; margin: 0;"><b>{doc_main_title} (สำหรับร้านค้า)</b></h4>
                                                     <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
                                                 </td>
                                             </tr>
                                         </table>
                                         <table class="tbl" style="font-size: 11px; margin-top: 4px;">
-                                            <tr>
-                                                <td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td>
-                                                <td><b>ช่องทางชำระ:</b> {pay_chanel}</td>
-                                            </tr>
+                                            {tax_info_html}
                                             <tr>
                                                 <td><b>อุปกรณ์:</b> {selected_row['device_name']}</td>
                                                 <td><b>รับประกันหลังซ่อม:</b> {warrant_days} วัน</td>
@@ -745,22 +776,22 @@ elif menu == "🔍 ติดตาม & อัปเดตสถานะงา�
                                         
                                         <table class="itm-tbl">
                                             <tr>
-                                                <th>รายการซ่อม / อะไหล่</th>
+                                                <th>รายการสินค้า / บริการ</th>
                                                 <th style="text-align: center;">จำนวน</th>
                                                 <th style="text-align: right;">ราคา/หน่วย</th>
                                                 <th style="text-align: right;">จำนวนเงิน (บาท)</th>
                                             </tr>
                                             {items_html}
-                                            <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f} บาท</td></tr>
+                                            <tr><td colspan="3" style="text-align: right; padding-top: 3px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 3px;">{subtotal:,.2f} บาท</td></tr>
                                             {vat_html}
-                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิทั้งสิ้น:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                         </table>
                                     </div>
 
                                     <div class="ftr">
                                         <div style="width: 100%;">
                                             <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
-                                            <p style="font-size: 10px; margin: 10px 0 0 0;">ลงชื่อลูกค้า (ตรวจสอบสภาพเรียบร้อย): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้ส่งมอบ: ......................................................</p>
+                                            <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อลูกค้า (ตรวจสอบสภาพเรียบร้อย): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้ส่งมอบ: ......................................................</p>
                                         </div>
                                     </div>
                                 </div>
