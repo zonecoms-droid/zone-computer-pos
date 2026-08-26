@@ -774,7 +774,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             
             watermark_b64 = get_img_base64(LOGO_PATH)
             watermark_html = f'''
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.04; z-index: 0; pointer-events: none; text-align: center;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
                 <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
             </div>
             ''' if watermark_b64 else ''
@@ -1051,7 +1051,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         watermark_b64 = get_img_base64(LOGO_PATH)
                         watermark_html = f'''
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.04; z-index: 0; pointer-events: none; text-align: center;">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
                             <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
                         </div>
                         ''' if watermark_b64 else ''
@@ -1295,7 +1295,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
@@ -1521,7 +1521,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                         watermark_b64 = get_img_base64(LOGO_PATH)
                         watermark_html = f'''
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.04; z-index: 0; pointer-events: none; text-align: center;">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
                             <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
                         </div>
                         ''' if watermark_b64 else ''
