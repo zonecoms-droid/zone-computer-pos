@@ -131,12 +131,12 @@ def get_safe_font(size=14, bold=False):
     except Exception:
         return None
 
-# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด พร้อมขยายขนาดตัวหนังสือให้ใหญ่ คมชัด อ่านง่าย
+# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด ขยายขนาด QR Code ให้ใหญ่สุดขีด พร้อมฟอนต์ใหญ่คมชัด
 def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_DEFAULT_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม"):
     qr = qrcode.QRCode(
         version=4,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
+        box_size=15,  # 🌟 ขยาย box_size ให้ใหญ่สุดขีด เพื่อให้ QR Code เต็มตา คมชัดสะใจ
         border=2,
     )
     qr.add_data(data)
@@ -151,7 +151,7 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
             logo_size = int(img_w * 0.25)
             logo = logo.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
             
-            box_size = logo_size + 8
+            box_size = logo_size + 10
             box_img = Image.new("RGB", (box_size, box_size), "white")
             box_pos = ((img_w - box_size) // 2, (img_h - box_size) // 2)
             img.paste(box_img, box_pos)
@@ -161,7 +161,6 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
         except Exception:
             pass
 
-    # 🌟 ขยายขนาดฟอนต์ให้ใหญ่ขึ้น ชัดเจนขึ้น
     font_top = get_safe_font(20, bold=True)
     font_title = get_safe_font(22, bold=True)
     font_sub = get_safe_font(18, bold=False)
@@ -183,12 +182,12 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
             tw = 200
     except Exception:
         tw = 200
-    draw.text(((card_width - tw) / 2, 12), top_label, fill="#0284c7", font=font_top)
+    draw.text(((card_width - tw) / 2, 14), top_label, fill="#0284c7", font=font_top)
 
-    # 2. วาง QR Code ไว้ตรงกลาง
+    # 2. วาง QR Code ขยายสุดขีดไว้ตรงกลาง
     card.paste(img, (30, top_margin))
 
-    # 3. วาดกล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง (ขยายพื้นที่รองรับฟอนต์ใหญ่)
+    # 3. วาดกล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง
     box_y = top_margin + img.height + 15
     draw.rectangle([20, box_y, card_width - 20, card_height - 15], fill="#f8fafc", outline="#cbd5e1", width=1)
     
@@ -670,10 +669,10 @@ if page_param == "register":
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         
-        # 🌟 สร้าง QR Card พร้อมระบุประเภท + ชื่อร้าน และเบอร์โทรขนาดใหญ่
+        # 🌟 สร้าง QR Card ขยายสุดขีด พร้อมชื่อร้านและเบอร์โทร
         qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม")
         
-        st.image(qr_stream.getvalue(), width=240, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
+        st.image(qr_stream.getvalue(), width=280, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
         
         st.download_button(
             label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
@@ -768,10 +767,10 @@ if page_param == "commercial_request":
         st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
         track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
         
-        # 🌟 สร้าง QR Card พร้อมชื่อร้านและเบอร์โทรขนาดใหญ่
+        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด ขยายสุดขีด พร้อมชื่อร้านและเบอร์โทร
         qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะเอกสาร")
         
-        st.image(qr_stream.getvalue(), width=240, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
+        st.image(qr_stream.getvalue(), width=280, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
         
         st.download_button(
             label="📥 บันทึก QR Code ลงเครื่อง",
@@ -1514,7 +1513,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลใบงานในระบบ")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
