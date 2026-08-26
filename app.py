@@ -781,7 +781,6 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
-            # ลายน้ำ: ขนาด 50% ความเข้ม 1% (ตามที่ขอ)
             watermark_html = ""
             if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                 wm_data_uri = get_img_base64(WATERMARK_PATH)
@@ -1087,7 +1086,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        # ลายน้ำ: ขนาด 50% ความเข้ม 1% (ตามที่ขอ)
                         watermark_html = ""
                         if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                             wm_data_uri = get_img_base64(WATERMARK_PATH)
@@ -1097,12 +1095,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <img src="{wm_data_uri}" style="width: 100%; height: auto;">
                                 </div>
                                 '''
-
-                        logo_img_header_tag = ""
-                        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-                            logo_hdr_uri = get_img_base64(LOGO_PATH)
-                            if logo_hdr_uri:
-                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
@@ -1171,7 +1163,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                                     <div class="perforation">✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกระหว่างลูกค้าและร้านค้า - - - - - - - - - - - - - - - - - ✂️</div>
 
-                                    <!-- ครึ่งล่าง: สำหรับร้านค้า จัดเลย์เอาต์ใหม่ให้สวยงามสมฐานะ -->
+                                    <!-- ครึ่งล่าง: สำหรับร้านค้า -->
                                     <div class="section-box">
                                         {watermark_html}
                                         <div style="position: relative; z-index: 1;">
