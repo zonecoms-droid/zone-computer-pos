@@ -102,7 +102,28 @@ def generate_promptpay_payload(target, amount=None):
     chk = f"{crc:04X}"
     return payload_for_crc + chk
 
-# 🎨 ฟังก์ชันสร้าง QR Code พร้อมฝังโลโก้ร้านตรงกลาง และแปะป้ายชื่อร้าน/เบอร์โทรด้านล่างสำหรับดาวน์โหลด
+# 🛡️ ฟังก์ชันโหลดฟอนต์สำรองปลอดภัย รองรับทุกระบบปฏิบัติการ (Windows/Linux/Mac)
+def get_safe_font(size=14, bold=False):
+    font_paths = [
+        "arial.ttf",
+        "Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Library/Fonts/Arial.ttf"
+    ]
+    for path in font_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    try:
+        return ImageFont.load_default()
+    except Exception:
+        return None
+
+# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด พร้อมข้อความด้านบน ชื่อร้าน และเบอร์โทรด้านล่าง
 def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_DEFAULT_PATH):
     qr = qrcode.QRCode(
         version=4,
@@ -132,40 +153,57 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
         except Exception:
             pass
 
-    # สร้างแผ่นการ์ดแนวตั้งรวม QR Code + กล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง
-    card_width = img.width + 60
-    card_height = img.height + 120
-    card = Image.new("RGB", (card_width, card_height), "white")
-    
-    # วาง QR Code ไว้ด้านบนของการ์ด
-    card.paste(img, (30, 20))
-    
-    # วาดกรอบข้อความและตัวหนังสือด้านล่าง
-    draw = ImageDraw.Draw(card)
-    try:
-        # พยายามโหลดฟอนต์มาตรฐาน ถ้าไม่มีใช้ default
-        font_title = ImageFont.truetype("arial.ttf", 18)
-        font_sub = ImageFont.truetype("arial.ttf", 14)
-    except IOError:
-        font_title = font_sub = ImageFont.load_default()
+    font_top = get_safe_font(15, bold=True)
+    font_title = get_safe_font(18, bold=True)
+    font_sub = get_safe_font(14, bold=False)
 
-    # วาดแถบพื้นหลังกล่องข้อความ
-    draw.rectangle([20, img.height + 30, card_width - 20, card_height - 15], fill="#f8fafc", outline="#cbd5e1", width=1)
+    card_width = img.width + 60
+    top_margin = 40
+    bottom_margin = 110
+    card_height = img.height + top_margin + bottom_margin
     
-    # ใส่ข้อความชื่อร้านและเบอร์โทร
-    text_y1 = img.height + 40
-    text_y2 = img.height + 70
+    card = Image.new("RGB", (card_width, card_height), "white")
+    draw = ImageDraw.Draw(card)
+
+    # 1. วาดข้อความด้านบน QR Code: "SCAN เช็ค สถานะงานซ่อม"
+    top_text = "SCAN เช็ค สถานะงานซ่อม"
+    try:
+        if hasattr(draw, "textbbox"):
+            bbox = draw.textbbox((0, 0), top_text, font=font_top)
+            tw = bbox[2] - bbox[0]
+        else:
+            tw = 150
+    except Exception:
+        tw = 150
+    draw.text(((card_width - tw) / 2, 12), top_text, fill="#0284c7", font=font_top)
+
+    # 2. วาง QR Code ไว้ตรงกลาง
+    card.paste(img, (30, top_margin))
+
+    # 3. วาดกล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง
+    box_y = top_margin + img.height + 15
+    draw.rectangle([20, box_y, card_width - 20, card_height - 15], fill="#f8fafc", outline="#cbd5e1", width=1)
     
-    # ใช้ text-anchor หรือคำนวณกึ่งกลางคร่าวๆ
-    draw.text((card_width / 2, text_y1), store_name, fill="#0f172a", font=font_title, anchor="mm")
-    draw.text((card_width / 2, text_y2), f"โทร. {store_phone}", fill="#475569", font=font_sub, anchor="mm")
+    try:
+        if hasattr(draw, "textbbox"):
+            bbox_title = draw.textbbox((0, 0), store_name, font=font_title)
+            title_w = bbox_title[2] - bbox_title[0]
+            bbox_sub = draw.textbbox((0, 0), f"โทร. {store_phone}", font=font_sub)
+            sub_w = bbox_sub[2] - bbox_sub[0]
+        else:
+            title_w, sub_w = 150, 100
+    except Exception:
+        title_w, sub_w = 150, 100
+
+    draw.text(((card_width - title_w) / 2, box_y + 12), store_name, fill="#0f172a", font=font_title)
+    draw.text(((card_width - sub_w) / 2, box_y + 38), f"โทร. {store_phone}", fill="#475569", font=font_sub)
 
     stream = BytesIO()
     card.save(stream, format="PNG")
     stream.seek(0)
     return stream
 
-# ฟังก์ชันสร้าง QR Code เฉพาะตัว QR (สำหรับแสดงผลหน้าจอทั่วไป)
+# ฟังก์ชันสร้าง QR Code ทั่วไป (แสดงบนหน้าจอ)
 def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
     return generate_downloadable_qr_card(data, STORE_NAME, STORE_PHONE, logo_path)
 
@@ -624,14 +662,13 @@ if page_param == "register":
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         
-        # 🌟 สร้าง QR Card ที่มีชื่อร้านและเบอร์โทรติดไปด้วยในตัวรูปภาพเมื่อกดดาวน์โหลด
+        # 🌟 สร้าง QR Card ที่มีคำว่า SCAN เช็คสถานะ + ชื่อร้าน + เบอร์โทร ในตัวรูปภาพ
         qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH)
         
         st.image(qr_stream.getvalue(), width=240, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
         
-        # ปุ่มบันทึก QR Code ลงเครื่องลูกค้า พร้อมชื่อร้านและเบอร์โทร
         st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
+            label="📥 บันทึก QR Code ลงเครื่อง",
             data=qr_stream.getvalue(),
             file_name=f"QR_Tracking_{j_c}.png",
             mime="image/png"
@@ -729,7 +766,7 @@ if page_param == "commercial_request":
         st.image(qr_stream.getvalue(), width=240, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
         
         st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
+            label="📥 บันทึก QR Code ลงเครื่อง",
             data=qr_stream.getvalue(),
             file_name=f"QR_Document_{d_c}.png",
             mime="image/png"
@@ -1182,7 +1219,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
                             q_stream = generate_qr_with_logo(q_payload, LOGO_PATH)
                             b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:8px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
+                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
 
                         def make_social_qr(link, label):
                             if not link: return ""
@@ -1469,7 +1506,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลใบงานในระบบ")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
