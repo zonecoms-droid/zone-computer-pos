@@ -40,14 +40,27 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนเข้า LINE Notify อัตโนมัติ
-def send_line_notify(message, token):
-    if not token or not token.strip():
+# 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (Push Message)
+def send_line_push_message(message, access_token, target_id):
+    if not access_token or not target_id or not access_token.strip() or not target_id.strip():
         return
     try:
-        url = 'https://notify-api.line.me/api/notify'
-        data = urllib.parse.urlencode({'message': message}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={'Authorization': f'Bearer {token.strip()}'})
+        url = 'https://api.line.me/v2/bot/message/push'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {access_token.strip()}'
+        }
+        payload = {
+            'to': target_id.strip(),
+            'messages': [
+                {
+                    'type': 'text',
+                    'text': message
+                }
+            ]
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
         urllib.request.urlopen(req)
     except Exception:
         pass
@@ -177,7 +190,8 @@ def init_db(conn):
             use_watermark INTEGER DEFAULT 1,
             repair_terms TEXT,
             commercial_terms TEXT,
-            line_notify_token TEXT
+            line_access_token TEXT,
+            line_target_id TEXT
         )
     ''')
     
@@ -188,7 +202,8 @@ def init_db(conn):
         ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
         ('logo_path', 'TEXT'), ('watermark_path', 'TEXT'),
         ('use_logo', 'INTEGER DEFAULT 1'), ('use_watermark', 'INTEGER DEFAULT 1'),
-        ('repair_terms', 'TEXT'), ('commercial_terms', 'TEXT'), ('line_notify_token', 'TEXT')
+        ('repair_terms', 'TEXT'), ('commercial_terms', 'TEXT'), 
+        ('line_access_token', 'TEXT'), ('line_target_id', 'TEXT')
     ]
     for col, col_type in extra_cols:
         try:
@@ -226,8 +241,8 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_notify_token) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน', '')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_access_token, line_target_id) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน', '', '')
         ''')
         conn.commit()
     else:
@@ -297,20 +312,20 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_notify_token FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_access_token, line_target_id FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS, LINE_NOTIFY_TOKEN) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS, LINE_ACCESS_TOKEN, LINE_TARGET_ID) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "089-026-1927", "1340700066417", "152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230", "ขอบคุณ", "0890261927"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
-    REPAIR_TERMS, COMMERCIAL_TERMS, LINE_NOTIFY_TOKEN = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน", ""
+    REPAIR_TERMS, COMMERCIAL_TERMS, LINE_ACCESS_TOKEN, LINE_TARGET_ID = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน", "", ""
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or "089-026-1927"
@@ -338,24 +353,8 @@ USE_LOGO = int(USE_LOGO) if USE_LOGO is not None else 1
 USE_WATERMARK = int(USE_WATERMARK) if USE_WATERMARK is not None else 1
 REPAIR_TERMS = REPAIR_TERMS or "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)"
 COMMERCIAL_TERMS = COMMERCIAL_TERMS or "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
-LINE_NOTIFY_TOKEN = LINE_NOTIFY_TOKEN or ""
-
-# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
-logo_img_header_tag = ""
-if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-    logo_hdr_uri = get_img_base64(LOGO_PATH)
-    if logo_hdr_uri:
-        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
-
-watermark_html = ""
-if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-    wm_data_uri = get_img_base64(WATERMARK_PATH)
-    if wm_data_uri:
-        watermark_html = f'''
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
-            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
-        </div>
-        '''
+LINE_ACCESS_TOKEN = LINE_ACCESS_TOKEN or ""
+LINE_TARGET_ID = LINE_TARGET_ID or ""
 
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
@@ -559,9 +558,9 @@ if page_param == "register":
                 conn.commit()
                 cursor.close()
                 
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Notify ทันทีที่ลูกค้าลงทะเบียนแจ้งซ่อม
-                line_msg = f"\n🚨 มีแจ้งซ่อมใหม่ผ่าน QR Code!\n- เลขใบงาน: {job_code}\n- ลูกค้า: {c_name} ({c_phone})\n- อุปกรณ์: {c_device}\n- อาการเสีย: {c_problem}"
-                send_line_notify(line_msg, LINE_NOTIFY_TOKEN)
+                # 🔔 ยิงแจ้งเตือนเข้า LINE Messaging API ทันทีที่ลูกค้าลงทะเบียนแจ้งซ่อม
+                line_msg = f"🚨 มีแจ้งซ่อมใหม่ผ่าน QR Code!\n- เลขใบงาน: {job_code}\n- ลูกค้า: {c_name} ({c_phone})\n- อุปกรณ์: {c_device}\n- อาการเสีย: {c_problem}"
+                send_line_push_message(line_msg, LINE_ACCESS_TOKEN, LINE_TARGET_ID)
                 
                 st.session_state['public_registered_job'] = job_code
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
@@ -660,9 +659,9 @@ if page_param == "commercial_request":
                 conn.commit()
                 cursor.close()
                 
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Notify ทันทีที่มีคำขอออกเอกสารการค้าใหม่
-                line_msg = f"\n📄 มีคำขอเอกสารการค้าใหม่!\n- เลขเอกสาร: {doc_no_gen}\n- ประเภท: {req_doc_type}\n- ลูกค้า: {req_name} ({req_phone})\n- ยอดรวมสุทธิ: {grand_total:,.2f} {DEF_CURR}"
-                send_line_notify(line_msg, LINE_NOTIFY_TOKEN)
+                # 🔔 ยิงแจ้งเตือนเข้า LINE Messaging API ทันทีที่มีคำขอออกเอกสารการค้าใหม่
+                line_msg = f"📄 มีคำขอเอกสารการค้าใหม่!\n- เลขเอกสาร: {doc_no_gen}\n- ประเภท: {req_doc_type}\n- ลูกค้า: {req_name} ({req_phone})\n- ยอดรวมสุทธิ: {grand_total:,.2f} {DEF_CURR}"
+                send_line_push_message(line_msg, LINE_ACCESS_TOKEN, LINE_TARGET_ID)
                 
                 st.session_state['public_registered_doc'] = doc_no_gen
                 st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}**")
@@ -694,6 +693,23 @@ if page_param == "commercial_request":
 
     st.stop()
 
+# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
+logo_img_header_tag = ""
+if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+    logo_hdr_uri = get_img_base64(LOGO_PATH)
+    if logo_hdr_uri:
+        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+
+watermark_html = ""
+if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+    wm_data_uri = get_img_base64(WATERMARK_PATH)
+    if wm_data_uri:
+        watermark_html = f'''
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+        </div>
+        '''
+
 # ==========================================
 # 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Horizontal Navigation)
 # ==========================================
@@ -716,7 +732,7 @@ menu = st.radio("🎯 เลือกเมนูการทำงานหล�
 st.markdown("---")
 
 # ==========================================
-# 1. รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม (สไตล์ Cash Receipt / FlowAccount โมเดิร์น)
+# 1. รับเครื่องซ่อมใหม่ & พิมพ์ใบรับซ่อม
 # ==========================================
 if menu == "📥 รับเครื่องซ่อมใหม่":
     st.header("📥 บันทึกรับเครื่องซ่อมและพิมพ์ใบรับซ่อม (A4 แนวตั้ง - สไตล์โมเดิร์น)")
@@ -783,7 +799,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     st.markdown("---")
-    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (สไตล์ FlowAccount โมเดิร์น พรีเมียม)")
+    st.subheader("🖨️ ตัวอย่างใบรับซ่อม A4 แนวตั้ง (สไตล์โมเดิร์น พรีเมียม)")
     
     cursor = conn.cursor()
     cursor.execute("SELECT job_code FROM repairs ORDER BY created_at DESC LIMIT 50")
@@ -826,22 +842,6 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
-            watermark_html = ""
-            if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-                wm_data_uri = get_img_base64(WATERMARK_PATH)
-                if wm_data_uri:
-                    watermark_html = f'''
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
-                        <img src="{wm_data_uri}" style="width: 100%; height: auto;">
-                    </div>
-                    '''
-            
-            logo_img_header_tag = ""
-            if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-                logo_hdr_uri = get_img_base64(LOGO_PATH)
-                if logo_hdr_uri:
-                    logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
-
             portrait_a4_html = f"""
             <html>
             <head>
@@ -883,9 +883,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                     <td style="vertical-align: top; width: 60%;">
                                         <div style="display: flex; align-items: center; margin-bottom: 4px;">
                                             {logo_img_header_tag}
-                                            <h2 style="margin: 0; color: #0f172a; font-size: 22px; line-height: 1.2;">
+                                            <h2 style="margin: 0; color: #0f172a; font-size: 20px; line-height: 1.2;">
                                                 <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                <span style="font-size: 16px; font-weight: bold; color: #0284c7;">แอนด์ เซอร์วิส</span>
+                                                <span style="font-size: 15px; font-weight: bold; color: #0f172a;">แอนด์ เซอร์วิส</span>
                                             </h2>
                                         </div>
                                         <p style="font-size: 11px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
@@ -894,7 +894,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                         </p>
                                     </td>
                                     <td style="text-align: right; vertical-align: top; width: 40%;">
-                                        <div style="background: #0f172a; color: white; padding: 6px 12px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
+                                        <div style="background: #0f172a; color: white; padding: 6px 12px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 13px; margin-bottom: 6px;">
                                             ใบรับซ่อมสินค้า (CUSTOMER)
                                         </div>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {j_code}</p>
@@ -910,7 +910,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
 
                             <table class="items-tbl">
                                 <tr>
-                                    <th>รายการอาการเสีย / อุปกรณ์ที่ส่งมาด้วย</th>
+                                    <th>รายการอาการเสีย / อะไหล่ที่ส่งมาด้วย</th>
                                     <th style="text-align: right; width: 130px;">ประเมินราคา (บาท)</th>
                                 </tr>
                                 <tr>
@@ -950,9 +950,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                     <td style="vertical-align: top; width: 60%;">
                                         <div style="display: flex; align-items: center; margin-bottom: 4px;">
                                             {logo_img_header_tag}
-                                            <h2 style="margin: 0; color: #0f172a; font-size: 22px; line-height: 1.2;">
+                                            <h2 style="margin: 0; color: #0f172a; font-size: 20px; line-height: 1.2;">
                                                 <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                <span style="font-size: 16px; font-weight: bold; color: #0284c7;">แอนด์ เซอร์วิส</span>
+                                                <span style="font-size: 15px; font-weight: bold; color: #334155;">แอนด์ เซอร์วิส</span>
                                             </h2>
                                         </div>
                                         <p style="font-size: 11px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
@@ -961,7 +961,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                         </p>
                                     </td>
                                     <td style="text-align: right; vertical-align: top; width: 40%;">
-                                        <div style="background: #334155; color: white; padding: 6px 12px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
+                                        <div style="background: #334155; color: white; padding: 6px 12px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 13px; margin-bottom: 6px;">
                                             ใบรับซ่อมสินค้า (STORE COPY)
                                         </div>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {j_code}</p>
@@ -1727,7 +1727,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     {logo_img_header_tag}
                                                     <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
                                                         <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                        <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                                        <span style="font-size: 18px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
                                                     </h2>
                                                 </div>
                                                 <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
@@ -1955,8 +1955,9 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 st.image(WATERMARK_PATH, width=150, caption="รูปลายน้ำปัจจุบัน")
 
             st.markdown("---")
-            st.markdown("##### 📢 ตั้งค่าการแจ้งเตือนผ่าน LINE Notify")
-            new_line_token = st.text_input("LINE Notify Token", value=LINE_NOTIFY_TOKEN, type="password", help="รับ Token ได้จากเว็บไซต์ linenotify.com สำหรับแจ้งเตือนงานซ่อมและคำขอใหม่")
+            st.markdown("##### 📢 ตั้งค่าการแจ้งเตือนผ่าน LINE Messaging API")
+            new_line_token = st.text_input("LINE Channel Access Token", value=LINE_ACCESS_TOKEN, type="password", help="Channel Access Token จาก LINE Developers")
+            new_line_target = st.text_input("LINE Target ID (User ID หรือ Group ID)", value=LINE_TARGET_ID, help="ไอดีปลายทางสำหรับรับข้อความแจ้งเตือน")
 
             st.markdown("---")
             st.markdown("##### 🌐 ช่องทางโซเชียลมีเดียของร้าน")
@@ -1984,9 +1985,9 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE store_settings 
-                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ?, line_notify_token = ? 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ?, line_access_token = ?, line_target_id = ? 
                     WHERE id = 1
-                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0, new_line_token))
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0, new_line_token, new_line_target))
                 conn.commit()
                 cursor.close()
                 st.success("บันทึกข้อมูลธุรกิจและการตั้งค่าสำเร็จ!")
