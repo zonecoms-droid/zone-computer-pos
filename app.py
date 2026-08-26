@@ -38,6 +38,78 @@ st.set_page_config(
     layout="wide"
 )
 
+# 🇹🇭 ฟังก์ชันสร้าง EMVCo PromptPay Payload QR Code ที่แอปธนาคารไทยสแกนได้จริง 100%
+def generate_promptpay_payload(target, amount=None):
+    target = "".join(filter(str.isdigit, str(target)))
+    if len(target) == 10:
+        target_value = "0066" + target[1:]
+    elif len(target) == 13:
+        target_value = target
+    else:
+        target_value = target
+
+    tag00 = "0016A000000677010111"
+    tag01_id = "01" + f"{len(target_value):02d}" + target_value
+    tag29_content = tag00 + tag01_id
+    tag29 = "29" + f"{len(tag29_content):02d}" + tag29_content
+
+    poi = "010211" if amount is None else "010212"
+    payload = "000201" + poi + tag29 + "5303764"
+    
+    if amount is not None and amount > 0:
+        amt_str = f"{amount:.2f}"
+        payload += "54" + f"{len(amt_str):02d}" + amt_str
+
+    payload += "5802TH"
+    payload_for_crc = payload + "6304"
+
+    crc = 0xFFFF
+    for char in payload_for_crc:
+        crc ^= ord(char) << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = (crc << 1) ^ 0x1021
+            else:
+                crc = crc << 1
+            crc &= 0xFFFF
+    chk = f"{crc:04X}"
+    return payload_for_crc + chk
+
+# 🎨 ฟังก์ชันสร้าง QR Code พร้อมฝังโลโก้ร้านไว้ตรงกลางแบบพรีเมียม
+def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
+    qr = qrcode.QRCode(
+        version=4,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+    
+    if logo_path and os.path.exists(logo_path):
+        try:
+            logo = Image.open(logo_path)
+            img_w, img_h = img.size
+            logo_size = int(img_w * 0.25)
+            logo = logo.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+            
+            # สร้างพื้นหลังสีขาวรองใต้โลโก้เพื่อให้อ่านง่ายและสแกนติดชัวร์
+            box_size = logo_size + 8
+            box_img = Image.new("RGB", (box_size, box_size), "white")
+            box_pos = ((img_w - box_size) // 2, (img_h - box_size) // 2)
+            img.paste(box_img, box_pos)
+            
+            logo_pos = ((img_w - logo_size) // 2, (img_h - logo_size) // 2)
+            img.paste(logo, logo_pos)
+        except Exception:
+            pass
+    
+    stream = BytesIO()
+    img.save(stream, format="PNG")
+    stream.seek(0)
+    return stream
+
 # ฟังก์ชันแปลงไฟล์รูปเป็น Data URI Base64 รองรับทั้ง JPG และ PNG อย่างถูกต้อง
 def get_img_base64(path):
     if path and isinstance(path, str) and os.path.exists(path):
@@ -250,8 +322,6 @@ page_param = query_params.get("page", None)
 
 # 1. โหมดตรวจสอบสถานะงานซ่อมผ่าน QR Code
 if track_code:
-    st.set_page_config(page_title=f"เช็คสถานะงานซ่อม - {STORE_NAME}", page_icon="🔍", layout="centered")
-    
     cursor = conn.cursor()
     cursor.execute("""
         SELECT r.job_code, r.device_name, r.problem_description, r.status, r.created_at, r.updated_at, c.name
@@ -331,8 +401,6 @@ if track_code:
 
 # 1.1 โหมดตรวจสอบสถานะเอกสารการค้าผ่าน QR Code (track_doc)
 if track_doc:
-    st.set_page_config(page_title=f"ติดตามสถานะเอกสาร - {STORE_NAME}", page_icon="📄", layout="centered")
-    
     cursor = conn.cursor()
     cursor.execute("""
         SELECT doc_no, doc_type, status, customer_name, grand_total, currency, items_json, created_at 
@@ -399,7 +467,6 @@ if track_doc:
 
 # 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
 if page_param == "register":
-    st.set_page_config(page_title=f"ลงทะเบียนแจ้งซ่อม - {STORE_NAME}", page_icon="📱", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666;'>ระบบลงทะเบียนแจ้งซ่อมออนไลน์สำหรับลูกค้า</p>", unsafe_allow_html=True)
     st.markdown("---")
@@ -458,10 +525,9 @@ if page_param == "register":
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
-        qr_img = qrcode.make(track_url)
-        qr_buf = BytesIO()
-        qr_img.save(qr_buf)
-        st.image(qr_buf.getvalue(), width=220)
+        qr_stream = generate_qr_with_logo(track_url, LOGO_PATH)
+        
+        st.image(qr_stream.getvalue(), width=220)
         st.markdown(f"""
         <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
             <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
@@ -470,7 +536,7 @@ if page_param == "register":
         """, unsafe_allow_html=True)
         st.download_button(
             label="📥 บันทึก QR Code ลงเครื่อง",
-            data=qr_buf.getvalue(),
+            data=qr_stream.getvalue(),
             file_name=f"QR_Tracking_{j_c}.png",
             mime="image/png"
         )
@@ -480,7 +546,6 @@ if page_param == "register":
 
 # 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสาร และเพิ่มรายการสินค้าได้หลายรายการ)
 if page_param == "commercial_request":
-    st.set_page_config(page_title=f"ขอออกเอกสารการค้า - {STORE_NAME}", page_icon="📄", layout="centered")
     st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📄 {STORE_NAME}</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า (เพิ่มรายการสินค้าได้ตามต้องการ)</p>", unsafe_allow_html=True)
     st.markdown("---")
@@ -557,10 +622,9 @@ if page_param == "commercial_request":
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
         track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
-        qr_img = qrcode.make(track_doc_url)
-        qr_buf = BytesIO()
-        qr_img.save(qr_buf)
-        st.image(qr_buf.getvalue(), width=220)
+        qr_stream = generate_qr_with_logo(track_doc_url, LOGO_PATH)
+        
+        st.image(qr_stream.getvalue(), width=220)
         st.markdown(f"""
         <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
             <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
@@ -569,7 +633,7 @@ if page_param == "commercial_request":
         """, unsafe_allow_html=True)
         st.download_button(
             label="📥 บันทึก QR Code ลงเครื่อง",
-            data=qr_buf.getvalue(),
+            data=qr_stream.getvalue(),
             file_name=f"QR_Document_{d_c}.png",
             mime="image/png"
         )
@@ -580,12 +644,6 @@ if page_param == "commercial_request":
 # ==========================================
 # 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Horizontal Navigation)
 # ==========================================
-st.set_page_config(
-    page_title="ZoneOnline Service - Enterprise Edition", 
-    page_icon="⚡", 
-    layout="wide"
-)
-
 st.title(f"⚡ {STORE_NAME} [Enterprise Edition]")
 st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมศูนย์กลางการตั้งค่า FlowAccount & ERP Style)")
 
@@ -699,27 +757,31 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             cost = float(cost) if cost is not None else 0.0
             
-            # QR เช็คสถานะ (ขยายใหญ่ขึ้น)
+            # QR เช็คสถานะ (พร้อมฝังโลโก้ตรงกลาง)
             track_url = f"https://zone-computer-pos.streamlit.app/?track={j_code}"
-            qr_track_obj = qrcode.make(track_url)
-            track_stream = BytesIO()
-            qr_track_obj.save(track_stream)
-            track_b64 = base64.b64encode(track_stream.getvalue()).decode()
+            track_stream_qr = generate_qr_with_logo(track_url, LOGO_PATH)
+            track_b64 = base64.b64encode(track_stream_qr.getvalue()).decode()
             qr_track_tag = f'<img src="data:image/png;base64,{track_b64}" width="110px"><br><span style="font-size:9px; font-weight:bold;">สแกนเช็คสถานะงานซ่อม</span>'
             
             # QR โซเชียลมีเดียของร้าน (Line, FB, TikTok)
             def make_social_qr_inline(link, label):
                 if not link: return ""
-                sq = qrcode.make(link)
-                s_buf = BytesIO()
-                sq.save(s_buf)
-                s_b64 = base64.b64encode(s_buf.getvalue()).decode()
+                s_stream_qr = generate_qr_with_logo(link, LOGO_PATH)
+                s_b64 = base64.b64encode(s_stream_qr.getvalue()).decode()
                 return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="45px"><br><span style="font-size:7px;">{label}</span></div>'
 
             social_qr_html = ""
             if STORE_LINE: social_qr_html += make_social_qr_inline(STORE_LINE, "Line")
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+            
+            # 💧 ดึงโลโก้ทำลายน้ำจางๆ สำหรับใส่ในเอกสาร
+            watermark_b64 = get_img_base64(LOGO_PATH)
+            watermark_html = f'''
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.04; z-index: 0; pointer-events: none; text-align: center;">
+                <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
+            </div>
+            ''' if watermark_b64 else ''
             
             portrait_a4_html = f"""
             <html>
@@ -730,13 +792,13 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .print-btn-container {{ margin-bottom: 15px; }}
                 .btn-print {{ background-color: #ff4b4b; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                 .btn-print:hover {{ background-color: #e03e3e; }}
-                .print-container {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
+                .print-container {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
+                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; }}
                 h3, h4 {{ text-align: center; margin: 2px 0; }}
                 p {{ font-size: 13px; margin: 4px 0; }}
                 table {{ width: 100%; font-size: 13px; margin-top: 5px; border-collapse: collapse; }}
                 td {{ padding: 3px 0; }}
-                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
+                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
                 .signature-row {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; align-items: flex-end; border-top: 1px solid #eee; padding-top: 5px; }}
                 @media print {{
                     body {{ background: white; padding: 0; }}
@@ -751,6 +813,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 </div>
                 
                 <div class="print-container">
+                    {watermark_html}
                     <!-- ส่วนที่ 1: สำหรับลูกค้า -->
                     <div class="section-box">
                         <div>
@@ -833,19 +896,15 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
     with col_q1:
         st.subheader("1. QR Code แจ้งซ่อมออนไลน์")
         reg_url = "https://zone-computer-pos.streamlit.app/?page=register"
-        img1 = qrcode.make(reg_url)
-        buf1 = BytesIO()
-        img1.save(buf1)
-        st.image(buf1.getvalue(), caption="สแกนเพื่อลงทะเบียนแจ้งซ่อม", width=220)
+        img_stream1 = generate_qr_with_logo(reg_url, LOGO_PATH)
+        st.image(img_stream1.getvalue(), caption="สแกนเพื่อลงทะเบียนแจ้งซ่อม", width=220)
         st.code(reg_url, language="text")
         
     with col_q2:
         st.subheader("2. QR Code ขอออกเอกสารการค้า")
         doc_req_url = "https://zone-computer-pos.streamlit.app/?page=commercial_request"
-        img2 = qrcode.make(doc_req_url)
-        buf2 = BytesIO()
-        img2.save(buf2)
-        st.image(buf2.getvalue(), caption="สแกนเพื่อขอใบเสนอราคา/ใบกำกับภาษี", width=220)
+        img_stream2 = generate_qr_with_logo(doc_req_url, LOGO_PATH)
+        st.image(img_stream2.getvalue(), caption="สแกนเพื่อขอใบเสนอราคา/ใบกำกับภาษี", width=220)
         st.code(doc_req_url, language="text")
 
 # ==========================================
@@ -972,19 +1031,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         
                         qr_tag = ""
                         if "PromptPay" in pay_chanel and ("ใบคืนสินค้า" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice):
-                            q_cont = f"PromptPay:{STORE_PROMPTPAY} | Amount:{grand_total:.2f}"
-                            qr_obj = qrcode.make(q_cont)
-                            q_stream = BytesIO()
-                            qr_obj.save(q_stream)
+                            q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                            q_stream = generate_qr_with_logo(q_payload, LOGO_PATH)
                             b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="100px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
+                            qr_tag = f'<img src="data:image/png;base64,{b64_qr}" width="110px"><br><span style="font-size:9px;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} บาท</b></span>'
 
                         def make_social_qr(link, label):
                             if not link: return ""
-                            sq = qrcode.make(link)
-                            s_buf = BytesIO()
-                            sq.save(s_buf)
-                            s_b64 = base64.b64encode(s_buf.getvalue()).decode()
+                            s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                            s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                             return f'<div style="text-align:center; display:inline-block; margin: 0 8px;"><img src="data:image/png;base64,{s_b64}" width="45px"><br><span style="font-size:8px;">{label}</span></div>'
 
                         social_html = ""
@@ -998,6 +1053,14 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
+                        # 💧 ดึงโลโก้ทำลายน้ำจางๆ สำหรับใส่ในเอกสารการค้า/ใบเสร็จ
+                        watermark_b64 = get_img_base64(LOGO_PATH)
+                        watermark_html = f'''
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.04; z-index: 0; pointer-events: none; text-align: center;">
+                            <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
+                        </div>
+                        ''' if watermark_b64 else ''
+
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
                             <html>
@@ -1007,12 +1070,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: sans-serif; color: black; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #218838; }}
-                                .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-                                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }}
+                                .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
+                                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; }}
                                 .tbl {{ width: 100%; border-collapse: collapse; }}
                                 .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }}
                                 .itm-tbl th {{ background: #333; color: white; padding: 4px; text-align: left; }}
-                                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; }}
+                                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
@@ -1024,6 +1087,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <body>
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (A4 ครึ่งหน้า)</button>
                                 <div class="doc-box">
+                                    {watermark_html}
                                     <div class="section-box">
                                         <div>
                                             <table class="tbl">
@@ -1113,7 +1177,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #0369a1; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                                .content-wrap {{ position: relative; z-index: 1; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
                                 .cust-box td {{ padding: 4px 8px; }}
@@ -1133,7 +1198,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <body>
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร FlowAccount Style (A4 เต็มแผ่น)</button>
                                 <div class="flow-container">
-                                    <div>
+                                    {watermark_html}
+                                    <div class="content-wrap">
                                         <table class="header-tbl">
                                             <tr>
                                                 <td style="vertical-align: top;">
@@ -1190,7 +1256,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         </table>
                                     </div>
 
-                                    <div>
+                                    <div class="content-wrap">
                                         <div class="footer-box">
                                             <div style="width: 65%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
@@ -1449,16 +1515,22 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                         def make_social_qr(link, label):
                             if not link: return ""
-                            sq = qrcode.make(link)
-                            s_buf = BytesIO()
-                            sq.save(s_buf)
-                            s_b64 = base64.b64encode(s_buf.getvalue()).decode()
+                            s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                            s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                             return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
 
                         social_html = ""
                         if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
                         if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
                         if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
+
+                        # 💧 ดึงโลโก้ทำลายน้ำจางๆ สำหรับใส่ในเอกสารพิมพ์
+                        watermark_b64 = get_img_base64(LOGO_PATH)
+                        watermark_html = f'''
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.04; z-index: 0; pointer-events: none; text-align: center;">
+                            <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
+                        </div>
+                        ''' if watermark_b64 else ''
 
                         print_html_full = f"""
                         <html>
@@ -1467,7 +1539,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             @page {{ size: A4 portrait; margin: 10mm; }}
                             body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                             .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                            .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; }}
+                            .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                            .content-wrap {{ position: relative; z-index: 1; }}
                             .header-tbl {{ width: 100%; border-collapse: collapse; }}
                             .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
                             .cust-box td {{ padding: 4px 8px; }}
@@ -1499,7 +1572,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         <body>
                             <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารฉบับนี้</button>
                             <div class="flow-container">
-                                <div>
+                                {watermark_html}
+                                <div class="content-wrap">
                                     <table class="header-tbl">
                                         <tr>
                                             <td style="vertical-align: top;">
@@ -1551,25 +1625,27 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                 </div>
 
                                 <!-- บล็อกท้ายกระดาษที่ถูกตรึงไว้ล่างสุดเสมอ -->
-                                <div class="footer-section">
-                                    <div class="footer-box">
-                                        <div style="width: 70%;">
-                                            <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
-                                                <tr>
-                                                    <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
-                                                    <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>{l_sign} วันที่....................</td>
-                                                    <td>{r_sign} วันที่.........................</td>
-                                                </tr>
-                                            </table>
+                                <div class="content-wrap">
+                                    <div class="footer-section">
+                                        <div class="footer-box">
+                                            <div style="width: 70%;">
+                                                <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
+                                                    <tr>
+                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>{l_sign} วันที่....................</td>
+                                                        <td>{r_sign} วันที่.........................</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
-                                        <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
-                                        <div style="margin-top: 4px;">{social_html}</div>
+                                        <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
+                                            <div style="margin-top: 4px;">{social_html}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1764,25 +1840,22 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         with col1:
             st.subheader("💚 Line")
             if STORE_LINE:
-                img = qrcode.make(STORE_LINE)
-                buf = BytesIO(); img.save(buf)
-                st.image(buf.getvalue(), width=160, caption="Line Official")
+                img_stream_line = generate_qr_with_logo(STORE_LINE, LOGO_PATH)
+                st.image(img_stream_line.getvalue(), width=160, caption="Line Official")
             else:
                 st.info("ยังไม่ได้ตั้งค่าลิงก์ Line ในแท็บตั้งค่าธุรกิจ")
         with col2:
             st.subheader("💙 Facebook")
             if STORE_FB:
-                img = qrcode.make(STORE_FB)
-                buf = BytesIO(); img.save(buf)
-                st.image(buf.getvalue(), width=160, caption="Facebook Page")
+                img_stream_fb = generate_qr_with_logo(STORE_FB, LOGO_PATH)
+                st.image(img_stream_fb.getvalue(), width=160, caption="Facebook Page")
             else:
                 st.info("ยังไม่ได้ตั้งค่าลิงก์ Facebook ในแท็บตั้งค่าธุรกิจ")
         with col3:
             st.subheader("🖤 TikTok")
             if STORE_TIKTOK:
-                img = qrcode.make(STORE_TIKTOK)
-                buf = BytesIO(); img.save(buf)
-                st.image(buf.getvalue(), width=160, caption="TikTok Profile")
+                img_stream_tt = generate_qr_with_logo(STORE_TIKTOK, LOGO_PATH)
+                st.image(img_stream_tt.getvalue(), width=160, caption="TikTok Profile")
             else:
                 st.info("ยังไม่ได้ตั้งค่าลิงก์ TikTok ในแท็บตั้งค่าธุรกิจ")
 
