@@ -9,8 +9,6 @@ import streamlit.components.v1 as components
 import os
 import base64
 import json
-import urllib.request
-import urllib.parse
 from PIL import Image, ImageDraw
 
 # สร้างโฟลเดอร์สำหรับเก็บบันทึกไฟล์รูป/วิดีโอที่ลูกค้าอัปโหลด
@@ -39,18 +37,6 @@ st.set_page_config(
     page_icon="⚡", 
     layout="wide"
 )
-
-# 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนเข้า LINE Notify อัตโนมัติ
-def send_line_notify(message, token):
-    if not token or not token.strip():
-        return
-    try:
-        url = 'https://notify-api.line.me/api/notify'
-        data = urllib.parse.urlencode({'message': message}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={'Authorization': f'Bearer {token.strip()}'})
-        urllib.request.urlopen(req)
-    except Exception:
-        pass
 
 # 🇹🇭 ฟังก์ชันสร้าง EMVCo PromptPay Payload QR Code ที่แอปธนาคารไทยสแกนได้จริง 100%
 def generate_promptpay_payload(target, amount=None):
@@ -176,8 +162,7 @@ def init_db(conn):
             use_logo INTEGER DEFAULT 1,
             use_watermark INTEGER DEFAULT 1,
             repair_terms TEXT,
-            commercial_terms TEXT,
-            line_notify_token TEXT
+            commercial_terms TEXT
         )
     ''')
     
@@ -188,7 +173,7 @@ def init_db(conn):
         ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
         ('logo_path', 'TEXT'), ('watermark_path', 'TEXT'),
         ('use_logo', 'INTEGER DEFAULT 1'), ('use_watermark', 'INTEGER DEFAULT 1'),
-        ('repair_terms', 'TEXT'), ('commercial_terms', 'TEXT'), ('line_notify_token', 'TEXT')
+        ('repair_terms', 'TEXT'), ('commercial_terms', 'TEXT')
     ]
     for col, col_type in extra_cols:
         try:
@@ -197,7 +182,6 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,8 +210,8 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_notify_token) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน', '')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน')
         ''')
         conn.commit()
     else:
@@ -297,20 +281,20 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_notify_token FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS, LINE_NOTIFY_TOKEN) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "089-026-1927", "1340700066417", "152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230", "ขอบคุณ", "0890261927"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
-    REPAIR_TERMS, COMMERCIAL_TERMS, LINE_NOTIFY_TOKEN = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน", ""
+    REPAIR_TERMS, COMMERCIAL_TERMS = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or "089-026-1927"
@@ -338,7 +322,6 @@ USE_LOGO = int(USE_LOGO) if USE_LOGO is not None else 1
 USE_WATERMARK = int(USE_WATERMARK) if USE_WATERMARK is not None else 1
 REPAIR_TERMS = REPAIR_TERMS or "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)"
 COMMERCIAL_TERMS = COMMERCIAL_TERMS or "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
-LINE_NOTIFY_TOKEN = LINE_NOTIFY_TOKEN or ""
 
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
@@ -542,10 +525,6 @@ if page_param == "register":
                 conn.commit()
                 cursor.close()
                 
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Notify ทันทีที่ลูกค้าลงทะเบียนแจ้งซ่อม
-                line_msg = f"\n🚨 มีแจ้งซ่อมใหม่ผ่าน QR Code!\n- เลขใบงาน: {job_code}\n- ลูกค้า: {c_name} ({c_phone})\n- อุปกรณ์: {c_device}\n- อาการเสีย: {c_problem}"
-                send_line_notify(line_msg, LINE_NOTIFY_TOKEN)
-                
                 st.session_state['public_registered_job'] = job_code
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
@@ -642,10 +621,6 @@ if page_param == "commercial_request":
                 """, (doc_no_gen, d_type, status, req_name, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
                 conn.commit()
                 cursor.close()
-                
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Notify ทันทีที่มีคำขอออกเอกสารการค้าใหม่
-                line_msg = f"\n📄 มีคำขอเอกสารการค้าใหม่!\n- เลขเอกสาร: {doc_no_gen}\n- ประเภท: {req_doc_type}\n- ลูกค้า: {req_name} ({req_phone})\n- ยอดรวมสุทธิ: {grand_total:,.2f} {DEF_CURR}"
-                send_line_notify(line_msg, LINE_NOTIFY_TOKEN)
                 
                 st.session_state['public_registered_doc'] = doc_no_gen
                 st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}**")
@@ -1399,7 +1374,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
             with col_c2:
                 st.subheader("📅 ประเภทเอกสาร & เงื่อนไข")
                 
-                doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
+                doc_type_selected = st.selectbox("🎯 ประเภทเอกสารเริ่มต้น", [
                     "1. ใบเสนอราคา (Quotation - QT)",
                     "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
                     "3. ใบกำกับภาษี (Tax Invoice - TAX)",
@@ -1621,10 +1596,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             .content-wrap {{ position: relative; z-index: 1; }}
                             .header-tbl {{ width: 100%; border-collapse: collapse; }}
                             .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
-                            .cust-box td {{ padding: 4px 8px; word-break: break-word; }}
+                            .cust-box td {{ padding: 4px 8px; }}
                             .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
                             .items-tbl th {{ background: {t_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
-                            .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
+                            .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
                             .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                             .summary-tbl td {{ padding: 6px 10px; }}
                             .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
@@ -1654,7 +1629,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                 <div class="content-wrap">
                                     <table class="header-tbl">
                                         <tr>
-                                            <td style="vertical-align: top; width: 60%;">
+                                            <td style="vertical-align: top;">
                                                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                                                     {logo_img_header_tag}
                                                     <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
@@ -1662,12 +1637,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                         <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
                                                     </h2>
                                                 </div>
-                                                <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
+                                                <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">
                                                     ที่อยู่: {STORE_ADDRESS}<br>
                                                     โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                                 </p>
                                             </td>
-                                            <td style="text-align: right; vertical-align: top; width: 40%;">
+                                            <td style="text-align: right; vertical-align: top;">
                                                 <div style="background: {t_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
                                                     {t_title}
                                                 </div>
@@ -1695,7 +1670,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                     <table style="width: 100%; margin-top: 10px;">
                                         <tr>
-                                            <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b; word-break: break-word;">
+                                            <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b;">
                                                 <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
                                             </td>
                                             <td style="width: 45%;">
@@ -1887,10 +1862,6 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 st.image(WATERMARK_PATH, width=150, caption="รูปลายน้ำปัจจุบัน")
 
             st.markdown("---")
-            st.markdown("##### 📢 ตั้งค่าการแจ้งเตือนผ่าน LINE Notify")
-            new_line_token = st.text_input("LINE Notify Token", value=LINE_NOTIFY_TOKEN, type="password", help="รับ Token ได้จากเว็บไซต์ linenotify.com สำหรับแจ้งเตือนงานซ่อมและคำขอใหม่")
-
-            st.markdown("---")
             st.markdown("##### 🌐 ช่องทางโซเชียลมีเดียของร้าน")
             new_line = st.text_input("ลิงก์ Line Official", value=STORE_LINE)
             new_fb = st.text_input("ลิงก์ Facebook Page", value=STORE_FB)
@@ -1916,9 +1887,9 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE store_settings 
-                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ?, line_notify_token = ? 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ? 
                     WHERE id = 1
-                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0, new_line_token))
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0))
                 conn.commit()
                 cursor.close()
                 st.success("บันทึกข้อมูลธุรกิจและการตั้งค่าสำเร็จ!")
