@@ -160,7 +160,9 @@ def init_db(conn):
             logo_path TEXT,
             watermark_path TEXT,
             use_logo INTEGER DEFAULT 1,
-            use_watermark INTEGER DEFAULT 1
+            use_watermark INTEGER DEFAULT 1,
+            repair_terms TEXT,
+            commercial_terms TEXT
         )
     ''')
     
@@ -170,7 +172,8 @@ def init_db(conn):
         ('default_currency', 'TEXT'), ('accounting_method', 'TEXT'), 
         ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
         ('logo_path', 'TEXT'), ('watermark_path', 'TEXT'),
-        ('use_logo', 'INTEGER DEFAULT 1'), ('use_watermark', 'INTEGER DEFAULT 1')
+        ('use_logo', 'INTEGER DEFAULT 1'), ('use_watermark', 'INTEGER DEFAULT 1'),
+        ('repair_terms', 'TEXT'), ('commercial_terms', 'TEXT')
     ]
     for col, col_type in extra_cols:
         try:
@@ -208,14 +211,14 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1340700066417', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1)
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1340700066417', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน')
         ''')
         conn.commit()
     else:
-        cursor.execute("UPDATE store_settings SET logo_path = 'logo.jpg' WHERE logo_path IS NULL OR logo_path = '';")
-        cursor.execute("UPDATE store_settings SET watermark_path = 'logo.jpg' WHERE watermark_path IS NULL OR watermark_path = '';")
         cursor.execute("UPDATE store_settings SET tax_id = '1340700066417' WHERE tax_id IS NULL OR tax_id = '';")
+        cursor.execute("UPDATE store_settings SET repair_terms = '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)' WHERE repair_terms IS NULL OR repair_terms = '';")
+        cursor.execute("UPDATE store_settings SET commercial_terms = 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน' WHERE commercial_terms IS NULL OR commercial_terms = '';")
         conn.commit()
 
     cursor.execute('''
@@ -281,19 +284,20 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1340700066417", "อุบลราชธานี", "ขอบคุณ", "0891234567"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
+    REPAIR_TERMS, COMMERCIAL_TERMS = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or ""
@@ -319,23 +323,8 @@ LOGO_PATH = LOGO_PATH or "logo.jpg"
 WATERMARK_PATH = WATERMARK_PATH or "logo.jpg"
 USE_LOGO = int(USE_LOGO) if USE_LOGO is not None else 1
 USE_WATERMARK = int(USE_WATERMARK) if USE_WATERMARK is not None else 1
-
-# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
-logo_img_header_tag = ""
-if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-    logo_hdr_uri = get_img_base64(LOGO_PATH)
-    if logo_hdr_uri:
-        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
-
-watermark_html = ""
-if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-    wm_data_uri = get_img_base64(WATERMARK_PATH)
-    if wm_data_uri:
-        watermark_html = f'''
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
-            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
-        </div>
-        '''
+REPAIR_TERMS = REPAIR_TERMS or "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)"
+COMMERCIAL_TERMS = COMMERCIAL_TERMS or "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
 
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
@@ -666,6 +655,23 @@ if page_param == "commercial_request":
 
     st.stop()
 
+# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
+logo_img_header_tag = ""
+if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+    logo_hdr_uri = get_img_base64(LOGO_PATH)
+    if logo_hdr_uri:
+        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+
+watermark_html = ""
+if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+    wm_data_uri = get_img_base64(WATERMARK_PATH)
+    if wm_data_uri:
+        watermark_html = f'''
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+        </div>
+        '''
+
 # ==========================================
 # 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Horizontal Navigation)
 # ==========================================
@@ -856,7 +862,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                         <div class="signature-row" style="position: relative; z-index: 1;">
                             <div style="width: 50%;">
                                 <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                <span style="font-size:10px; color:#555;">(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)</span>
+                                <span style="font-size:10px; color:#555;">{REPAIR_TERMS}</span>
                             </div>
                             <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center;">
@@ -1056,7 +1062,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         subtotal += tot
                         items_data.append((desc, qty, price, tot))
 
-                    custom_notes = st.text_area("📝 ช่องหมายเหตุ / เงื่อนไขการรับประกัน", value=f"รับประกันงานซ่อมและอะไหล่ {warrant_days} วัน นับจากวันที่ส่งมอบเครื่อง")
+                    custom_notes = st.text_area("📝 ช่องหมายเหตุ / เงื่อนไขการรับประกัน", value=COMMERCIAL_TERMS)
                     
                     generate_btn = st.form_submit_button("🖨️ สร้างเอกสารพร้อมพิมพ์อย่างเป็นทางการ")
                     
@@ -1317,17 +1323,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
                                                         <td style="padding-bottom: 5px; width: 50%;">
-                                                            ลงชื่อ......................................................
-                                                        </td>
-                                                        <td style="padding-bottom: 5px; width: 50%;">
-                                                            ลงชื่อ......................................................
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>
                                                             ผู้รับเงิน / ผู้ออกเอกสาร วันที่....................
                                                         </td>
-                                                        <td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">
                                                             ผู้จ่ายเงิน / ลูกค้า วันที่.........................
                                                         </td>
                                                     </tr>
@@ -1567,7 +1565,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
                             logo_hdr_uri = get_img_base64(LOGO_PATH)
                             if logo_hdr_uri:
-                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-heading: 45px; max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         def make_social_qr(link, label):
                             if not link: return ""
@@ -1728,7 +1726,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
     st.markdown("จัดการข้อมูลร้านค้า เอกสาร บัญชี ผู้ใช้งาน สินค้า ธุรกิจ รวมถึงระบบตรวจสอบประกัน โซเชียล และรายงานยอดขาย")
     
-    set_tab1, set_tab2, set_tab3, set_tab4, set_tab5, set_tab6, set_tab7, set_tab8, set_tab9 = st.tabs([
+    set_tab1, set_tab2, set_tab3, set_tab4, set_tab5, set_tab6, set_tab7, set_tab8, set_tab9, set_tab10 = st.tabs([
         "📄 ตั้งค่าเอกสาร", 
         "📊 ตั้งค่าด้านบัญชี", 
         "👤 ตั้งค่าผู้ใช้งาน", 
@@ -1737,7 +1735,8 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         "⌨️ แป้นพิมพ์ลัด",
         "🌐 QR Code โซเชียล",
         "🛡️ เช็คประกัน & Serial",
-        "💰 สรุปยอด & ค่าคอมช่าง"
+        "💰 สรุปยอด & ค่าคอมช่าง",
+        "📝 จัดการฟอร์มเอกสาร"
     ])
     
     # --- Tab 1: ตั้งค่าเอกสาร ---
@@ -1841,7 +1840,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
         st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
 
-    # --- Tab 5: ตั้งค่าธุรกิจ (รวมตัวเลือกเปิด/ปิด โลโก้ และ ลายน้ำ) ---
+    # --- Tab 5: ตั้งค่าธุรกิจ & ลายน้ำ ---
     with set_tab5:
         st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
         with st.form("settings_biz_form"):
@@ -1958,3 +1957,24 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
         except Exception:
             st.info("ยังไม่มีข้อมูลรายงานยอดซ่อมในระบบ")
+
+    # --- Tab 10: จัดการฟอร์มเอกสาร (Document Template Manager) ---
+    with set_tab10:
+        st.subheader("📝 ตัวจัดการแบบฟอร์มเอกสาร (Document Template Manager)")
+        st.markdown("ปรับเปลี่ยนข้อความ เงื่อนไข และข้อกำหนดต่างๆ ในเอกสารของร้านได้อย่างอิสระ")
+        
+        with st.form("settings_template_form"):
+            new_repair_terms = st.text_area("เงื่อนไขท้ายใบรับซ่อม (เช่น เงื่อนไขการฝากซ่อมเกิน 30 วัน)", value=REPAIR_TERMS)
+            new_commercial_terms = st.text_area("เงื่อนไขท้ายเอกสารการค้า / ใบเสร็จ / ใบกำกับภาษี", value=COMMERCIAL_TERMS)
+            
+            if st.form_submit_button("💾 บันทึกการแก้ไขแบบฟอร์มเอกสาร"):
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE store_settings 
+                    SET repair_terms = ?, commercial_terms = ? 
+                    WHERE id = 1
+                """, (new_repair_terms, new_commercial_terms))
+                conn.commit()
+                cursor.close()
+                st.success("บันทึกการแก้ไขแบบฟอร์มเอกสารสำเร็จ!")
+                st.rerun()
