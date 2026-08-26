@@ -267,6 +267,8 @@ def init_db(conn):
             watermark_path TEXT,
             use_logo INTEGER DEFAULT 1,
             use_watermark INTEGER DEFAULT 1,
+            watermark_opacity REAL DEFAULT 0.03,
+            watermark_size INTEGER DEFAULT 50,
             repair_terms TEXT,
             commercial_terms TEXT,
             line_access_token TEXT,
@@ -281,6 +283,7 @@ def init_db(conn):
         ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
         ('logo_path', 'TEXT'), ('watermark_path', 'TEXT'),
         ('use_logo', 'INTEGER DEFAULT 1'), ('use_watermark', 'INTEGER DEFAULT 1'),
+        ('watermark_opacity', 'REAL DEFAULT 0.03'), ('watermark_size', 'INTEGER DEFAULT 50'),
         ('repair_terms', 'TEXT'), ('commercial_terms', 'TEXT'), 
         ('line_access_token', 'TEXT'), ('line_target_id', 'TEXT'),
         ('youtube_link', 'TEXT')
@@ -321,8 +324,8 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, youtube_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_access_token, line_target_id) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'https://youtube.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน', '', '')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, youtube_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, watermark_opacity, watermark_size, repair_terms, commercial_terms, line_access_token, line_target_id) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'https://youtube.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, 0.03, 50, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน', '', '')
         ''')
         conn.commit()
     else:
@@ -392,19 +395,19 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, youtube_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms, line_access_token, line_target_id FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, youtube_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, watermark_opacity, watermark_size, repair_terms, commercial_terms, line_access_token, line_target_id FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, STORE_YOUTUBE, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS, LINE_ACCESS_TOKEN, LINE_TARGET_ID) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, WM_OPACITY, WM_SIZE, REPAIR_TERMS, COMMERCIAL_TERMS, LINE_ACCESS_TOKEN, LINE_TARGET_ID) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "089-026-1927", "1340700066417", "152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230", "ขอบคุณ", "0890261927"
     STORE_LINE, STORE_FB, STORE_TIKTOK, STORE_YOUTUBE = "", "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
-    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
+    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, WM_OPACITY, WM_SIZE = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1, 0.03, 50
     REPAIR_TERMS, COMMERCIAL_TERMS, LINE_ACCESS_TOKEN, LINE_TARGET_ID = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน", "", ""
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
@@ -432,6 +435,8 @@ LOGO_PATH = LOGO_PATH or "logo.jpg"
 WATERMARK_PATH = WATERMARK_PATH or "logo.jpg"
 USE_LOGO = int(USE_LOGO) if USE_LOGO is not None else 1
 USE_WATERMARK = int(USE_WATERMARK) if USE_WATERMARK is not None else 1
+WM_OPACITY = float(WM_OPACITY) if WM_OPACITY is not None else 0.03
+WM_SIZE = int(WM_SIZE) if WM_SIZE is not None else 50
 REPAIR_TERMS = REPAIR_TERMS or "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)"
 COMMERCIAL_TERMS = COMMERCIAL_TERMS or "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
 LINE_ACCESS_TOKEN = LINE_ACCESS_TOKEN or ""
@@ -449,7 +454,7 @@ if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
     wm_data_uri = get_img_base64(WATERMARK_PATH)
     if wm_data_uri:
         watermark_html = f'''
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: {WM_OPACITY}; z-index: 0; pointer-events: none; text-align: center; width: {WM_SIZE}%;">
             <img src="{wm_data_uri}" style="width: 100%; height: auto;">
         </div>
         '''
@@ -458,7 +463,7 @@ def make_social_qr_inline(link, label):
     if not link: return ""
     s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
     s_b64 = base64.b64encode(s_stream.getvalue()).decode()
-    return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
+    return f'<div style="text-align:center; display:inline-block; margin: 0 3px;"><img src="data:image/png;base64,{s_b64}" width="38px"><br><span style="font-size:7px;">{label}</span></div>'
 
 social_html = ""
 if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
@@ -677,7 +682,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -919,6 +924,18 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             track_b64 = base64.b64encode(track_stream_qr.getvalue()).decode()
             qr_track_tag = f'<img src="data:image/png;base64,{track_b64}" width="100px"><br><span style="font-size:8px; font-weight:bold;">สแกนเช็คสถานะงานซ่อม</span>'
             
+            def make_social_qr_inline(link, label):
+                if not link: return ""
+                s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                s_b64 = base64.b64encode(s_stream.getvalue()).decode()
+                return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
+
+            social_html = ""
+            if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
+            if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
+            if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+            if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
+            
             portrait_a4_html = f"""
             <html>
             <head>
@@ -997,14 +1014,14 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 55%;">
+                            <div style="width: 50%;">
                                 <span>ลงชื่อลูกค้า: ......................................................</span><br>
                                 <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
                             </div>
-                            <div style="text-align: right; width: 45%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                <div style="text-align: center;">
-                                    {social_html}
-                                    <div style="font-size:6px; color:#666; margin-top:1px;">โซเชียลร้าน</div>
+                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                    <div style="display: flex; gap: 3px;">{social_html}</div>
                                 </div>
                                 <div style="text-align: center;">
                                     {qr_track_tag}
@@ -1064,11 +1081,15 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 70%;">
+                            <div style="width: 50%;">
                                 <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br>
                                 <span>ช่างผู้รับซ่อม: ......................................................</span>
                             </div>
-                            <div style="text-align: right; width: 30%; display: flex; justify-content: flex-end; align-items: flex-end;">
+                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                </div>
                                 <div style="text-align: center;">
                                     {qr_track_tag}
                                 </div>
@@ -1226,6 +1247,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
+                        # 🌟 สร้าง items_html ไว้ก่อนใช้งานเสมอ ป้องกัน NameError
+                        items_html = ""
+                        for idx, val in enumerate(items_data):
+                            items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+
                         qr_tag = ""
                         if "PromptPay" in pay_chanel and ("ใบคืนสินค้า" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice):
                             q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
@@ -1250,7 +1276,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             wm_data_uri = get_img_base64(WATERMARK_PATH)
                             if wm_data_uri:
                                 watermark_html = f'''
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: {WM_OPACITY}; z-index: 0; pointer-events: none; text-align: center; width: {WM_SIZE}%;">
                                     <img src="{wm_data_uri}" style="width: 100%; height: auto;">
                                 </div>
                                 '''
@@ -1325,12 +1351,18 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </table>
                                         </div>
                                         <div class="ftr" style="position: relative; z-index: 1;">
-                                            <div style="width: 70%;">
+                                            <div style="width: 55%;">
                                                 <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
                                             </div>
-                                            <div style="text-align: center; width: 30%;">
-                                                {qr_tag}
+                                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1490,7 +1522,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                                     <div class="content-wrap">
                                         <div class="footer-box">
-                                            <div style="width: 65%;">
+                                            <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
                                                         <td style="padding-bottom: 5px; width: 50%;">
@@ -1503,15 +1535,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 </table>
                                             </div>
 
-                                            <div style="text-align: center; width: 25%;">
-                                                {qr_tag}
+                                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
                                             </div>
-                                        </div>
-
-                                        <!-- ล่างสุด: ติดตามร้านเราผ่านโซเชียล -->
-                                        <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
-                                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
-                                            <div style="margin-top: 4px;">{social_html}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1755,7 +1787,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             wm_data_uri = get_img_base64(WATERMARK_PATH)
                             if wm_data_uri:
                                 watermark_html = f'''
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: {WM_OPACITY}; z-index: 0; pointer-events: none; text-align: center; width: {WM_SIZE}%;">
                                     <img src="{wm_data_uri}" style="width: 100%; height: auto;">
                                 </div>
                                 '''
@@ -1861,7 +1893,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                 <div class="content-wrap">
                                     <div class="footer-section">
                                         <div class="footer-box">
-                                            <div style="width: 70%;">
+                                            <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
                                                         <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
@@ -1873,11 +1905,13 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     </tr>
                                                 </table>
                                             </div>
-                                        </div>
 
-                                        <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
-                                            <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
-                                            <div style="margin-top: 4px;">{social_html}</div>
+                                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2030,11 +2064,14 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 st.image(LOGO_PATH, width=150, caption="โลโก้ปัจจุบันของร้าน")
 
             st.markdown("---")
-            st.markdown("##### 💧 รูปลายน้ำเอกสาร (Watermark) & การแสดงผล")
+            st.markdown("##### 💧 รูปลายน้ำเอกสาร (Watermark) & การปรับแต่ง")
             use_wm_val = st.checkbox("✅ ใช้ลายน้ำในเอกสารทุกแผ่น", value=bool(USE_WATERMARK))
             uploaded_watermark = st.file_uploader("อัปโหลดรูปลายน้ำใหม่ (.jpg หรือ .png)", type=["jpg", "jpeg", "png"], key="wm_upload")
             if WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                 st.image(WATERMARK_PATH, width=150, caption="รูปลายน้ำปัจจุบัน")
+            
+            new_wm_opacity = st.slider("ความโปร่งใส / ความสว่างของลายน้ำ (Opacity)", min_value=0.01, max_value=0.20, value=float(WM_OPACITY), step=0.01)
+            new_wm_size = st.slider("ขนาดของลายน้ำ (%)", min_value=20, max_value=100, value=int(WM_SIZE), step=5)
 
             st.markdown("---")
             st.markdown("##### 📢 ตั้งค่าการแจ้งเตือนผ่าน LINE Messaging API")
@@ -2068,9 +2105,9 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE store_settings 
-                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, youtube_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ?, line_access_token = ?, line_target_id = ? 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, youtube_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ?, watermark_opacity = ?, watermark_size = ?, line_access_token = ?, line_target_id = ? 
                     WHERE id = 1
-                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, new_youtube, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0, new_line_token, new_line_target))
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, new_youtube, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0, new_wm_opacity, new_wm_size, new_line_token, new_line_target))
                 conn.commit()
                 cursor.close()
                 st.success("บันทึกข้อมูลธุรกิจและการตั้งค่าสำเร็จ!")
