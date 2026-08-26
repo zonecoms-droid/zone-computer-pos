@@ -182,7 +182,6 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,13 +211,11 @@ def init_db(conn):
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
             INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark, repair_terms, commercial_terms) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1340700066417', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน')
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-026-1927', '1340700066417', '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230', 'ขอบคุณที่ใช้บริการครับ', '0890261927', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1, '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)', 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน')
         ''')
         conn.commit()
     else:
-        cursor.execute("UPDATE store_settings SET tax_id = '1340700066417' WHERE tax_id IS NULL OR tax_id = '';")
-        cursor.execute("UPDATE store_settings SET repair_terms = '(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)' WHERE repair_terms IS NULL OR repair_terms = '';")
-        cursor.execute("UPDATE store_settings SET commercial_terms = 'รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน' WHERE commercial_terms IS NULL OR commercial_terms = '';")
+        cursor.execute("UPDATE store_settings SET tax_id = '1340700066417', phone = '089-026-1927', address = '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230' WHERE id = 1;")
         conn.commit()
 
     cursor.execute('''
@@ -293,16 +290,16 @@ if store_info:
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
      DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK, REPAIR_TERMS, COMMERCIAL_TERMS) = store_info
 else:
-    STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1340700066417", "อุบลราชธานี", "ขอบคุณ", "0891234567"
+    STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "089-026-1927", "1340700066417", "152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230", "ขอบคุณ", "0890261927"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
     REPAIR_TERMS, COMMERCIAL_TERMS = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)", "รับประกันงานซ่อมและอะไหล่ตามเงื่อนไขของร้าน"
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
-STORE_PHONE = STORE_PHONE or ""
+STORE_PHONE = STORE_PHONE or "089-026-1927"
 STORE_TAX = STORE_TAX or "1340700066417"
-STORE_ADDRESS = STORE_ADDRESS or ""
+STORE_ADDRESS = STORE_ADDRESS or "152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230"
 STORE_NOTE = STORE_NOTE or ""
 STORE_PROMPTPAY = STORE_PROMPTPAY or ""
 STORE_LINE = STORE_LINE or ""
@@ -816,9 +813,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .print-container {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
                 .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
                 h3, h4 {{ text-align: center; margin: 2px 0; }}
-                p {{ font-size: 13px; margin: 4px 0; }}
+                p {{ font-size: 13px; margin: 4px 0; word-break: break-word; overflow-wrap: break-word; }}
                 table {{ width: 100%; font-size: 13px; margin-top: 5px; border-collapse: collapse; }}
-                td {{ padding: 3px 0; }}
+                td {{ padding: 3px 0; word-break: break-word; overflow-wrap: break-word; }}
                 .perforation {{ border-top: 2px dashed #666; margin: 4mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
                 .signature-row {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; align-items: flex-end; border-top: 1px solid #eee; padding-top: 5px; }}
                 @media print {{
@@ -843,8 +840,8 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
                             </h3>
                             <p style="text-align: center; font-size: 11px; line-height: 1.4;">
-                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                เลขผู้เสียภาษี: 1340700066417
+                                ที่อยู่: {STORE_ADDRESS}<br>
+                                โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                             </p>
                             <h4 style="background: #eee; padding: 4px; margin-top: 5px; line-height: 1.3;">
                                 ใบรับซ่อมสินค้า<br>
@@ -890,8 +887,8 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
                             </h3>
                             <p style="text-align: center; font-size: 11px; line-height: 1.4;">
-                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                เลขผู้เสียภาษี: 1340700066417
+                                ที่อยู่: {STORE_ADDRESS}<br>
+                                โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                             </p>
                             <h4 style="background: #eee; padding: 4px; margin-top: 5px; line-height: 1.3;">
                                 ใบรับซ่อมสินค้า<br>
@@ -1131,8 +1128,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
                                                         </h3>
                                                         <p style="font-size: 11px; line-height: 1.4; margin-top: 6px;">
-                                                            ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                                            เลขผู้เสียภาษี: 1340700066417
+                                                            ที่อยู่: {STORE_ADDRESS}<br>
+                                                            โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                                         </p>
                                                     </td>
                                                     <td style="text-align: right; vertical-align: top;">
@@ -1181,8 +1178,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
                                                         </h3>
                                                         <p style="font-size: 11px; line-height: 1.4; margin-top: 6px;">
-                                                            ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                                            เลขผู้เสียภาษี: 1340700066417
+                                                            ที่อยู่: {STORE_ADDRESS}<br>
+                                                            โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                                         </p>
                                                     </td>
                                                     <td style="text-align: right; vertical-align: top;">
@@ -1266,8 +1263,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         </h2>
                                                     </div>
                                                     <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">
-                                                        ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                                        เลขผู้เสียภาษี: 1340700066417
+                                                        ที่อยู่: {STORE_ADDRESS}<br>
+                                                        โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                                     </p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
@@ -1351,7 +1348,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลใบงานในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
@@ -1565,7 +1562,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
                             logo_hdr_uri = get_img_base64(LOGO_PATH)
                             if logo_hdr_uri:
-                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-heading: 45px; max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         def make_social_qr(link, label):
                             if not link: return ""
@@ -1641,8 +1638,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     </h2>
                                                 </div>
                                                 <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">
-                                                    ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                                    เลขผู้เสียภาษี: 1340700066417
+                                                    ที่อยู่: {STORE_ADDRESS}<br>
+                                                    โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                                 </p>
                                             </td>
                                             <td style="text-align: right; vertical-align: top;">
