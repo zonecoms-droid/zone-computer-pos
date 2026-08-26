@@ -179,6 +179,7 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
+    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,12 +209,13 @@ def init_db(conn):
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
             INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1)
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1340700066417', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1)
         ''')
         conn.commit()
     else:
         cursor.execute("UPDATE store_settings SET logo_path = 'logo.jpg' WHERE logo_path IS NULL OR logo_path = '';")
         cursor.execute("UPDATE store_settings SET watermark_path = 'logo.jpg' WHERE watermark_path IS NULL OR watermark_path = '';")
+        cursor.execute("UPDATE store_settings SET tax_id = '1340700066417' WHERE tax_id IS NULL OR tax_id = '';")
         conn.commit()
 
     cursor.execute('''
@@ -288,14 +290,14 @@ if store_info:
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
      DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK) = store_info
 else:
-    STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1234567890123", "อุบลราชธานี", "ขอบคุณ", "0891234567"
+    STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1340700066417", "อุบลราชธานี", "ขอบคุณ", "0891234567"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or ""
-STORE_TAX = STORE_TAX or ""
+STORE_TAX = STORE_TAX or "1340700066417"
 STORE_ADDRESS = STORE_ADDRESS or ""
 STORE_NOTE = STORE_NOTE or ""
 STORE_PROMPTPAY = STORE_PROMPTPAY or ""
@@ -779,6 +781,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
+            # ลายน้ำ: ขนาด 50% ความเข้ม 1% (ตามที่ขอ)
             watermark_html = ""
             if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                 wm_data_uri = get_img_base64(WATERMARK_PATH)
@@ -825,14 +828,22 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 </div>
                 
                 <div class="print-container">
-                    {watermark_html}
                     <!-- ส่วนที่ 1: สำหรับลูกค้า -->
                     <div class="section-box">
                         {watermark_html}
                         <div style="position: relative; z-index: 1;">
-                            <h3><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
-                            <p style="text-align: center; font-size: 11px;">ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
-                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับลูกค้า / ต้นฉบับ)</h4>
+                            <h3 style="text-align: center; line-height: 1.3;">
+                                {logo_img_header_tag}<b>ร้านโซนคอมพิวเตอร์</b><br>
+                                <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                            </h3>
+                            <p style="text-align: center; font-size: 11px; line-height: 1.4;">
+                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                เลขผู้เสียภาษี: 1340700066417
+                            </p>
+                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
+                                ใบรับซ่อมสินค้า<br>
+                                <span style="font-size: 12px; font-weight: normal;">(สำหรับลูกค้า / ต้นฉบับ)</span>
+                            </h4>
                             <table>
                                 <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
                                 <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
@@ -868,9 +879,18 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                     <div class="section-box">
                         {watermark_html}
                         <div style="position: relative; z-index: 1;">
-                            <h3><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
-                            <p style="text-align: center; font-size: 11px;">ใบควบคุมงานซ่อมภายในร้าน (สำหรับร้านค้าเก็บไว้)</p>
-                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับร้านค้า / สำเนา)</h4>
+                            <h3 style="text-align: center; line-height: 1.3;">
+                                {logo_img_header_tag}<b>ร้านโซนคอมพิวเตอร์</b><br>
+                                <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                            </h3>
+                            <p style="text-align: center; font-size: 11px; line-height: 1.4;">
+                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                เลขผู้เสียภาษี: 1340700066417
+                            </p>
+                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
+                                ใบรับซ่อมสินค้า<br>
+                                <span style="font-size: 12px; font-weight: normal;">(สำหรับร้านค้า / สำเนา)</span>
+                            </h4>
                             <table>
                                 <tr><td><b>เลขที่ใบงาน:</b> {j_code}</td><td><b>วันที่รับเครื่อง:</b> {date_in}</td></tr>
                                 <tr><td><b>ชื่อลูกค้า:</b> {c_name}</td><td><b>เบอร์โทรศัพท์:</b> {c_phone}</td></tr>
@@ -1067,7 +1087,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        # ลายน้ำเอกสาร (ขนาด 50% ความเข้ม 1%) ทั้งครึ่งบนและครึ่งล่าง
+                        # ลายน้ำ: ขนาด 50% ความเข้ม 1% (ตามที่ขอ)
                         watermark_html = ""
                         if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                             wm_data_uri = get_img_base64(WATERMARK_PATH)
@@ -1110,22 +1130,22 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <body>
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (A4 ครึ่งหน้า)</button>
                                 <div class="doc-box">
-                                    <!-- ส่วนที่ 1: สำหรับลูกค้า (มีลายน้ำ 50% ความเข้ม 1%) -->
+                                    <!-- ครึ่งบน: สำหรับลูกค้า -->
                                     <div class="section-box">
                                         {watermark_html}
                                         <div style="position: relative; z-index: 1;">
-                                            <table class="tbl">
-                                                <tr>
-                                                    <td>
-                                                        <h3 style="margin: 0;"><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
-                                                        <p style="font-size: 10px; margin: 1px 0;">{STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
-                                                    </td>
-                                                    <td style="text-align: right; vertical-align: top;">
-                                                        <h4 style="color: #333; margin: 0;"><b>ใบคืนสินค้าและส่งมอบงานซ่อม (สำหรับลูกค้า)</b></h4>
-                                                        <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
-                                                    </td>
-                                                </tr>
-                                            </table>
+                                            <h3 style="text-align: center; line-height: 1.3;">
+                                                {logo_img_header_tag}<b>ร้านโซนคอมพิวเตอร์</b><br>
+                                                <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                            </h3>
+                                            <p style="text-align: center; font-size: 11px; line-height: 1.4;">
+                                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                                เลขผู้เสียภาษี: 1340700066417
+                                            </p>
+                                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
+                                                ใบคืนสินค้าและส่งมอบงานซ่อม<br>
+                                                <span style="font-size: 12px; font-weight: normal;">(สำหรับลูกค้า / ต้นฉบับ)</span>
+                                            </h4>
                                             <table class="tbl" style="font-size: 11px; margin-top: 4px;">
                                                 <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
                                                 <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
@@ -1151,22 +1171,22 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                                     <div class="perforation">✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกระหว่างลูกค้าและร้านค้า - - - - - - - - - - - - - - - - - ✂️</div>
 
-                                    <!-- ส่วนที่ 2: สำหรับร้านค้า จัดเลย์เอาต์ใหม่ให้สวยงาม (มีลายน้ำ 50% ความเข้ม 1%) -->
+                                    <!-- ครึ่งล่าง: สำหรับร้านค้า จัดเลย์เอาต์ใหม่ให้สวยงามสมฐานะ -->
                                     <div class="section-box">
                                         {watermark_html}
                                         <div style="position: relative; z-index: 1;">
-                                            <table class="tbl">
-                                                <tr>
-                                                    <td>
-                                                        <h3 style="margin: 0;"><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
-                                                        <p style="font-size: 10px; margin: 1px 0;">ใบควบคุมการส่งมอบและรับเงิน (สำหรับร้านค้าเก็บไว้)</p>
-                                                    </td>
-                                                    <td style="text-align: right; vertical-align: top;">
-                                                        <h4 style="color: #333; margin: 0;"><b>ใบคืนสินค้าและส่งมอบงานซ่อม (สำหรับร้านค้า)</b></h4>
-                                                        <p style="font-size: 10px; margin: 1px 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
-                                                    </td>
-                                                </tr>
-                                            </table>
+                                            <h3 style="text-align: center; line-height: 1.3;">
+                                                {logo_img_header_tag}<b>ร้านโซนคอมพิวเตอร์</b><br>
+                                                <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                            </h3>
+                                            <p style="text-align: center; font-size: 11px; line-height: 1.4;">
+                                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                                เลขผู้เสียภาษี: 1340700066417
+                                            </p>
+                                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
+                                                ใบคืนสินค้าและส่งมอบงานซ่อม<br>
+                                                <span style="font-size: 12px; font-weight: normal;">(สำหรับร้านค้าเก็บไว้ / สำเนา)</span>
+                                            </h4>
                                             <table class="tbl" style="font-size: 11px; margin-top: 4px;">
                                                 <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
                                                 <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
@@ -1205,7 +1225,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #0369a1; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                                 .content-wrap {{ position: relative; z-index: 1; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
@@ -1215,8 +1235,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }}
                                 .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                                 .summary-tbl td {{ padding: 6px 10px; }}
-                                .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
-                                .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
+                                .footer-box {{ display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 20px; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
                                     .print-btn {{ display: none; }}
@@ -1234,9 +1253,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <td style="vertical-align: top;">
                                                     <div style="display: flex; align-items: center; margin-bottom: 4px;">
                                                         {logo_img_header_tag}
-                                                        <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                                        <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
+                                                            <b>ร้านโซนคอมพิวเตอร์</b><br>
+                                                            <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                                        </h2>
                                                     </div>
-                                                    <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
+                                                    <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">
+                                                        ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                                        เลขผู้เสียภาษี: 1340700066417
+                                                    </p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top;">
                                                     <div style="background: #0284c7; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px; margin-bottom: 8px;">
@@ -1613,9 +1638,15 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             <td style="vertical-align: top;">
                                                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                                                     {logo_img_header_tag}
-                                                    <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
+                                                    <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
+                                                        <b>ร้านโซนคอมพิวเตอร์</b><br>
+                                                        <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                                    </h2>
                                                 </div>
-                                                <p style="font-size: 12px; margin: 4px 0; color: #475569;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
+                                                <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">
+                                                    ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                                    เลขผู้เสียภาษี: 1340700066417
+                                                </p>
                                             </td>
                                             <td style="text-align: right; vertical-align: top;">
                                                 <div style="background: {t_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
@@ -1811,13 +1842,13 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
         st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
 
-    # --- Tab 5: ตั้งค่าธุรกิจ & ลายน้ำ ---
+    # --- Tab 5: ตั้งค่าธุรกิจ (รวมตัวเลือกเปิด/ปิด โลโก้ และ ลายน้ำ) ---
     with set_tab5:
         st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
         with st.form("settings_biz_form"):
             new_store_name = st.text_input("ชื่อร้านค้า / ธุรกิจ", value=STORE_NAME)
             new_phone = st.text_input("เบอร์โทรศัพท์", value=STORE_PHONE)
-            new_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value=STORE_TAX)
+            new_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="1340700066417")
             new_promptpay = st.text_input("เลขพร้อมเพย์ (สำหรับสร้าง QR Code รับเงิน)", value=STORE_PROMPTPAY)
             new_address = st.text_area("ที่อยู่สถานประกอบการ", value=STORE_ADDRESS)
             
