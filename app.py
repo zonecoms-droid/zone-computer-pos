@@ -1295,7 +1295,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
