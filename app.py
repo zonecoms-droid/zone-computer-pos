@@ -682,7 +682,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1014,17 +1014,19 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 50%;">
-                                <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
-                            </div>
-                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
-                                <div style="text-align: center;">
-                                    {qr_track_tag}
-                                </div>
+                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
+                                </div>
+                                <div>
+                                    <span>ลงชื่อลูกค้า: ......................................................</span><br>
+                                    <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right; width: 42%;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
                                 </div>
                             </div>
                         </div>
@@ -1081,17 +1083,19 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 50%;">
-                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
-                                <span>ช่างผู้รับซ่อม: ......................................................</span>
-                            </div>
-                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
-                                <div style="text-align: center;">
-                                    {qr_track_tag}
-                                </div>
+                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
+                                </div>
+                                <div>
+                                    <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
+                                    <span>ช่างผู้รับซ่อม: ......................................................</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right; width: 42%;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
                                 </div>
                             </div>
                         </div>
@@ -1357,12 +1361,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
                                             </div>
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                <div style="text-align: center;">
-                                                    {qr_tag}
-                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
                                                 </div>
                                             </div>
                                         </div>
@@ -1539,12 +1543,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </div>
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                <div style="text-align: center;">
-                                                    {qr_tag}
-                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
                                                 </div>
                                             </div>
                                         </div>
@@ -1836,7 +1840,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารฉบับนี้</button>
                             <div class="flow-container">
                                 {watermark_html}
-                                <div class="content-wrap">
+                                .content-wrap">
                                     <table class="header-tbl">
                                         <tr>
                                             <td style="vertical-align: top; width: 60%;">
