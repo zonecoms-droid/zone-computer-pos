@@ -157,7 +157,8 @@ def init_db(conn):
             accounting_period TEXT DEFAULT '2026',
             lock_period TEXT DEFAULT 'ยังไม่ล็อก',
             opening_balance REAL DEFAULT 0.0,
-            logo_path TEXT
+            logo_path TEXT,
+            watermark_path TEXT
         )
     ''')
     
@@ -166,7 +167,7 @@ def init_db(conn):
         ('prefix_rc', 'TEXT'), ('prefix_cn', 'TEXT'), ('prefix_dn', 'TEXT'),
         ('default_currency', 'TEXT'), ('accounting_method', 'TEXT'), 
         ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
-        ('logo_path', 'TEXT')
+        ('logo_path', 'TEXT'), ('watermark_path', 'TEXT')
     ]
     for col, col_type in extra_cols:
         try:
@@ -204,12 +205,13 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg')
         ''')
         conn.commit()
     else:
         cursor.execute("UPDATE store_settings SET logo_path = 'logo.jpg' WHERE logo_path IS NULL OR logo_path = '';")
+        cursor.execute("UPDATE store_settings SET watermark_path = 'logo.jpg' WHERE watermark_path IS NULL OR watermark_path = '';")
         conn.commit()
 
     cursor.execute('''
@@ -275,19 +277,19 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1234567890123", "อุบลราชธานี", "ขอบคุณ", "0891234567"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
-    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg"
+    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg"
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or ""
@@ -310,6 +312,7 @@ ACC_PERIOD = ACC_PERIOD or "2026"
 LOCK_PER = LOCK_PER or "ยังไม่ล็อก"
 OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
 LOGO_PATH = LOGO_PATH or "logo.jpg"
+WATERMARK_PATH = WATERMARK_PATH or "logo.jpg"
 
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
@@ -772,10 +775,10 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
-            watermark_b64 = get_img_base64(LOGO_PATH)
+            watermark_b64 = get_img_base64(WATERMARK_PATH)
             watermark_html = f'''
             <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
-                <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
+                <img src="{watermark_b64}" style="max-width: 400px; max-height: 400px;">
             </div>
             ''' if watermark_b64 else ''
             
@@ -1049,10 +1052,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        watermark_b64 = get_img_base64(LOGO_PATH)
+                        watermark_b64 = get_img_base64(WATERMARK_PATH)
                         watermark_html = f'''
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
-                            <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
+                            <img src="{watermark_b64}" style="max-width: 400px; max-height: 400px;">
                         </div>
                         ''' if watermark_b64 else ''
 
@@ -1295,7 +1298,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
@@ -1519,10 +1522,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
                         if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
 
-                        watermark_b64 = get_img_base64(LOGO_PATH)
+                        watermark_b64 = get_img_base64(WATERMARK_PATH)
                         watermark_html = f'''
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
-                            <img src="data:image/jpeg;base64,{watermark_b64}" style="max-width: 400px; max-height: 400px;">
+                            <img src="{watermark_b64}" style="max-width: 400px; max-height: 400px;">
                         </div>
                         ''' if watermark_b64 else ''
 
@@ -1771,9 +1774,9 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
         st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
 
-    # --- Tab 5: ตั้งค่าธุรกิจ ---
+    # --- Tab 5: ตั้งค่าธุรกิจ & ลายน้ำ ---
     with set_tab5:
-        st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
+        st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก (รวมถึงตั้งค่ารูปลายน้ำเอกสาร)")
         with st.form("settings_biz_form"):
             new_store_name = st.text_input("ชื่อร้านค้า / ธุรกิจ", value=STORE_NAME)
             new_phone = st.text_input("เบอร์โทรศัพท์", value=STORE_PHONE)
@@ -1782,10 +1785,16 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
             new_address = st.text_area("ที่อยู่สถานประกอบการ", value=STORE_ADDRESS)
             
             st.markdown("---")
-            st.markdown("##### 🖼️ โลโก้ร้านค้า (รองรับไฟล์ JPG / PNG)")
-            uploaded_logo = st.file_uploader("อัปโหลดรูปโลโก้ร้าน (.jpg หรือ .png)", type=["jpg", "jpeg", "png"])
+            st.markdown("##### 🖼️ โลโก้ร้านค้า (สำหรับหัวเอกสารและฝังใน QR Code)")
+            uploaded_logo = st.file_uploader("อัปโหลดรูปโลโก้ร้าน (.jpg หรือ .png)", type=["jpg", "jpeg", "png"], key="logo_upload")
             if LOGO_PATH and os.path.exists(LOGO_PATH):
                 st.image(LOGO_PATH, width=150, caption="โลโก้ปัจจุบันของร้าน")
+
+            st.markdown("---")
+            st.markdown("##### 💧 รูปภาพลายน้ำเอกสาร (Watermark)")
+            uploaded_watermark = st.file_uploader("อัปโหลดรูปลายน้ำจางๆ กลางกระดาษ (.jpg หรือ .png)", type=["jpg", "jpeg", "png"], key="wm_upload")
+            if WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+                st.image(WATERMARK_PATH, width=150, caption="รูปลายน้ำปัจจุบัน")
 
             st.markdown("---")
             st.markdown("##### 🌐 ช่องทางโซเชียลมีเดียของร้าน")
@@ -1793,7 +1802,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
             new_fb = st.text_input("ลิงก์ Facebook Page", value=STORE_FB)
             new_tiktok = st.text_input("ลิงก์ TikTok", value=STORE_TIKTOK)
             
-            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจและโลโก้"):
+            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจและรูปภาพ"):
                 final_logo_path = LOGO_PATH
                 if uploaded_logo is not None:
                     logo_ext = uploaded_logo.name.split(".")[-1]
@@ -1802,15 +1811,23 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                     with open(final_logo_path, "wb") as f:
                         f.write(uploaded_logo.getbuffer())
 
+                final_wm_path = WATERMARK_PATH
+                if uploaded_watermark is not None:
+                    wm_ext = uploaded_watermark.name.split(".")[-1]
+                    wm_filename = f"watermark_{datetime.now().strftime('%Y%m%d%H%M%S')}.{wm_ext}"
+                    final_wm_path = os.path.join(UPLOAD_DIR, wm_filename)
+                    with open(final_wm_path, "wb") as f:
+                        f.write(uploaded_watermark.getbuffer())
+
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE store_settings 
-                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ? 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ? 
                     WHERE id = 1
-                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path))
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path))
                 conn.commit()
                 cursor.close()
-                st.success("บันทึกข้อมูลธุรกิจและโลโก้สำเร็จ!")
+                st.success("บันทึกข้อมูลธุรกิจและรูปภาพสำเร็จ!")
                 st.rerun()
 
     # --- Tab 6: แป้นพิมพ์ลัด ---
