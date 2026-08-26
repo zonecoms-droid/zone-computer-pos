@@ -158,7 +158,9 @@ def init_db(conn):
             lock_period TEXT DEFAULT 'ยังไม่ล็อก',
             opening_balance REAL DEFAULT 0.0,
             logo_path TEXT,
-            watermark_path TEXT
+            watermark_path TEXT,
+            use_logo INTEGER DEFAULT 1,
+            use_watermark INTEGER DEFAULT 1
         )
     ''')
     
@@ -167,7 +169,8 @@ def init_db(conn):
         ('prefix_rc', 'TEXT'), ('prefix_cn', 'TEXT'), ('prefix_dn', 'TEXT'),
         ('default_currency', 'TEXT'), ('accounting_method', 'TEXT'), 
         ('accounting_period', 'TEXT'), ('lock_period', 'TEXT'), ('opening_balance', 'REAL'),
-        ('logo_path', 'TEXT'), ('watermark_path', 'TEXT')
+        ('logo_path', 'TEXT'), ('watermark_path', 'TEXT'),
+        ('use_logo', 'INTEGER DEFAULT 1'), ('use_watermark', 'INTEGER DEFAULT 1')
     ]
     for col, col_type in extra_cols:
         try:
@@ -205,8 +208,8 @@ def init_db(conn):
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         cursor.execute('''
-            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path) 
-            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg')
+            INSERT INTO store_settings (store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, logo_path, watermark_path, use_logo, use_watermark) 
+            VALUES ('ร้านโซนคอมพิวเตอร์แอนด์เซอร์วิส', '089-123-4567', '1234567890123', 'อุบลราชธานี', 'ขอบคุณที่ใช้บริการครับ', '0891234567', 'https://line.me', 'https://facebook.com', 'https://tiktok.com', 'QT', 'IV', 'TAX', 'RC', 'CN', 'DN', 'THB', 'logo.jpg', 'logo.jpg', 1, 1)
         ''')
         conn.commit()
     else:
@@ -277,19 +280,19 @@ init_db(conn)
 
 # ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
-cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path FROM store_settings WHERE id = 1")
+cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
 cursor.close()
 
 if store_info:
     (STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY, 
      STORE_LINE, STORE_FB, STORE_TIKTOK, P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN, 
-     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH) = store_info
+     DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK) = store_info
 else:
     STORE_NAME, STORE_PHONE, STORE_TAX, STORE_ADDRESS, STORE_NOTE, STORE_PROMPTPAY = "ร้านโซนคอมพิวเตอร์", "0891234567", "1234567890123", "อุบลราชธานี", "ขอบคุณ", "0891234567"
     STORE_LINE, STORE_FB, STORE_TIKTOK = "", "", ""
     P_QT, P_IV, P_TAX, P_RC, P_CN, P_DN = "QT", "IV", "TAX", "RC", "CN", "DN"
-    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg"
+    DEF_CURR, ACC_METHOD, ACC_PERIOD, LOCK_PER, OPEN_BAL, LOGO_PATH, WATERMARK_PATH, USE_LOGO, USE_WATERMARK = "THB", "เกณฑ์สิทธิ์ (Accrual)", "2026", "ยังไม่ล็อก", 0.0, "logo.jpg", "logo.jpg", 1, 1
 
 STORE_NAME = STORE_NAME or "ร้านโซนคอมพิวเตอร์"
 STORE_PHONE = STORE_PHONE or ""
@@ -313,6 +316,8 @@ LOCK_PER = LOCK_PER or "ยังไม่ล็อก"
 OPEN_BAL = float(OPEN_BAL) if OPEN_BAL is not None else 0.0
 LOGO_PATH = LOGO_PATH or "logo.jpg"
 WATERMARK_PATH = WATERMARK_PATH or "logo.jpg"
+USE_LOGO = int(USE_LOGO) if USE_LOGO is not None else 1
+USE_WATERMARK = int(USE_WATERMARK) if USE_WATERMARK is not None else 1
 
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
@@ -775,13 +780,24 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
-            watermark_b64 = get_img_base64(WATERMARK_PATH)
-            watermark_html = f'''
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
-                <img src="{watermark_b64}" style="max-width: 400px; max-height: 400px;">
-            </div>
-            ''' if watermark_b64 else ''
+            # ลายน้ำ: ขนาด 50% ของหน้ากระดาษ ความเข้ม 10% (ถ้าเปิดใช้งาน)
+            watermark_html = ""
+            if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+                wm_data_uri = get_img_base64(WATERMARK_PATH)
+                if wm_data_uri:
+                    watermark_html = f'''
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.10; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+                        <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+                    </div>
+                    '''
             
+            # โลโก้ร้าน (ถ้าเปิดใช้งาน)
+            logo_img_header_tag = ""
+            if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+                logo_hdr_uri = get_img_base64(LOGO_PATH)
+                if logo_hdr_uri:
+                    logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+
             portrait_a4_html = f"""
             <html>
             <head>
@@ -792,12 +808,12 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .btn-print {{ background-color: #ff4b4b; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                 .btn-print:hover {{ background-color: #e03e3e; }}
                 .print-container {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
-                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; }}
+                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
                 h3, h4 {{ text-align: center; margin: 2px 0; }}
                 p {{ font-size: 13px; margin: 4px 0; }}
                 table {{ width: 100%; font-size: 13px; margin-top: 5px; border-collapse: collapse; }}
                 td {{ padding: 3px 0; }}
-                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
+                .perforation {{ border-top: 2px dashed #666; margin: 4mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
                 .signature-row {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; align-items: flex-end; border-top: 1px solid #eee; padding-top: 5px; }}
                 @media print {{
                     body {{ background: white; padding: 0; }}
@@ -812,11 +828,11 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 </div>
                 
                 <div class="print-container">
-                    {watermark_html}
-                    <!-- ส่วนที่ 1: สำหรับลูกค้า -->
+                    <!-- ส่วนที่ 1: สำหรับลูกค้า (มีลายน้ำ 50% ความเข้ม 10%) -->
                     <div class="section-box">
-                        <div>
-                            <h3><b>{STORE_NAME}</b></h3>
+                        {watermark_html}
+                        <div style="position: relative; z-index: 1;">
+                            <h3><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
                             <p style="text-align: center; font-size: 11px;">ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
                             <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับลูกค้า / ต้นฉบับ)</h4>
                             <table>
@@ -828,7 +844,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             <p><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
                             <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
                         </div>
-                        <div class="signature-row">
+                        <div class="signature-row" style="position: relative; z-index: 1;">
                             <div style="width: 50%;">
                                 <span>ลงชื่อลูกค้า: ......................................................</span><br>
                                 <span style="font-size:10px; color:#555;">(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)</span>
@@ -850,10 +866,11 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                         ✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกต้นฉบับและสำเนา (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️
                     </div>
 
-                    <!-- ส่วนที่ 2: สำหรับร้านค้า -->
+                    <!-- ส่วนที่ 2: สำหรับร้านค้า (มีลายน้ำ 50% ความเข้ม 10%) -->
                     <div class="section-box">
-                        <div>
-                            <h3><b>{STORE_NAME}</b></h3>
+                        {watermark_html}
+                        <div style="position: relative; z-index: 1;">
+                            <h3><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
                             <p style="text-align: center; font-size: 11px;">ใบควบคุมงานซ่อมภายในร้าน (สำหรับร้านค้าเก็บไว้)</p>
                             <h4 style="background: #eee; padding: 4px; margin-top: 5px;">ใบรับซ่อมสินค้า (สำหรับร้านค้า / สำเนา)</h4>
                             <table>
@@ -865,7 +882,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             <p><b>อุปกรณ์ที่แนบมา:</b> {acc if acc else '-'}</p>
                             <p><b>ประเมินราคาเบื้องต้น:</b> <b>{cost:,.2f} บาท</b></p>
                         </div>
-                        <div class="signature-row">
+                        <div class="signature-row" style="position: relative; z-index: 1;">
                             <div style="width: 60%;">
                                 <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br>
                                 <span>ช่างผู้รับซ่อม: ......................................................</span>
@@ -1052,12 +1069,23 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        watermark_b64 = get_img_base64(WATERMARK_PATH)
-                        watermark_html = f'''
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
-                            <img src="{watermark_b64}" style="max-width: 400px; max-height: 400px;">
-                        </div>
-                        ''' if watermark_b64 else ''
+                        # ลายน้ำเอกสาร A4 เต็มแผ่น (ขนาด 50% ความเข้ม 10%)
+                        watermark_html = ""
+                        if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+                            wm_data_uri = get_img_base64(WATERMARK_PATH)
+                            if wm_data_uri:
+                                watermark_html = f'''
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.10; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+                                    <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+                                </div>
+                                '''
+
+                        # โลโก้ร้านหัวเอกสาร
+                        logo_img_header_tag = ""
+                        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+                            logo_hdr_uri = get_img_base64(LOGO_PATH)
+                            if logo_hdr_uri:
+                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
@@ -1069,11 +1097,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .print-btn {{ background-color: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #218838; }}
                                 .doc-box {{ background: white; border: 1px solid #ccc; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
-                                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; }}
+                                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
                                 .tbl {{ width: 100%; border-collapse: collapse; }}
                                 .itm-tbl {{ width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }}
                                 .itm-tbl th {{ background: #333; color: white; padding: 4px; text-align: left; }}
-                                .perforation {{ border-top: 2px dashed #666; margin: 8mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
+                                .perforation {{ border-top: 2px dashed #666; margin: 4mm 0; text-align: center; font-size: 11px; color: #444; font-weight: bold; position: relative; z-index: 1; }}
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
@@ -1085,13 +1113,14 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <body>
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (A4 ครึ่งหน้า)</button>
                                 <div class="doc-box">
-                                    {watermark_html}
+                                    <!-- ครึ่งบน: มีลายน้ำ 50% ความเข้ม 10% -->
                                     <div class="section-box">
-                                        <div>
+                                        {watermark_html}
+                                        <div style="position: relative; z-index: 1;">
                                             <table class="tbl">
                                                 <tr>
                                                     <td>
-                                                        <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
+                                                        <h3 style="margin: 0;"><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
                                                         <p style="font-size: 10px; margin: 1px 0;">{STORE_ADDRESS} | โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
                                                     </td>
                                                     <td style="text-align: right; vertical-align: top;">
@@ -1112,7 +1141,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                             </table>
                                         </div>
-                                        <div class="ftr">
+                                        <div class="ftr" style="position: relative; z-index: 1;">
                                             <div style="width: 70%;">
                                                 <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
@@ -1123,12 +1152,14 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         </div>
                                     </div>
                                     <div class="perforation">✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกระหว่างลูกค้าและร้านค้า - - - - - - - - - - - - - - - - - ✂️</div>
+                                    <!-- ครึ่งล่าง: มีลายน้ำ 50% ความเข้ม 10% -->
                                     <div class="section-box">
-                                        <div>
+                                        {watermark_html}
+                                        <div style="position: relative; z-index: 1;">
                                             <table class="tbl">
                                                 <tr>
                                                     <td>
-                                                        <h3 style="margin: 0;"><b>{STORE_NAME}</b></h3>
+                                                        <h3 style="margin: 0;"><b>{logo_img_header_tag}{STORE_NAME}</b></h3>
                                                         <p style="font-size: 10px; margin: 1px 0;">ใบควบคุมการส่งมอบและรับเงิน (สำหรับร้านค้าเก็บไว้)</p>
                                                     </td>
                                                     <td style="text-align: right; vertical-align: top;">
@@ -1149,7 +1180,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #d9534f;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                             </table>
                                         </div>
-                                        <div class="ftr">
+                                        <div class="ftr" style="position: relative; z-index: 1;">
                                             <div style="width: 100%;">
                                                 <p style="font-size: 10px; margin: 2px 0;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <p style="font-size: 10px; margin: 8px 0 0 0;">ลงชื่อลูกค้า (ตรวจรับเรียบร้อย): ...................................................... &nbsp;&nbsp;&nbsp;&nbsp; ช่างผู้ส่งมอบ: ......................................................</p>
@@ -1164,9 +1195,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             is_tax = "ใบกำกับภาษี" in doc_choice
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
 
-                            logo_data_uri = get_img_base64(LOGO_PATH)
-                            logo_img_tag = f'<img src="{logo_data_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_data_uri else ''
-
                             final_html = f"""
                             <html>
                             <head>
@@ -1175,7 +1203,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #0369a1; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                                 .content-wrap {{ position: relative; z-index: 1; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
@@ -1189,12 +1217,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
                                     .print-btn {{ display: none; }}
-                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
+                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; height: 272mm; }}
                                 }}
                             </style>
                             </head>
                             <body>
-                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร FlowAccount Style (A4 เต็มแผ่น)</button>
+                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (A4 เต็มแผ่น)</button>
                                 <div class="flow-container">
                                     {watermark_html}
                                     <div class="content-wrap">
@@ -1202,7 +1230,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             <tr>
                                                 <td style="vertical-align: top;">
                                                     <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                                                        {logo_img_tag}
+                                                        {logo_img_header_tag}
                                                         <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
                                                     </div>
                                                     <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขประจำตัวผู้เสียภาษี: {STORE_TAX}</p>
@@ -1508,8 +1536,11 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         else:
                             t_title, t_color, l_sign, r_sign = "ใบเพิ่มหนี้ / DEBIT NOTE", "#e11d48", "ผู้ออกใบเพิ่มหนี้", "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
 
-                        logo_data_uri = get_img_base64(LOGO_PATH)
-                        logo_img_tag = f'<img src="{logo_data_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">' if logo_data_uri else ''
+                        logo_img_header_tag = ""
+                        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+                            logo_hdr_uri = get_img_base64(LOGO_PATH)
+                            if logo_hdr_uri:
+                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         def make_social_qr(link, label):
                             if not link: return ""
@@ -1522,12 +1553,15 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
                         if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
 
-                        watermark_b64 = get_img_base64(WATERMARK_PATH)
-                        watermark_html = f'''
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.12; z-index: 0; pointer-events: none; text-align: center;">
-                            <img src="{watermark_b64}" style="max-width: 400px; max-height: 400px;">
-                        </div>
-                        ''' if watermark_b64 else ''
+                        watermark_html = ""
+                        if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+                            wm_data_uri = get_img_base64(WATERMARK_PATH)
+                            if wm_data_uri:
+                                watermark_html = f'''
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.10; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+                                    <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+                                </div>
+                                '''
 
                         print_html_full = f"""
                         <html>
@@ -1575,7 +1609,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         <tr>
                                             <td style="vertical-align: top;">
                                                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                                                    {logo_img_tag}
+                                                    {logo_img_header_tag}
                                                     <h2 style="margin: 0; color: #0f172a; font-size: 24px;"><b>{STORE_NAME}</b></h2>
                                                 </div>
                                                 <p style="font-size: 12px; margin: 4px 0; color: #475569;">{STORE_ADDRESS}<br>โทร: {STORE_PHONE} | เลขผู้เสียภาษี: {STORE_TAX}</p>
@@ -1774,9 +1808,9 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         st.text_input("หน่วยนับมาตรฐาน", value="ชิ้น / เครื่อง / งาน")
         st.checkbox("เปิดใช้งานระบบตัดสต็อกอัตโนมัติเมื่อออกใบเสร็จ/ใบแจ้งหนี้", value=True)
 
-    # --- Tab 5: ตั้งค่าธุรกิจ & ลายน้ำ ---
+    # --- Tab 5: ตั้งค่าธุรกิจ (รวมตัวเลือกเปิด/ปิด โลโก้ และ ลายน้ำ) ---
     with set_tab5:
-        st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก (รวมถึงตั้งค่ารูปลายน้ำเอกสาร)")
+        st.subheader("🏢 ข้อมูลธุรกิจและร้านค้าหลัก")
         with st.form("settings_biz_form"):
             new_store_name = st.text_input("ชื่อร้านค้า / ธุรกิจ", value=STORE_NAME)
             new_phone = st.text_input("เบอร์โทรศัพท์", value=STORE_PHONE)
@@ -1785,14 +1819,16 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
             new_address = st.text_area("ที่อยู่สถานประกอบการ", value=STORE_ADDRESS)
             
             st.markdown("---")
-            st.markdown("##### 🖼️ โลโก้ร้านค้า (สำหรับหัวเอกสารและฝังใน QR Code)")
+            st.markdown("##### 🖼️ โลโก้ร้านค้า & การแสดงผล")
+            use_logo_val = st.checkbox("✅ ใช้โลโก้ร้านในหัวเอกสาร", value=bool(USE_LOGO))
             uploaded_logo = st.file_uploader("อัปโหลดรูปโลโก้ร้าน (.jpg หรือ .png)", type=["jpg", "jpeg", "png"], key="logo_upload")
             if LOGO_PATH and os.path.exists(LOGO_PATH):
                 st.image(LOGO_PATH, width=150, caption="โลโก้ปัจจุบันของร้าน")
 
             st.markdown("---")
-            st.markdown("##### 💧 รูปภาพลายน้ำเอกสาร (Watermark)")
-            uploaded_watermark = st.file_uploader("อัปโหลดรูปลายน้ำจางๆ กลางกระดาษ (.jpg หรือ .png)", type=["jpg", "jpeg", "png"], key="wm_upload")
+            st.markdown("##### 💧 รูปลายน้ำเอกสาร (Watermark) & การแสดงผล")
+            use_wm_val = st.checkbox("✅ ใช้ลายน้ำในเอกสารทุกแผ่น", value=bool(USE_WATERMARK))
+            uploaded_watermark = st.file_uploader("อัปโหลดรูปลายน้ำใหม่ (.jpg หรือ .png)", type=["jpg", "jpeg", "png"], key="wm_upload")
             if WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                 st.image(WATERMARK_PATH, width=150, caption="รูปลายน้ำปัจจุบัน")
 
@@ -1802,7 +1838,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
             new_fb = st.text_input("ลิงก์ Facebook Page", value=STORE_FB)
             new_tiktok = st.text_input("ลิงก์ TikTok", value=STORE_TIKTOK)
             
-            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจและรูปภาพ"):
+            if st.form_submit_button("💾 บันทึกข้อมูลธุรกิจและการตั้งค่า"):
                 final_logo_path = LOGO_PATH
                 if uploaded_logo is not None:
                     logo_ext = uploaded_logo.name.split(".")[-1]
@@ -1822,12 +1858,12 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE store_settings 
-                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ? 
+                    SET store_name = ?, phone = ?, tax_id = ?, address = ?, promptpay = ?, line_link = ?, fb_link = ?, tiktok_link = ?, logo_path = ?, watermark_path = ?, use_logo = ?, use_watermark = ? 
                     WHERE id = 1
-                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path))
+                """, (new_store_name, new_phone, new_tax, new_address, new_promptpay, new_line, new_fb, new_tiktok, final_logo_path, final_wm_path, 1 if use_logo_val else 0, 1 if use_wm_val else 0))
                 conn.commit()
                 cursor.close()
-                st.success("บันทึกข้อมูลธุรกิจและรูปภาพสำเร็จ!")
+                st.success("บันทึกข้อมูลธุรกิจและการตั้งค่าสำเร็จ!")
                 st.rerun()
 
     # --- Tab 6: แป้นพิมพ์ลัด ---
