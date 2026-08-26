@@ -1019,12 +1019,12 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
                             </div>
                             <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
+                                </div>
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                </div>
-                                <div style="text-align: center;">
-                                    {qr_track_tag}
                                 </div>
                             </div>
                         </div>
@@ -1086,12 +1086,12 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 <span>ช่างผู้รับซ่อม: ......................................................</span>
                             </div>
                             <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
+                                </div>
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                </div>
-                                <div style="text-align: center;">
-                                    {qr_track_tag}
                                 </div>
                             </div>
                         </div>
@@ -1358,12 +1358,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
                                             </div>
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                                </div>
-                                                <div style="text-align: center;">
-                                                    {qr_tag}
                                                 </div>
                                             </div>
                                         </div>
@@ -1540,12 +1540,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </div>
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                                </div>
-                                                <div style="text-align: center;">
-                                                    {qr_tag}
                                                 </div>
                                             </div>
                                         </div>
