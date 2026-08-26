@@ -131,7 +131,7 @@ def get_safe_font(size=14, bold=False):
     except Exception:
         return None
 
-# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด พร้อมระบุประเภท QR Code ด้านบน + ชื่อร้านและเบอร์โทรด้านล่าง
+# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด พร้อมขยายขนาดตัวหนังสือให้ใหญ่ คมชัด อ่านง่าย
 def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_DEFAULT_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม"):
     qr = qrcode.QRCode(
         version=4,
@@ -161,13 +161,14 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
         except Exception:
             pass
 
-    font_top = get_safe_font(15, bold=True)
-    font_title = get_safe_font(17, bold=True)
-    font_sub = get_safe_font(14, bold=False)
+    # 🌟 ขยายขนาดฟอนต์ให้ใหญ่ขึ้น ชัดเจนขึ้น
+    font_top = get_safe_font(20, bold=True)
+    font_title = get_safe_font(22, bold=True)
+    font_sub = get_safe_font(18, bold=False)
 
     card_width = img.width + 60
-    top_margin = 45
-    bottom_margin = 110
+    top_margin = 55
+    bottom_margin = 130
     card_height = img.height + top_margin + bottom_margin
     
     card = Image.new("RGB", (card_width, card_height), "white")
@@ -179,15 +180,15 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
             bbox = draw.textbbox((0, 0), top_label, font=font_top)
             tw = bbox[2] - bbox[0]
         else:
-            tw = 180
+            tw = 200
     except Exception:
-        tw = 180
+        tw = 200
     draw.text(((card_width - tw) / 2, 12), top_label, fill="#0284c7", font=font_top)
 
     # 2. วาง QR Code ไว้ตรงกลาง
     card.paste(img, (30, top_margin))
 
-    # 3. วาดกล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง
+    # 3. วาดกล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง (ขยายพื้นที่รองรับฟอนต์ใหญ่)
     box_y = top_margin + img.height + 15
     draw.rectangle([20, box_y, card_width - 20, card_height - 15], fill="#f8fafc", outline="#cbd5e1", width=1)
     
@@ -198,12 +199,12 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
             bbox_sub = draw.textbbox((0, 0), f"โทร. {store_phone}", font=font_sub)
             sub_w = bbox_sub[2] - bbox_sub[0]
         else:
-            title_w, sub_w = 150, 100
+            title_w, sub_w = 180, 120
     except Exception:
-        title_w, sub_w = 150, 100
+        title_w, sub_w = 180, 120
 
-    draw.text(((card_width - title_w) / 2, box_y + 12), store_name, fill="#0f172a", font=font_title)
-    draw.text(((card_width - sub_w) / 2, box_y + 38), f"โทร. {store_phone}", fill="#475569", font=font_sub)
+    draw.text(((card_width - title_w) / 2, box_y + 14), store_name, fill="#0f172a", font=font_title)
+    draw.text(((card_width - sub_w) / 2, box_y + 46), f"โทร. {store_phone}", fill="#475569", font=font_sub)
 
     stream = BytesIO()
     card.save(stream, format="PNG")
@@ -669,7 +670,7 @@ if page_param == "register":
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         
-        # 🌟 สร้าง QR Card พร้อมระบุประเภท QR Code + ชื่อร้าน และเบอร์โทร
+        # 🌟 สร้าง QR Card พร้อมระบุประเภท + ชื่อร้าน และเบอร์โทรขนาดใหญ่
         qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม")
         
         st.image(qr_stream.getvalue(), width=240, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
@@ -767,7 +768,7 @@ if page_param == "commercial_request":
         st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
         track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
         
-        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมประเภท QR Code + ชื่อร้าน และเบอร์โทร
+        # 🌟 สร้าง QR Card พร้อมชื่อร้านและเบอร์โทรขนาดใหญ่
         qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะเอกสาร")
         
         st.image(qr_stream.getvalue(), width=240, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
@@ -1513,7 +1514,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลใบงานในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
@@ -2092,7 +2093,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         with col2:
             st.subheader("💙 Facebook")
             if STORE_FB:
-                img_stream_fb = generate_qr_with_logo(STORE_FB, LAYER_PATH if 'LAYER_PATH' in locals() else LOGO_PATH)
+                img_stream_fb = generate_qr_with_logo(STORE_FB, LOGO_PATH)
                 st.image(img_stream_fb.getvalue(), width=160, caption="Facebook Page")
             else:
                 st.info("ยังไม่ได้ตั้งค่าลิงก์ Facebook ในแท็บตั้งค่าธุรกิจ")
