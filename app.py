@@ -1086,6 +1086,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
+                        # ลายน้ำเอกสาร (ย้ายตัวแปรออกมานอกเงื่อนไข เพื่อให้ใช้ได้ครอบคลุมทุกเอกสาร)
                         watermark_html = ""
                         if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                             wm_data_uri = get_img_base64(WATERMARK_PATH)
@@ -1095,6 +1096,13 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <img src="{wm_data_uri}" style="width: 100%; height: auto;">
                                 </div>
                                 '''
+
+                        # โลโก้หัวกระดาษ (ย้ายตัวแปรออกมานอกเงื่อนไข)
+                        logo_img_header_tag = ""
+                        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+                            logo_hdr_uri = get_img_base64(LOGO_PATH)
+                            if logo_hdr_uri:
+                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
@@ -1126,18 +1134,27 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <div class="section-box">
                                         {watermark_html}
                                         <div style="position: relative; z-index: 1;">
-                                            <h3 style="text-align: center; line-height: 1.3;">
-                                                {logo_img_header_tag}<b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
-                                            </h3>
-                                            <p style="text-align: center; font-size: 11px; line-height: 1.4;">
-                                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                                เลขผู้เสียภาษี: 1340700066417
-                                            </p>
-                                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
-                                                ใบคืนสินค้าและส่งมอบงานซ่อม<br>
-                                                <span style="font-size: 12px; font-weight: normal;">(สำหรับลูกค้า / ต้นฉบับ)</span>
-                                            </h4>
+                                            <table class="tbl">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="margin: 0; line-height: 1.3;">
+                                                            <b>{logo_img_header_tag}ร้านโซนคอมพิวเตอร์</b><br>
+                                                            <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                                        </h3>
+                                                        <p style="font-size: 11px; line-height: 1.4; margin-top: 6px;">
+                                                            ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                                            เลขผู้เสียภาษี: 1340700066417
+                                                        </p>
+                                                    </td>
+                                                    <td style="text-align: right; vertical-align: top;">
+                                                        <h4 style="color: #333; margin: 0; line-height: 1.3;">
+                                                            <b>ใบคืนสินค้าและส่งมอบงานซ่อม</b><br>
+                                                            <span style="font-size: 12px; font-weight: normal;">(สำหรับลูกค้า / ต้นฉบับ)</span>
+                                                        </h4>
+                                                        <p style="font-size: 10px; margin: 6px 0 0 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
                                             <table class="tbl" style="font-size: 11px; margin-top: 4px;">
                                                 <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
                                                 <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
@@ -1167,18 +1184,27 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <div class="section-box">
                                         {watermark_html}
                                         <div style="position: relative; z-index: 1;">
-                                            <h3 style="text-align: center; line-height: 1.3;">
-                                                {logo_img_header_tag}<b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
-                                            </h3>
-                                            <p style="text-align: center; font-size: 11px; line-height: 1.4;">
-                                                ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
-                                                เลขผู้เสียภาษี: 1340700066417
-                                            </p>
-                                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
-                                                ใบคืนสินค้าและส่งมอบงานซ่อม<br>
-                                                <span style="font-size: 12px; font-weight: normal;">(สำหรับร้านค้าเก็บไว้ / สำเนา)</span>
-                                            </h4>
+                                            <table class="tbl">
+                                                <tr>
+                                                    <td>
+                                                        <h3 style="margin: 0; line-height: 1.3;">
+                                                            <b>{logo_img_header_tag}ร้านโซนคอมพิวเตอร์</b><br>
+                                                            <span style="font-size: 18px; font-weight: bold;">แอนด์ เซอร์วิส</span>
+                                                        </h3>
+                                                        <p style="font-size: 11px; line-height: 1.4; margin-top: 6px;">
+                                                            ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
+                                                            เลขผู้เสียภาษี: 1340700066417
+                                                        </p>
+                                                    </td>
+                                                    <td style="text-align: right; vertical-align: top;">
+                                                        <h4 style="color: #333; margin: 0; line-height: 1.3;">
+                                                            <b>ใบคืนสินค้าและส่งมอบงานซ่อม</b><br>
+                                                            <span style="font-size: 12px; font-weight: normal;">(สำหรับร้านค้าเก็บไว้ / สำเนา)</span>
+                                                        </h4>
+                                                        <p style="font-size: 10px; margin: 6px 0 0 0;"><b>เลขที่ใบงาน:</b> {selected_job} | <b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
                                             <table class="tbl" style="font-size: 11px; margin-top: 4px;">
                                                 <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ช่องทางชำระ:</b> {pay_chanel}</td></tr>
                                                 <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
@@ -1346,7 +1372,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
