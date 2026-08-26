@@ -40,6 +40,22 @@ st.set_page_config(
     layout="wide"
 )
 
+# 🌐 ดาวน์โหลดฟอนต์ภาษาไทยมาตรฐาน (Sarabun) จาก Google Fonts อัตโนมัติ ป้องกันปัญหาฟอนต์สี่เหลี่ยม
+SARABUN_REGULAR = "Sarabun-Regular.ttf"
+SARABUN_BOLD = "Sarabun-Bold.ttf"
+
+if not os.path.exists(SARABUN_REGULAR):
+    try:
+        urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf", SARABUN_REGULAR)
+    except Exception:
+        pass
+
+if not os.path.exists(SARABUN_BOLD):
+    try:
+        urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf", SARABUN_BOLD)
+    except Exception:
+        pass
+
 # 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (Push Message)
 def send_line_push_message(message, access_token, target_id):
     if not access_token or not target_id or not access_token.strip() or not target_id.strip():
@@ -102,29 +118,21 @@ def generate_promptpay_payload(target, amount=None):
     chk = f"{crc:04X}"
     return payload_for_crc + chk
 
-# 🛡️ ฟังก์ชันโหลดฟอนต์สำรองปลอดภัย รองรับทุกระบบปฏิบัติการ (Windows/Linux/Mac)
+# 🛡️ ฟังก์ชันเรียกใช้งานฟอนต์ภาษาไทยที่ปลอดภัย
 def get_safe_font(size=14, bold=False):
-    font_paths = [
-        "arial.ttf",
-        "Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/Library/Fonts/Arial.ttf"
-    ]
-    for path in font_paths:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size)
-            except Exception:
-                continue
+    font_path = SARABUN_BOLD if bold else SARABUN_REGULAR
+    if os.path.exists(font_path):
+        try:
+            return ImageFont.truetype(font_path, size)
+        except Exception:
+            pass
     try:
         return ImageFont.load_default()
     except Exception:
         return None
 
-# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด พร้อมข้อความด้านบน ชื่อร้าน และเบอร์โทรด้านล่าง
-def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_DEFAULT_PATH):
+# 🎨 ฟังก์ชันสร้าง QR Card สำหรับดาวน์โหลด พร้อมระบุประเภท QR Code ด้านบน + ชื่อร้านและเบอร์โทรด้านล่าง
+def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_DEFAULT_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม"):
     qr = qrcode.QRCode(
         version=4,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -154,28 +162,27 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
             pass
 
     font_top = get_safe_font(15, bold=True)
-    font_title = get_safe_font(18, bold=True)
+    font_title = get_safe_font(17, bold=True)
     font_sub = get_safe_font(14, bold=False)
 
     card_width = img.width + 60
-    top_margin = 40
+    top_margin = 45
     bottom_margin = 110
     card_height = img.height + top_margin + bottom_margin
     
     card = Image.new("RGB", (card_width, card_height), "white")
     draw = ImageDraw.Draw(card)
 
-    # 1. วาดข้อความด้านบน QR Code: "SCAN เช็ค สถานะงานซ่อม"
-    top_text = "SCAN เช็ค สถานะงานซ่อม"
+    # 1. วาดข้อความระบุประเภท QR Code ด้านบน
     try:
         if hasattr(draw, "textbbox"):
-            bbox = draw.textbbox((0, 0), top_text, font=font_top)
+            bbox = draw.textbbox((0, 0), top_label, font=font_top)
             tw = bbox[2] - bbox[0]
         else:
-            tw = 150
+            tw = 180
     except Exception:
-        tw = 150
-    draw.text(((card_width - tw) / 2, 12), top_text, fill="#0284c7", font=font_top)
+        tw = 180
+    draw.text(((card_width - tw) / 2, 12), top_label, fill="#0284c7", font=font_top)
 
     # 2. วาง QR Code ไว้ตรงกลาง
     card.paste(img, (30, top_margin))
@@ -204,8 +211,8 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
     return stream
 
 # ฟังก์ชันสร้าง QR Code ทั่วไป (แสดงบนหน้าจอ)
-def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
-    return generate_downloadable_qr_card(data, STORE_NAME, STORE_PHONE, logo_path)
+def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม"):
+    return generate_downloadable_qr_card(data, STORE_NAME, STORE_PHONE, logo_path, top_label)
 
 # ฟังก์ชันแปลงไฟล์รูปเป็น Data URI Base64 รองรับทั้ง JPG และ PNG อย่างถูกต้อง
 def get_img_base64(path):
@@ -662,13 +669,13 @@ if page_param == "register":
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         
-        # 🌟 สร้าง QR Card ที่มีคำว่า SCAN เช็คสถานะ + ชื่อร้าน + เบอร์โทร ในตัวรูปภาพ
-        qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH)
+        # 🌟 สร้าง QR Card พร้อมระบุประเภท QR Code + ชื่อร้าน และเบอร์โทร
+        qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม")
         
         st.image(qr_stream.getvalue(), width=240, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
         
         st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง",
+            label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
             data=qr_stream.getvalue(),
             file_name=f"QR_Tracking_{j_c}.png",
             mime="image/png"
@@ -760,8 +767,8 @@ if page_param == "commercial_request":
         st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
         track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
         
-        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
-        qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH)
+        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมประเภท QR Code + ชื่อร้าน และเบอร์โทร
+        qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะเอกสาร")
         
         st.image(qr_stream.getvalue(), width=240, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
         
@@ -1081,14 +1088,14 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
     with col_q1:
         st.subheader("1. QR Code แจ้งซ่อมออนไลน์")
         reg_url = "https://zone-computer-pos.streamlit.app/?page=register"
-        img_stream1 = generate_qr_with_logo(reg_url, LOGO_PATH)
+        img_stream1 = generate_qr_with_logo(reg_url, LOGO_PATH, top_label="QR CODE แจ้งซ่อมออนไลน์")
         st.image(img_stream1.getvalue(), caption="สแกนเพื่อลงทะเบียนแจ้งซ่อม", width=220)
         st.code(reg_url, language="text")
         
     with col_q2:
         st.subheader("2. QR Code ขอออกเอกสารการค้า")
         doc_req_url = "https://zone-computer-pos.streamlit.app/?page=commercial_request"
-        img_stream2 = generate_qr_with_logo(doc_req_url, LOGO_PATH)
+        img_stream2 = generate_qr_with_logo(doc_req_url, LOGO_PATH, top_label="QR CODE ขอเอกสารการค้า")
         st.image(img_stream2.getvalue(), caption="สแกนเพื่อขอใบเสนอราคา/ใบกำกับภาษี", width=220)
         st.code(doc_req_url, language="text")
 
@@ -2085,7 +2092,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         with col2:
             st.subheader("💙 Facebook")
             if STORE_FB:
-                img_stream_fb = generate_qr_with_logo(STORE_FB, LOGO_PATH)
+                img_stream_fb = generate_qr_with_logo(STORE_FB, LAYER_PATH if 'LAYER_PATH' in locals() else LOGO_PATH)
                 st.image(img_stream_fb.getvalue(), width=160, caption="Facebook Page")
             else:
                 st.info("ยังไม่ได้ตั้งค่าลิงก์ Facebook ในแท็บตั้งค่าธุรกิจ")
