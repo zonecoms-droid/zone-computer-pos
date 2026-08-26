@@ -839,7 +839,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
                                 เลขผู้เสียภาษี: 1340700066417
                             </p>
-                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
+                            <h4 style="background: #eee; padding: 4px; margin-top: 5px; line-height: 1.3;">
                                 ใบรับซ่อมสินค้า<br>
                                 <span style="font-size: 12px; font-weight: normal;">(สำหรับลูกค้า / ต้นฉบับ)</span>
                             </h4>
@@ -886,7 +886,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 ที่อยู่: {STORE_ADDRESS} | โทร: {STORE_PHONE}<br>
                                 เลขผู้เสียภาษี: 1340700066417
                             </p>
-                            <h4 style="background: #eee; padding: 4px; margin-top: 5px;">
+                            <h4 style="background: #eee; padding: 4px; margin-top: 5px; line-height: 1.3;">
                                 ใบรับซ่อมสินค้า<br>
                                 <span style="font-size: 12px; font-weight: normal;">(สำหรับร้านค้า / สำเนา)</span>
                             </h4>
@@ -1086,7 +1086,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
-                        # ลายน้ำเอกสาร (ย้ายตัวแปรออกมานอกเงื่อนไข เพื่อให้ใช้ได้ครอบคลุมทุกเอกสาร)
                         watermark_html = ""
                         if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
                             wm_data_uri = get_img_base64(WATERMARK_PATH)
@@ -1096,13 +1095,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <img src="{wm_data_uri}" style="width: 100%; height: auto;">
                                 </div>
                                 '''
-
-                        # โลโก้หัวกระดาษ (ย้ายตัวแปรออกมานอกเงื่อนไข)
-                        logo_img_header_tag = ""
-                        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-                            logo_hdr_uri = get_img_base64(LOGO_PATH)
-                            if logo_hdr_uri:
-                                logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
 
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
@@ -1359,9 +1351,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <!-- ล่างสุด: ติดตามร้านเราผ่านโซเชียล -->
                                         <div style="margin-top: 15px; text-align: center; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
                                             <span style="font-size: 9px; color: #475569; font-weight: bold;">ติดตามร้านเราผ่านโซเชียล:</span>
-                                            <div style="margin-top: 4px;">
-                                                {social_html}
-                                            </div>
+                                            <div style="margin-top: 4px;">{social_html}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1372,7 +1362,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ไม่พบข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
