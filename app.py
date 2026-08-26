@@ -1247,7 +1247,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
-                        # 🌟 สร้าง items_html ไว้ก่อนใช้งานเสมอ ป้องกัน NameError
+                        # 🌟 สร้าง items_html และ vat_html ไว้ล่วงหน้า ป้องกัน NameError
                         items_html = ""
                         for idx, val in enumerate(items_data):
                             items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
@@ -1528,10 +1528,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
                                                         <td style="padding-bottom: 5px; width: 50%;">
-                                                            ผู้รับเงิน / ผู้ออกเอกสาร วันที่....................
+                                                            ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
+                                                            วันที่ ......................................................
                                                         </td>
                                                         <td style="padding-bottom: 5px; width: 50%;">
-                                                            ผู้จ่ายเงิน / ลูกค้า วันที่.........................
+                                                            ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
+                                                            วันที่ ......................................................
                                                         </td>
                                                     </tr>
                                                 </table>
