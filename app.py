@@ -11,7 +11,7 @@ import base64
 import json
 import urllib.request
 import urllib.parse
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 # สร้างโฟลเดอร์สำหรับเก็บบันทึกไฟล์รูป/วิดีโอที่ลูกค้าอัปโหลด
 UPLOAD_DIR = "uploads"
@@ -102,8 +102,8 @@ def generate_promptpay_payload(target, amount=None):
     chk = f"{crc:04X}"
     return payload_for_crc + chk
 
-# 🎨 ฟังก์ชันสร้าง QR Code พร้อมฝังโลโก้ร้านไว้ตรงกลางแบบพรีเมียม
-def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
+# 🎨 ฟังก์ชันสร้าง QR Code พร้อมฝังโลโก้ร้านตรงกลาง และแปะป้ายชื่อร้าน/เบอร์โทรด้านล่างสำหรับดาวน์โหลด
+def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_DEFAULT_PATH):
     qr = qrcode.QRCode(
         version=4,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -114,6 +114,7 @@ def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
     
+    # ฝังโลโก้ตรงกลาง QR Code
     if logo_path and os.path.exists(logo_path):
         try:
             logo = Image.open(logo_path)
@@ -130,11 +131,43 @@ def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
             img.paste(logo, logo_pos)
         except Exception:
             pass
+
+    # สร้างแผ่นการ์ดแนวตั้งรวม QR Code + กล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง
+    card_width = img.width + 60
+    card_height = img.height + 120
+    card = Image.new("RGB", (card_width, card_height), "white")
     
+    # วาง QR Code ไว้ด้านบนของการ์ด
+    card.paste(img, (30, 20))
+    
+    # วาดกรอบข้อความและตัวหนังสือด้านล่าง
+    draw = ImageDraw.Draw(card)
+    try:
+        # พยายามโหลดฟอนต์มาตรฐาน ถ้าไม่มีใช้ default
+        font_title = ImageFont.truetype("arial.ttf", 18)
+        font_sub = ImageFont.truetype("arial.ttf", 14)
+    except IOError:
+        font_title = font_sub = ImageFont.load_default()
+
+    # วาดแถบพื้นหลังกล่องข้อความ
+    draw.rectangle([20, img.height + 30, card_width - 20, card_height - 15], fill="#f8fafc", outline="#cbd5e1", width=1)
+    
+    # ใส่ข้อความชื่อร้านและเบอร์โทร
+    text_y1 = img.height + 40
+    text_y2 = img.height + 70
+    
+    # ใช้ text-anchor หรือคำนวณกึ่งกลางคร่าวๆ
+    draw.text((card_width / 2, text_y1), store_name, fill="#0f172a", font=font_title, anchor="mm")
+    draw.text((card_width / 2, text_y2), f"โทร. {store_phone}", fill="#475569", font=font_sub, anchor="mm")
+
     stream = BytesIO()
-    img.save(stream, format="PNG")
+    card.save(stream, format="PNG")
     stream.seek(0)
     return stream
+
+# ฟังก์ชันสร้าง QR Code เฉพาะตัว QR (สำหรับแสดงผลหน้าจอทั่วไป)
+def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH):
+    return generate_downloadable_qr_card(data, STORE_NAME, STORE_PHONE, logo_path)
 
 # ฟังก์ชันแปลงไฟล์รูปเป็น Data URI Base64 รองรับทั้ง JPG และ PNG อย่างถูกต้อง
 def get_img_base64(path):
@@ -356,6 +389,23 @@ COMMERCIAL_TERMS = COMMERCIAL_TERMS or "รับประกันงานซ�
 LINE_ACCESS_TOKEN = LINE_ACCESS_TOKEN or ""
 LINE_TARGET_ID = LINE_TARGET_ID or ""
 
+# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
+logo_img_header_tag = ""
+if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+    logo_hdr_uri = get_img_base64(LOGO_PATH)
+    if logo_hdr_uri:
+        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+
+watermark_html = ""
+if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+    wm_data_uri = get_img_base64(WATERMARK_PATH)
+    if wm_data_uri:
+        watermark_html = f'''
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+        </div>
+        '''
+
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
 # ==========================================
@@ -573,17 +623,15 @@ if page_param == "register":
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
-        qr_stream = generate_qr_with_logo(track_url, LOGO_PATH)
         
-        st.image(qr_stream.getvalue(), width=220)
-        st.markdown(f"""
-        <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
-            <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
-            <span style="color: #475569; font-size: 12px;">📞 โทร: {STORE_PHONE}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        # 🌟 สร้าง QR Card ที่มีชื่อร้านและเบอร์โทรติดไปด้วยในตัวรูปภาพเมื่อกดดาวน์โหลด
+        qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH)
+        
+        st.image(qr_stream.getvalue(), width=240, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
+        
+        # ปุ่มบันทึก QR Code ลงเครื่องลูกค้า พร้อมชื่อร้านและเบอร์โทร
         st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง",
+            label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
             data=qr_stream.getvalue(),
             file_name=f"QR_Tracking_{j_c}.png",
             mime="image/png"
@@ -674,17 +722,14 @@ if page_param == "commercial_request":
         st.markdown("---")
         st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
         track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
-        qr_stream = generate_qr_with_logo(track_doc_url, LOGO_PATH)
         
-        st.image(qr_stream.getvalue(), width=220)
-        st.markdown(f"""
-        <div style="text-align: center; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; margin: 0 auto 15px auto;">
-            <b style="color: #0f172a; font-size: 14px;">{STORE_NAME}</b><br>
-            <span style="color: #475569; font-size: 12px;">📞 โทร: {STORE_PHONE}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
+        qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH)
+        
+        st.image(qr_stream.getvalue(), width=240, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
+        
         st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง",
+            label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
             data=qr_stream.getvalue(),
             file_name=f"QR_Document_{d_c}.png",
             mime="image/png"
@@ -692,23 +737,6 @@ if page_param == "commercial_request":
         st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะเอกสาร]({track_doc_url})")
 
     st.stop()
-
-# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
-logo_img_header_tag = ""
-if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-    logo_hdr_uri = get_img_base64(LOGO_PATH)
-    if logo_hdr_uri:
-        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
-
-watermark_html = ""
-if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-    wm_data_uri = get_img_base64(WATERMARK_PATH)
-    if wm_data_uri:
-        watermark_html = f'''
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
-            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
-        </div>
-        '''
 
 # ==========================================
 # 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Horizontal Navigation)
@@ -837,10 +865,10 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                 return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
 
-            social_qr_html = ""
-            if STORE_LINE: social_qr_html += make_social_qr_inline(STORE_LINE, "Line")
-            if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
-            if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+            social_html = ""
+            if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
+            if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
+            if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
             portrait_a4_html = f"""
             <html>
@@ -1185,7 +1213,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .doc-box {{ background: white; border: 1px solid #cbd5e1; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
                                 .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
-                                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin: 6px 0; font-size: 11px; }}
+                                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin: 6mm 0; font-size: 11px; }}
                                 .cust-box td {{ padding: 2px 4px; word-break: break-word; }}
                                 .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }}
                                 .items-tbl th {{ background: #16a34a; color: white; padding: 6px; text-align: left; font-weight: 600; }}
@@ -1441,7 +1469,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.info("ยังไม่มีข้อมูลใบงานในระบบ")
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาด: {e}")
 
@@ -2059,7 +2087,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         st.markdown("ปรับเปลี่ยนข้อความ เงื่อนไข และข้อกำหนดต่างๆ ในเอกสารของร้านได้อย่างอิสระ")
         
         with st.form("settings_template_form"):
-            new_repair_terms = st.text_area("เงื่อนไขท้ายใบรับซ่อม (เช่น เงื่อนไขการฝากซ่อมเกิน 30 วัน)", value=REPAIR_TERMS)
+            new_repair_terms = st.text_input("เงื่อนไขท้ายใบรับซ่อม (เช่น เงื่อนไขการฝากซ่อมเกิน 30 วัน)", value=REPAIR_TERMS)
             new_commercial_terms = st.text_area("เงื่อนไขท้ายเอกสารการค้า / ใบเสร็จ / ใบกำกับภาษี", value=COMMERCIAL_TERMS)
             
             if st.form_submit_button("💾 บันทึกการแก้ไขแบบฟอร์มเอกสาร"):
