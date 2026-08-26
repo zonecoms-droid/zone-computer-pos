@@ -1304,7 +1304,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
-                                    .print-btn {{ display: none; }}
                                     .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                                 }}
                             </style>
