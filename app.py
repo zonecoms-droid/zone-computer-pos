@@ -320,6 +320,23 @@ WATERMARK_PATH = WATERMARK_PATH or "logo.jpg"
 USE_LOGO = int(USE_LOGO) if USE_LOGO is not None else 1
 USE_WATERMARK = int(USE_WATERMARK) if USE_WATERMARK is not None else 1
 
+# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำและโลโก้หัวเอกสาร
+logo_img_header_tag = ""
+if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+    logo_hdr_uri = get_img_base64(LOGO_PATH)
+    if logo_hdr_uri:
+        logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+
+watermark_html = ""
+if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+    wm_data_uri = get_img_base64(WATERMARK_PATH)
+    if wm_data_uri:
+        watermark_html = f'''
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
+            <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+        </div>
+        '''
+
 # ==========================================
 # 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
 # ==========================================
@@ -781,22 +798,6 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_FB: social_qr_html += make_social_qr_inline(STORE_FB, "Facebook")
             if STORE_TIKTOK: social_qr_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             
-            watermark_html = ""
-            if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-                wm_data_uri = get_img_base64(WATERMARK_PATH)
-                if wm_data_uri:
-                    watermark_html = f'''
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
-                        <img src="{wm_data_uri}" style="width: 100%; height: auto;">
-                    </div>
-                    '''
-            
-            logo_img_header_tag = ""
-            if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-                logo_hdr_uri = get_img_base64(LOGO_PATH)
-                if logo_hdr_uri:
-                    logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
-
             portrait_a4_html = f"""
             <html>
             <head>
@@ -1085,16 +1086,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
                         vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
-
-                        watermark_html = ""
-                        if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-                            wm_data_uri = get_img_base64(WATERMARK_PATH)
-                            if wm_data_uri:
-                                watermark_html = f'''
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.01; z-index: 0; pointer-events: none; text-align: center; width: 50%;">
-                                    <img src="{wm_data_uri}" style="width: 100%; height: auto;">
-                                </div>
-                                '''
 
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
