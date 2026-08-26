@@ -1082,7 +1082,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
                             <div style="width: 50%;">
-                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br>
+                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
                                 <span>ช่างผู้รับซ่อม: ......................................................</span>
                             </div>
                             <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
@@ -1908,7 +1908,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
                                                 </div>
                                             </div>
