@@ -682,7 +682,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1543,12 +1543,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </div>
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                                </div>
-                                                <div style="text-align: center;">
-                                                    {qr_tag}
                                                 </div>
                                             </div>
                                         </div>
@@ -1840,7 +1840,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารฉบับนี้</button>
                             <div class="flow-container">
                                 {watermark_html}
-                                .content-wrap">
+                                <div class="content-wrap">
                                     <table class="header-tbl">
                                         <tr>
                                             <td style="vertical-align: top; width: 60%;">
