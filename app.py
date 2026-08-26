@@ -1252,6 +1252,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         for idx, val in enumerate(items_data):
                             items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
+                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
+
                         qr_tag = ""
                         if "PromptPay" in pay_chanel and ("ใบคืนสินค้า" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice):
                             q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
