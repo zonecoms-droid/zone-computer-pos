@@ -1326,6 +1326,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         if "ใบคืนสินค้า" in doc_choice:
                             d_t = "Slip"
                             t_title, t_color = "ใบคืนสินค้า / DELIVERY SLIP", "#16a34a"
+                            commercial_qr_tag = ""
                             final_html = f"""
                             <html>
                             <head>
@@ -1367,10 +1368,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </script>
                             </head>
                             <body>
-                                <div class="print-btn-container">
-                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
-                                    <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
-                                </div>
+                                .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                                 <div class="doc-box">
                                     <!-- ครึ่งบน: สำหรับลูกค้า -->
                                     <div class="section-box" style="justify-content: flex-end;">
@@ -1494,6 +1492,18 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             d_t = "TAX" if is_tax else "RC"
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
                             doc_color = "#4f46e5" if is_tax else "#16a34a"
+
+                            commercial_qr_tag = ""
+                            if d_t in ['RC', 'TAX'] and STORE_PROMPTPAY:
+                                q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                                q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                                b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                                commercial_qr_tag = f'''
+                                <div style="text-align: right; margin-top: 10px;">
+                                    <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
+                                    <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
+                                </div>
+                                '''
 
                             final_html = f"""
                             <html>
@@ -2030,12 +2040,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         <div style="width: 55%; margin: 0 auto;">
                                             <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                 <tr>
-                                                    <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
+                                                    <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({l_sign})<br>
                                                         วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                     </td>
-                                                    <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
+                                                    <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({r_sign})<br>
                                                         วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
@@ -2045,6 +2055,9 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         </div>
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                            <div style="text-align: center;">
+                                                {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
+                                            </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                 <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
