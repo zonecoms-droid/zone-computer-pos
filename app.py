@@ -682,7 +682,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -956,9 +956,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 6mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
                 .signature-row {{ display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 8px; }}
                 @media print {{
-                    body {{ background: white; padding: 0; }}
+                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                     .print-btn-container {{ display: none; }}
-                    .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
+                    .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                 }}
             </style>
             </head>
@@ -969,9 +969,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 
                 <div class="print-container">
                     <!-- ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
-                    <div class="section-box">
+                    <div class="section-box" style="justify-content: flex-end;">
                         {watermark_html}
-                        <div class="content-wrap" style="position: relative; z-index: 1;">
+                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
                             <table class="header-tbl">
                                 <tr>
                                     <td style="vertical-align: top; width: 60%;">
@@ -1013,20 +1013,18 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 </tr>
                             </table>
                         </div>
-                        <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
+                        <div class="signature-row" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
+                            <div style="width: 55%;">
+                                <span>ลงชื่อลูกค้า: ......................................................</span><br>
+                                <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
+                            </div>
+                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
+                                </div>
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                </div>
-                                <div>
-                                    <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                    <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
-                                </div>
-                            </div>
-                            <div style="text-align: right; width: 42%;">
-                                <div style="text-align: center;">
-                                    {qr_track_tag}
                                 </div>
                             </div>
                         </div>
@@ -1038,9 +1036,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                     </div>
 
                     <!-- ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
-                    <div class="section-box">
+                    <div class="section-box" style="justify-content: flex-end;">
                         {watermark_html}
-                        <div class="content-wrap" style="position: relative; z-index: 1;">
+                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
                             <table class="header-tbl">
                                 <tr>
                                     <td style="vertical-align: top; width: 60%;">
@@ -1082,20 +1080,18 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 </tr>
                             </table>
                         </div>
-                        <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
+                        <div class="signature-row" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
+                            <div style="width: 55%;">
+                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
+                                <span>ช่างผู้รับซ่อม: ......................................................</span>
+                            </div>
+                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                <div style="text-align: center;">
+                                    {qr_track_tag}
+                                </div>
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                </div>
-                                <div>
-                                    <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
-                                    <span>ช่างผู้รับซ่อม: ......................................................</span>
-                                </div>
-                            </div>
-                            <div style="text-align: right; width: 42%;">
-                                <div style="text-align: center;">
-                                    {qr_track_tag}
                                 </div>
                             </div>
                         </div>
@@ -1307,8 +1303,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 4mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; }}
-                                    .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
+                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                                 }}
                             </style>
                             </head>
@@ -1316,9 +1312,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (สไตล์โมเดิร์น)</button>
                                 <div class="doc-box">
                                     <!-- ครึ่งบน: สำหรับลูกค้า -->
-                                    <div class="section-box">
+                                    <div class="section-box" style="justify-content: flex-end;">
                                         {watermark_html}
-                                        <div style="position: relative; z-index: 1;">
+                                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
                                             <table class="header-tbl">
                                                 <tr>
                                                     <td style="vertical-align: top; width: 60%;">
@@ -1355,7 +1351,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px; color: #16a34a;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #16a34a;"><b>{grand_total:,.2f}</b></td></tr>
                                             </table>
                                         </div>
-                                        <div class="ftr" style="position: relative; z-index: 1;">
+                                        <div class="ftr" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
                                             <div style="width: 55%;">
                                                 <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
@@ -1375,9 +1371,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <div class="perforation">✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกระหว่างลูกค้าและร้านค้า (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️</div>
 
                                     <!-- ครึ่งล่าง: สำหรับร้านค้า -->
-                                    <div class="section-box">
+                                    <div class="section-box" style="justify-content: flex-end;">
                                         {watermark_html}
-                                        <div style="position: relative; z-index: 1;">
+                                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
                                             <table class="header-tbl">
                                                 <tr>
                                                     <td style="vertical-align: top; width: 60%;">
@@ -1414,7 +1410,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px; color: #334155;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #334155;"><b>{grand_total:,.2f}</b></td></tr>
                                             </table>
                                         </div>
-                                        <div class="ftr" style="position: relative; z-index: 1;">
+                                        <div class="ftr" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
                                             <div style="width: 100%;">
                                                 <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px;">
@@ -1441,7 +1437,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ opacity: 0.9; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                                 .content-wrap {{ position: relative; z-index: 1; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
@@ -1451,10 +1447,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                                 .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                                 .summary-tbl td {{ padding: 6px 10px; }}
-                                .footer-box {{ display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 20px; align-items: flex-start; font-size: 12px; }}
+                                .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
+                                .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; }}
-                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
+                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                                 }}
                             </style>
                             </head>
@@ -1462,7 +1459,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (สไตล์โมเดิร์น)</button>
                                 <div class="flow-container">
                                     {watermark_html}
-                                    <div class="content-wrap">
+                                    <div class="content-wrap" style="margin-bottom: auto;">
                                         <table class="header-tbl">
                                             <tr>
                                                 <td style="vertical-align: top; width: 60%;">
@@ -1520,12 +1517,13 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
                                                     </table>
+                                                    {commercial_qr_tag}
                                                 </td>
                                             </tr>
                                         </table>
                                     </div>
 
-                                    <div class="content-wrap">
+                                    <div class="content-wrap" style="margin-top: auto; padding-bottom: 2mm;">
                                         <div class="footer-box">
                                             <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
@@ -1832,7 +1830,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
                             .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                             @media print {{ 
-                                body {{ background: white; padding: 0; margin: 0; }} 
+                                body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }} 
                                 .print-btn {{ display: none; }} 
                                 .flow-container {{ 
                                     border: none; 
@@ -1845,6 +1843,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                     flex-direction: column; 
                                     justify-content: space-between; 
                                     page-break-after: always;
+                                    -webkit-print-color-adjust: exact;
+                                    print-color-adjust: exact;
                                 }} 
                             }}
                         </style>
@@ -1853,7 +1853,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารฉบับนี้</button>
                             <div class="flow-container">
                                 {watermark_html}
-                                <div class="content-wrap">
+                                <div class="content-wrap" style="margin-bottom: auto;">
                                     <table class="header-tbl">
                                         <tr>
                                             <td style="vertical-align: top; width: 60%;">
@@ -1911,14 +1911,18 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                     </table>
                                 </div>
 
-                                <div class="content-wrap">
+                                <div class="content-wrap" style="margin-top: auto; padding-bottom: 2mm;">
                                     <div class="footer-section">
                                         <div class="footer-box">
                                             <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
-                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ ...................................................... ({l_sign})<br>วันที่ ......................................................</td>
-                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ ...................................................... ({r_sign})<br>วันที่ ......................................................</td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>{l_sign} วันที่....................</td>
+                                                        <td>{r_sign} วันที่.........................</td>
                                                     </tr>
                                                 </table>
                                             </div>
