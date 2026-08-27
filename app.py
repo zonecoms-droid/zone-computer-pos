@@ -1314,8 +1314,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 4mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                                    .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    body {{ background: white; padding: 0; }}
+                                    .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                                 }}
                             </style>
                             </head>
@@ -1461,8 +1461,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
                                 .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    body {{ background: white; padding: 0; }}
+                                    .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
                             </head>
@@ -1470,7 +1470,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (สไตล์โมเดิร์น)</button>
                                 <div class="flow-container">
                                     {watermark_html}
-                                    <div class="content-wrap" style="margin-bottom: auto;">
+                                    <div class="content-wrap">
                                         <table class="header-tbl">
                                             <tr>
                                                 <td style="vertical-align: top; width: 60%;">
@@ -1534,7 +1534,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         </table>
                                     </div>
 
-                                    <div class="content-wrap" style="margin-top: auto; padding-bottom: 2mm;">
+                                    <div class="content-wrap">
                                         <div class="footer-box">
                                             <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
@@ -1790,7 +1790,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                         def make_social_qr(link, label):
                             if not link: return ""
-                            s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                            s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
                             s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                             return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
 
@@ -1915,8 +1915,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             </td>
                                             <td style="width: 45%;">
                                                 <table class="summary-tbl">
-                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{cur_doc['subtotal']:,.2f} {cur_doc['currency']}</td></tr>
-                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{cur_doc['grand_total']:,.2f} {cur_doc['currency']}</b></td></tr>
+                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
+                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                                 </table>
                                             </td>
                                         </tr>
