@@ -919,7 +919,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.accessories, r.estimated_cost, r.status, r.created_at, r.tax_name, r.tax_address, r.tax_id, r.tax_branch
+            SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.accessories, r.estimated_cost, r.status, r.created_at
             FROM repairs r JOIN customers c ON r.customer_id = c.id
             WHERE r.job_code = ?
         """, (selected_job_to_print,))
@@ -927,12 +927,8 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         cursor.close()
         
         if print_data:
-            j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in, tax_cust_name, tax_cust_address, tax_cust_id, tax_cust_branch = print_data
+            j_code, c_name, c_phone, dev, sn, prob, acc, cost, stat, date_in = print_data
             cost = float(cost) if cost is not None else 0.0
-            tax_cust_name = tax_cust_name if tax_cust_name else c_name
-            tax_cust_address = tax_cust_address if tax_cust_address else '-'
-            tax_cust_id = tax_cust_id if tax_cust_id else '-'
-            tax_cust_branch = tax_cust_branch if tax_cust_branch else 'สำนักงานใหญ่'
             
             track_url = f"https://zone-computer-pos.streamlit.app/?track={j_code}"
             track_stream_qr = generate_qr_with_logo(track_url, LOGO_PATH)
@@ -1346,7 +1342,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
-                                    .print-btn-container {{ display: none; }}
                                     .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                                 }}
                             </style>
@@ -1408,16 +1403,16 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         </div>
                                         <div class="ftr" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
                                             <div style="width: 55%;">
+                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 6px;">
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
                                                 <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
                                             </div>
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                                 <div style="text-align: center;">
                                                     {qr_tag}
-                                                </div>
-                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
-                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1467,6 +1462,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         </div>
                                         <div class="ftr" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
                                             <div style="width: 100%;">
+                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 6px;">
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                </div>
                                                 <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
                                                 <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px;">
                                                     <span>ลงชื่อลูกค้า (ตรวจรับ): ......................................................</span>
@@ -1879,6 +1878,18 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     subtotal = float(cur_doc['subtotal']) if cur_doc['subtotal'] is not None else 0.0
                     grand_total = float(cur_doc['grand_total']) if cur_doc['grand_total'] is not None else 0.0
 
+                    commercial_qr_tag = ""
+                    if d_t in ['RC', 'TAX'] and STORE_PROMPTPAY:
+                        q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                        q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                        b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                        commercial_qr_tag = f'''
+                        <div style="text-align: right; margin-top: 10px;">
+                            <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
+                            <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {cur_doc['currency']}</b></span>
+                        </div>
+                        '''
+
                     print_html_full = f"""
                     <html>
                     <head>
@@ -2016,8 +2027,11 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         </div>
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                            <div style="text-align: center;">
+                                                {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
+                                            </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
+                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
                                             </div>
                                         </div>
