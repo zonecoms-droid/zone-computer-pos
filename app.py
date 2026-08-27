@@ -1368,7 +1368,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
+                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="doc-box">
@@ -1551,7 +1551,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="flow-container">
@@ -1626,11 +1626,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <div style="width: 55%; margin: 0 auto;">
                                                     <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                         <tr>
-                                                            <td style="padding-bottom: 5px; width: 50%;">
+                                                            <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
                                                                 ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
                                                                 วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                             </td>
-                                                            <td style="padding-bottom: 5px; width: 50%;">
+                                                            <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
                                                                 ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
                                                                 วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                             </td>
@@ -1639,9 +1639,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 </div>
 
                                                 <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                    <div style="text-align: center;">
-                                                        {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
-                                                    </div>
                                                     <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                         <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                         <div style="display: flex; gap: 3px;">{social_html}</div>
