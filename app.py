@@ -952,7 +952,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             <head>
             <style>
                 @page {{ size: A4 portrait; margin: 8mm; }}
-                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                 .btn-print {{ background-color: #0f172a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                 .btn-print:hover {{ background-color: #334155; }}
@@ -968,19 +968,24 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .items-tbl td {{ padding: 8px 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 6mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
                 .signature-row {{ display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 8px; }}
+                .nodate-field {{ display: none; }}
                 @media print {{
-                    body {{ background: white; padding: 0; }}
-                    .print-btn-container {{ display: none; }}
+                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                    .print-btn-container {{ display: none !important; }}
                     .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                 }}
             </style>
             <script>
                 function printNoDate() {{
-                    var fields = document.getElementsByClassName('date-field');
-                    for(var i=0; i<fields.length; i++) {{
-                        fields[i].innerText = '....................................';
-                    }}
+                    var normalDates = document.getElementsByClassName('normal-date');
+                    var nodateFields = document.getElementsByClassName('nodate-field');
+                    for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'none'; }}
+                    for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'inline'; }}
                     window.print();
+                    setTimeout(function() {{
+                        for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
+                        for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
+                    }}, 500);
                 }}
             </script>
             </head>
@@ -1015,7 +1020,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                             ใบรับซ่อมสินค้า (CUSTOMER)
                                         </div>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {j_code}</p>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่รับเครื่อง:</b> <span class="date-field">{date_in}</span></p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่รับเครื่อง:</b> <span class="normal-date">{date_in}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
                             </table>
@@ -1084,7 +1089,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                             ใบรับซ่อมสินค้า (STORE COPY)
                                         </div>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {j_code}</p>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่รับเครื่อง:</b> <span class="date-field">{date_in}</span></p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่รับเครื่อง:</b> <span class="normal-date">{date_in}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
                             </table>
@@ -1326,7 +1331,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <head>
                             <style>
                                 @page {{ size: A4 portrait; margin: 8mm; }}
-                                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                                 .print-btn {{ background-color: #16a34a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
@@ -1340,19 +1345,24 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .items-tbl td {{ padding: 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 4mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
+                                .nodate-field {{ display: none; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; }}
-                                    .print-btn-container {{ display: none; }}
+                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    .print-btn-container {{ display: none !important; }}
                                     .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                                 }}
                             </style>
                             <script>
                                 function printNoDate() {{
-                                    var fields = document.getElementsByClassName('date-field');
-                                    for(var i=0; i<fields.length; i++) {{
-                                        fields[i].innerText = '....................................';
-                                    }}
+                                    var normalDates = document.getElementsByClassName('normal-date');
+                                    var nodateFields = document.getElementsByClassName('nodate-field');
+                                    for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'none'; }}
+                                    for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'inline'; }}
                                     window.print();
+                                    setTimeout(function() {{
+                                        for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
+                                        for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
+                                    }}, 500);
                                 }}
                             </script>
                             </head>
@@ -1386,7 +1396,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             ใบคืนสินค้า (CUSTOMER)
                                                         </div>
                                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="date-field">{datetime.today().strftime('%Y-%m-%d')}</span></p>
+                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                                     </td>
                                                 </tr>
                                             </table>
@@ -1445,7 +1455,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             ใบคืนสินค้า (STORE COPY)
                                                         </div>
                                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="date-field">{datetime.today().strftime('%Y-%m-%d')}</span></p>
+                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                                     </td>
                                                 </tr>
                                             </table>
@@ -1502,7 +1512,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <head>
                             <style>
                                 @page {{ size: A4 portrait; margin: 10mm; }}
-                                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                                 .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
@@ -1518,18 +1528,24 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .summary-tbl td {{ padding: 6px 10px; }}
                                 .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
                                 .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
+                                .nodate-field {{ display: none; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; }}
+                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    .print-btn-container {{ display: none !important; }}
                                     .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
                             <script>
                                 function printNoDate() {{
-                                    var fields = document.getElementsByClassName('date-field');
-                                    for(var i=0; i<fields.length; i++) {{
-                                        fields[i].innerText = '....................................';
-                                    }}
+                                    var normalDates = document.getElementsByClassName('normal-date');
+                                    var nodateFields = document.getElementsByClassName('nodate-field');
+                                    for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'none'; }}
+                                    for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'inline'; }}
                                     window.print();
+                                    setTimeout(function() {{
+                                        for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
+                                        for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
+                                    }}, 500);
                                 }}
                             </script>
                             </head>
@@ -1561,7 +1577,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {doc_title}
                                                     </div>
                                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="date-field">{datetime.today().strftime('%Y-%m-%d')}</span></p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                                 </td>
                                             </tr>
                                         </table>
@@ -1612,11 +1628,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         <tr>
                                                             <td style="padding-bottom: 5px; width: 50%;">
                                                                 ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
-                                                                วันที่ <span class="date-field">......................................................</span>
+                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                             </td>
                                                             <td style="padding-bottom: 5px; width: 50%;">
                                                                 ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
-                                                                วันที่ <span class="date-field">......................................................</span>
+                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                             </td>
                                                         </tr>
                                                     </table>
@@ -1907,7 +1923,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     <head>
                     <style>
                         @page {{ size: A4 portrait; margin: 10mm; }}
-                        body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
+                        body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                         .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                         .btn-print {{ background-color: {t_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                         .btn-print:hover {{ opacity: 0.9; }}
@@ -1925,9 +1941,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         .summary-tbl td {{ padding: 6px 10px; }}
                         .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
                         .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
+                        .nodate-field {{ display: none; }}
                         @media print {{ 
                             body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }} 
-                            .print-btn-container {{ display: none; }} 
+                            .print-btn-container {{ display: none !important; }} 
                             .flow-container {{ 
                                 border: none; 
                                 box-shadow: none; 
@@ -1946,11 +1963,15 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     </style>
                     <script>
                         function printNoDate() {{
-                            var fields = document.getElementsByClassName('date-field');
-                            for(var i=0; i<fields.length; i++) {{
-                                fields[i].innerText = '....................................';
-                            }}
+                            var normalDates = document.getElementsByClassName('normal-date');
+                            var nodateFields = document.getElementsByClassName('nodate-field');
+                            for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'none'; }}
+                            for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'inline'; }}
                             window.print();
+                            setTimeout(function() {{
+                                for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
+                                for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
+                            }}, 500);
                         }}
                     </script>
                     </head>
@@ -1982,7 +2003,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                 {t_title}
                                             </div>
                                             <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
-                                            <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> <span class="date-field">{cur_doc['doc_date']}</span></p>
+                                            <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
                                             <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {cur_doc['salesperson']} | <b>สกุลเงิน:</b> {cur_doc['currency']}</p>
                                         </td>
                                     </tr>
@@ -2009,10 +2030,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
                                         </td>
                                         <td style="width: 45%;">
-                                            <summary-tbl class="summary-tbl" style="display: table; width: 100%;">
+                                            <table class="summary-tbl">
                                                 <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
                                                 <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
-                                            </summary-tbl>
+                                            </table>
                                         </td>
                                     </tr>
                                 </table>
@@ -2027,12 +2048,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({l_sign})<br>
-                                                        วันที่ <span class="date-field">......................................................</span>
+                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                     </td>
                                                     <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({r_sign})<br>
-                                                        วันที่ <span class="date-field">......................................................</span>
+                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                     </td>
                                                 </tr>
                                             </table>
