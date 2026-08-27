@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -2030,12 +2030,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         <div style="width: 55%; margin: 0 auto;">
                                             <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                 <tr>
-                                                    <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
+                                                    <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({l_sign})<br>
                                                         วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                     </td>
-                                                    <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
+                                                    <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({r_sign})<br>
                                                         วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
@@ -2045,9 +2045,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         </div>
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                            <div style="text-align: center;">
-                                                {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
-                                            </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                 <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
