@@ -633,7 +633,7 @@ if track_doc:
         """
         components.html(public_doc_html, height=620, scrolling=True)
     else:
-        st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
+        st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
     st.stop()
 
 # 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
@@ -980,9 +980,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 
                 <div class="print-container">
                     <!-- ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
-                    <div class="section-box" style="justify-content: flex-end;">
+                    <div class="section-box">
                         {watermark_html}
-                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
+                        <div class="content-wrap" style="position: relative; z-index: 1;">
                             <table class="header-tbl">
                                 <tr>
                                     <td style="vertical-align: top; width: 60%;">
@@ -1024,7 +1024,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 </tr>
                             </table>
                         </div>
-                        <div class="signature-row" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
+                        <div class="signature-row" style="position: relative; z-index: 1;">
                             <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
@@ -1049,9 +1049,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                     </div>
 
                     <!-- ส่วนที่ 2: สำหรับร้านค้า (สำเนา) -->
-                    <div class="section-box" style="justify-content: flex-end;">
+                    <div class="section-box">
                         {watermark_html}
-                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
+                        <div class="content-wrap" style="position: relative; z-index: 1;">
                             <table class="header-tbl">
                                 <tr>
                                     <td style="vertical-align: top; width: 60%;">
@@ -1093,10 +1093,16 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 </tr>
                             </table>
                         </div>
-                        <div class="signature-row" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
-                            <div style="width: 55%;">
-                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
-                                <span>ช่างผู้รับซ่อม: ......................................................</span>
+                        <div class="signature-row" style="position: relative; z-index: 1;">
+                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
+                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                </div>
+                                <div>
+                                    <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
+                                    <span>ช่างผู้รับซ่อม: ......................................................</span>
+                                </div>
                             </div>
                             <div style="text-align: right; width: 42%;">
                                 <div style="text-align: center;">
@@ -1504,6 +1510,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </tr>
                                         </table>
 
+                                        <style>
+                                            .items-tbl th {{ background: {doc_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                                        </style>
+
                                         <table class="items-tbl">
                                             <tr>
                                                 <th>รายการสินค้า / บริการ / อะไหล่</th>
@@ -1536,14 +1546,16 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div class="footer-section">
                                             <div class="footer-box">
                                                 <div style="width: 55%;">
-                                                    <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
+                                                    <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                         <tr>
-                                                            <td style="padding-bottom: 5px; width: 50%;">
-                                                                ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
+                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
+                                                                ลงชื่อ ......................................................<br>
+                                                                ({l_sign})<br>
                                                                 วันที่ ......................................................
                                                             </td>
-                                                            <td style="padding-bottom: 5px; width: 50%;">
-                                                                ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
+                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
+                                                                ลงชื่อ ......................................................<br>
+                                                                ({r_sign})<br>
                                                                 วันที่ ......................................................
                                                             </td>
                                                         </tr>
@@ -1922,7 +1934,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                 <div class="footer-section">
                                     <div class="footer-box">
                                         <div style="width: 55%;">
-                                            <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
+                                            <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                 <tr>
                                                     <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
@@ -1940,7 +1952,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
                                             </div>
                                         </div>
