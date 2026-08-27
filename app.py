@@ -239,6 +239,8 @@ def init_connection():
 
 def init_db(conn):
     cursor = conn.cursor()
+    
+    # 1. ตารางตั้งค่าร้านค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS store_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -275,6 +277,7 @@ def init_db(conn):
             line_target_id TEXT
         )
     ''')
+    conn.commit()
     
     extra_cols = [
         ('prefix_qt', 'TEXT'), ('prefix_iv', 'TEXT'), ('prefix_tax', 'TEXT'),
@@ -295,7 +298,7 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow) - สร้างอัตโนมัติเสมอ ป้องกันข้อผิดพลาด
+    # 2. ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow) - บังคับ commit ชัดเจน
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -320,6 +323,7 @@ def init_db(conn):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    conn.commit()
 
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
@@ -332,6 +336,7 @@ def init_db(conn):
         cursor.execute("UPDATE store_settings SET tax_id = '1340700066417', phone = '089-026-1927', address = '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230' WHERE id = 1;")
         conn.commit()
 
+    # 3. ตารางลูกค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -341,7 +346,9 @@ def init_db(conn):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    conn.commit()
     
+    # 4. ตารางพนักงาน/ช่าง
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -350,12 +357,15 @@ def init_db(conn):
             role TEXT CHECK(role IN ('admin', 'cashier', 'technician')) NOT NULL
         )
     ''')
+    conn.commit()
+    
     cursor.execute("SELECT COUNT(*) FROM staff")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech1', 'ช่างดิด (มือหนึ่ง)', 'technician')")
         cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech2', 'ช่างเสริม', 'technician')")
         conn.commit()
 
+    # 5. ตารางงานซ่อม
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -380,6 +390,7 @@ def init_db(conn):
             FOREIGN KEY (technician_id) REFERENCES staff(id)
         )
     ''')
+    conn.commit()
     
     for col, col_type in [('need_tax', 'INTEGER DEFAULT 0'), ('tax_name', 'TEXT'), ('tax_id', 'TEXT'), ('tax_branch', 'TEXT'), ('tax_address', 'TEXT')]:
         try:
@@ -622,7 +633,7 @@ if track_doc:
         """
         components.html(public_doc_html, height=620, scrolling=True)
     else:
-        st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
+        st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
     st.stop()
 
 # 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
@@ -690,7 +701,7 @@ if page_param == "register":
         st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
         track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
         
-        # 🌟 สร้าง QR Card ขยายสุดขีด พร้อมชื่อร้านและเบอร์โทร
+        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
         qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม")
         
         st.image(qr_stream.getvalue(), width=320, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
@@ -1855,7 +1866,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสารฉบับนี้</button>
                             <div class="flow-container">
                                 {watermark_html}
-                                <div class="content-wrap" style="margin-bottom: auto;">
+                                <div class="content-wrap">
                                     <table class="header-tbl">
                                         <tr>
                                             <td style="vertical-align: top; width: 60%;">
@@ -1904,16 +1915,15 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             </td>
                                             <td style="width: 45%;">
                                                 <table class="summary-tbl">
-                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
-                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
+                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{cur_doc['subtotal']:,.2f} {cur_doc['currency']}</td></tr>
+                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{cur_doc['grand_total']:,.2f} {cur_doc['currency']}</b></td></tr>
                                                 </table>
-                                                {commercial_qr_tag}
                                             </td>
                                         </tr>
                                     </table>
                                 </div>
 
-                                <div class="content-wrap" style="margin-top: auto; padding-bottom: 2mm;">
+                                <div class="content-wrap">
                                     <div class="footer-section">
                                         <div class="footer-box">
                                             <div style="width: 55%;">
