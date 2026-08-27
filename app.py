@@ -1437,7 +1437,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ opacity: 0.9; }}
-                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                                 .content-wrap {{ position: relative; z-index: 1; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 15px 0; font-size: 13px; }}
@@ -1902,8 +1902,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             </td>
                                             <td style="width: 45%;">
                                                 <table class="summary-tbl">
-                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{cur_doc['subtotal']:,.2f} {cur_doc['currency']}</td></tr>
-                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{cur_doc['grand_total']:,.2f} {cur_doc['currency']}</b></td></tr>
+                                                    <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
+                                                    <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                                 </table>
                                                 {commercial_qr_tag}
                                             </td>
@@ -1917,12 +1917,16 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
-                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
-                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>{l_sign} วันที่....................</td>
-                                                        <td>{r_sign} วันที่.........................</td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">
+                                                            ลงชื่อ ...................................................... ({l_sign})<br>
+                                                            ( ...................................................... )<br>
+                                                            วันที่ ......................................................
+                                                        </td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">
+                                                            ลงชื่อ ...................................................... ({r_sign})<br>
+                                                            ( ...................................................... )<br>
+                                                            วันที่ ......................................................
+                                                        </td>
                                                     </tr>
                                                 </table>
                                             </div>
