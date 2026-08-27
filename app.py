@@ -1541,11 +1541,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                     <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                         <tr>
                                                             <td style="padding-bottom: 5px; width: 50%;">
-                                                                ลงชื่อ ...................................................... ({l_sign})<br>
+                                                                ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
                                                                 วันที่ ......................................................
                                                             </td>
                                                             <td style="padding-bottom: 5px; width: 50%;">
-                                                                ลงชื่อ ...................................................... ({r_sign})<br>
+                                                                ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
                                                                 วันที่ ......................................................
                                                             </td>
                                                         </tr>
@@ -1695,7 +1695,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     cursor.execute("""
                         INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, c_doc_date_str if 'c_doc_date_str' in locals() else ""))
+                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, com_notes))
                     conn.commit()
                     cursor.close()
                     st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
