@@ -1368,7 +1368,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </script>
                             </head>
                             <body>
-                                .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
+                                <div class="print-btn-container">
+                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
+                                    <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
+                                </div>
                                 <div class="doc-box">
                                     <!-- ครึ่งบน: สำหรับลูกค้า -->
                                     <div class="section-box" style="justify-content: flex-end;">
@@ -1549,7 +1552,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="flow-container">
@@ -1612,6 +1615,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
                                                     </table>
+                                                    {commercial_qr_tag}
                                                 </td>
                                             </tr>
                                         </table>
@@ -1638,9 +1642,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 </div>
 
                                                 <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                    <div style="text-align: center;">
-                                                        {commercial_qr_tag}
-                                                    </div>
                                                     <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                         <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                         <div style="display: flex; gap: 3px;">{social_html}</div>
@@ -1780,7 +1781,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     cursor.execute("""
                         INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, com_notes))
+                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, c_doc_date_str))
                     conn.commit()
                     cursor.close()
                     st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
@@ -2029,6 +2030,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                 <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
                                                 <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                             </table>
+                                            {commercial_qr_tag}
                                         </td>
                                     </tr>
                                 </table>
@@ -2055,9 +2057,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         </div>
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                            <div style="text-align: center;">
-                                                {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
-                                            </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                 <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
