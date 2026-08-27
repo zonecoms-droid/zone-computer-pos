@@ -682,7 +682,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1014,17 +1014,15 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
+                            <div style="width: 50%;">
+                                <span>ลงชื่อลูกค้า: ......................................................</span><br>
+                                <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
+                            </div>
+                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
                                 </div>
-                                <div>
-                                    <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                    <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
-                                </div>
-                            </div>
-                            <div style="text-align: right; width: 42%;">
                                 <div style="text-align: center;">
                                     {qr_track_tag}
                                 </div>
@@ -1083,17 +1081,15 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
+                            <div style="width: 50%;">
+                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
+                                <span>ช่างผู้รับซ่อม: ......................................................</span>
+                            </div>
+                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
                                 </div>
-                                <div>
-                                    <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
-                                    <span>ช่างผู้รับซ่อม: ......................................................</span>
-                                </div>
-                            </div>
-                            <div style="text-align: right; width: 42%;">
                                 <div style="text-align: center;">
                                     {qr_track_tag}
                                 </div>
@@ -1361,12 +1357,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
                                             </div>
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
-                                                </div>
-                                                <div style="text-align: center;">
-                                                    {qr_tag}
                                                 </div>
                                             </div>
                                         </div>
@@ -1759,7 +1755,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                         d_t = cur_doc['doc_type']
                         if d_t == 'QT':
-                            t_title, t_color, l_sign, r_sign = "ใบเสนอราคา / QUOTATION", "#0d9488", "ผู้เสนอ / ผู้ออกเอกสาร", "ผู้อนุมัติ / ลูกค้า"
+                            t_title, t_color, l_sign, r_sign = "ใบเสนอราคา / QUOTATION", "#0d9488", "ผู้เสนอราคา", "ผู้อนุมัติ / ลูกค้า"
                         elif d_t == 'IV':
                             t_title, t_color, l_sign, r_sign = "ใบส่งสินค้า / ใบแจ้งหนี้", "#2563eb", "ผู้ส่งสินค้า / ผู้ออกเอกสาร", "ผู้รับสินค้า / ลูกค้า"
                         elif d_t == 'TAX':
@@ -1903,12 +1899,8 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             <div style="width: 55%;">
                                                 <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                     <tr>
-                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
-                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ......................................................</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>{l_sign} วันที่....................</td>
-                                                        <td>{r_sign} วันที่.........................</td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ ...................................................... ({l_sign})<br>วันที่ ......................................................</td>
+                                                        <td style="padding-bottom: 5px; width: 50%;">ลงชื่อ ...................................................... ({r_sign})<br>วันที่ ......................................................</td>
                                                     </tr>
                                                 </table>
                                             </div>
