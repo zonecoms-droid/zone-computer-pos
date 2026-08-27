@@ -633,7 +633,7 @@ if track_doc:
         """
         components.html(public_doc_html, height=620, scrolling=True)
     else:
-        st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
+        st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
     st.stop()
 
 # 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1295,7 +1295,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         def make_social_qr(link, label):
                             if not link: return ""
-                            s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                            s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
                             s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                             return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
 
@@ -1551,7 +1551,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="flow-container">
@@ -1686,7 +1686,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                 
                 doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
                     "1. ใบเสนอราคา (Quotation - QT)",
-                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
+                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
                     "3. ใบกำกับภาษี (Tax Invoice - TAX)",
                     "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
                     "5. ใบลดหนี้ (Credit Note - CN)",
@@ -1888,10 +1888,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
 
                     social_html = ""
-                    if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
-                    if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
-                    if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
-                    if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
+                    if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
+                    if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
+                    if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
+                    if STORE_YOUTUBE: social_html += make_social_qr(STORE_YOUTUBE, "YouTube")
 
                     watermark_html = ""
                     if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
@@ -2064,7 +2064,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                 {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
                                             </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
                                             </div>
                                         </div>
