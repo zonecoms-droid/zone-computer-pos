@@ -1817,6 +1817,9 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             </div>
                             '''
 
+                    subtotal = float(cur_doc['subtotal']) if cur_doc['subtotal'] is not None else 0.0
+                    grand_total = float(cur_doc['grand_total']) if cur_doc['grand_total'] is not None else 0.0
+
                     print_html_full = f"""
                     <html>
                     <head>
@@ -1945,9 +1948,9 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                 </div>
                             </div>
                         </div>
-                        </body>
-                        </html>
-                        """
+                    </body>
+                    </html>
+                    """
                     components.html(print_html_full, height=1050, scrolling=True)
         else:
             st.info("ยังไม่มีเอกสารการค้าในระบบ สามารถไปที่แท็บ 'สร้างเอกสารใหม่' เพื่อเริ่มใช้งานได้เลยครับ")
