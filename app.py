@@ -1308,7 +1308,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin: 6mm 0; font-size: 11px; }}
                                 .cust-box td {{ padding: 2px 4px; word-break: break-word; }}
-                                .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }}
+                                .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6mm; font-size: 11px; }}
                                 .items-tbl th {{ background: #16a34a; color: white; padding: 6px; text-align: left; font-weight: 600; }}
                                 .items-tbl td {{ padding: 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 4mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
@@ -1546,7 +1546,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             </td>
                                                             <td style="padding-bottom: 5px; width: 50%;">
                                                                 ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
-                                                                วันที่ ......................................................
+                                                            วันที่ ......................................................
                                                             </td>
                                                         </tr>
                                                     </table>
@@ -1923,28 +1923,21 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <div class="content-wrap">
                                 <div class="footer-section">
                                     <div class="footer-box">
-                                        <div style="width: 55%;">
-                                            <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
+                                        <div style="width: 100%;">
+                                            <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                 <tr>
-                                                    <td style="padding-bottom: 5px; width: 50%;">
+                                                    <td style="padding-bottom: 15px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({l_sign})<br>
                                                         วันที่ ......................................................
                                                     </td>
-                                                    <td style="padding-bottom: 5px; width: 50%;">
+                                                    <td style="padding-bottom: 15px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({r_sign})<br>
                                                         วันที่ ......................................................
                                                     </td>
                                                 </tr>
                                             </table>
-                                        </div>
-
-                                        <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                            <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
-                                                <div style="display: flex; gap: 3px;">{social_html}</div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
