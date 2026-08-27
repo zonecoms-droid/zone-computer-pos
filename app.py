@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1481,6 +1481,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             """
                         else:
                             is_tax = "ใบกำกับภาษี" in doc_choice
+                            d_t = "TAX" if is_tax else "RC"
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
                             doc_color = "#4f46e5" if is_tax else "#16a34a"
 
@@ -1492,7 +1493,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 commercial_qr_tag = f'''
                                 <div style="text-align: right; margin-top: 10px;">
                                     <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
-                                    <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {cur_doc['currency']}</b></span>
+                                    <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
                                 </div>
                                 '''
 
@@ -1519,7 +1520,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
-                                    .print-btn-container {{ display: none; }}
                                     .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
@@ -1642,7 +1642,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบน้า")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # ==========================================
 # 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท
@@ -2007,10 +2009,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
                                         </td>
                                         <td style="width: 45%;">
-                                            <table class="summary-tbl">
+                                            <summary-tbl class="summary-tbl" style="display: table; width: 100%;">
                                                 <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
                                                 <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
-                                            </table>
+                                            </summary-tbl>
                                         </td>
                                     </tr>
                                 </table>
