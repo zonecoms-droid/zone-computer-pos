@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1100,7 +1100,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                     <th style="text-align: right; width: 130px;">ประเมินราคา (บาท)</th>
                                 </tr>
                                 <tr>
-                                    <td><b>อาการเสีย:</b> {prob}<br><span style="text-align: 11px; color: #64748b;">อุปกรณ์: {acc if acc else '-'}</span></td>
+                                    <td><b>อาการเสีย:</b> {prob}<br><span style="font-size: 11px; color: #64748b;">อุปกรณ์: {acc if acc else '-'}</span></td>
                                     <td style="text-align: right; font-weight: bold; color: #0f172a; vertical-align: middle;">{cost:,.2f}</td>
                                 </tr>
                             </table>
@@ -1319,16 +1319,16 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         tax_cust_branch = tax_cust_branch if 'tax_cust_branch' in locals() and tax_cust_branch else 'สำนักงานใหญ่'
 
                         if "ใบคืนสินค้า" in doc_choice:
+                            d_t = "Slip"
+                            t_title, t_color = "ใบคืนสินค้า / DELIVERY SLIP", "#16a34a"
                             final_html = f"""
                             <html>
                             <head>
                             <style>
                                 @page {{ size: A4 portrait; margin: 8mm; }}
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
-                                .print-btn {{ background-color: #16a34a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                                .print-btn:hover {{ background-color: #15803d; }}
-                                .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                                .btn-print-nodate:hover {{ background-color: #64748b; }}
+                                .print-btn {{ background-color: #16a34a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
+                                .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                                 .doc-box {{ background: white; border: 1px solid #cbd5e1; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
                                 .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
@@ -1342,6 +1342,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
+                                    .print-btn-container {{ display: none; }}
                                     .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                                 }}
                             </style>
@@ -1357,7 +1358,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
+                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="doc-box">
@@ -1501,10 +1502,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <style>
                                 @page {{ size: A4 portrait; margin: 10mm; }}
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
-                                .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                                .print-btn:hover {{ opacity: 0.9; }}
-                                .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
-                                .btn-print-nodate:hover {{ background-color: #64748b; }}
+                                .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
+                                .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                                 .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; min-height: 270mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                                 .content-wrap {{ position: relative; z-index: 1; }}
@@ -1520,6 +1519,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
+                                    .print-btn-container {{ display: none; }}
                                     .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
@@ -1535,7 +1535,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="flow-container">
@@ -1642,9 +1642,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         components.html(final_html, height=1050, scrolling=True)
 
         else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาด: {e}")
+            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบน้า")
 
 # ==========================================
 # 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท
