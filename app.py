@@ -1510,10 +1510,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </tr>
                                         </table>
 
-                                        <style>
-                                            .items-tbl th {{ background: {doc_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
-                                        </style>
-
                                         <table class="items-tbl">
                                             <tr>
                                                 <th>รายการสินค้า / บริการ / อะไหล่</th>
@@ -1546,16 +1542,14 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div class="footer-section">
                                             <div class="footer-box">
                                                 <div style="width: 55%;">
-                                                    <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
+                                                    <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
                                                         <tr>
-                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
-                                                                ลงชื่อ ......................................................<br>
-                                                                ({l_sign})<br>
+                                                            <td style="padding-bottom: 5px; width: 50%;">
+                                                                ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
                                                                 วันที่ ......................................................
                                                             </td>
-                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
-                                                                ลงชื่อ ......................................................<br>
-                                                                ({r_sign})<br>
+                                                            <td style="padding-bottom: 5px; width: 50%;">
+                                                                ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
                                                                 วันที่ ......................................................
                                                             </td>
                                                         </tr>
@@ -1933,7 +1927,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <div class="content-wrap">
                                 <div class="footer-section">
                                     <div class="footer-box">
-                                        <div style="width: 55%;">
+                                        <div style="width: 55%; margin: 0 auto;">
                                             <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                 <tr>
                                                     <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
