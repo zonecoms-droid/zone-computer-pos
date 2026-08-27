@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1052,8 +1052,8 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                     <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
                                 </div>
                             </div>
-                            <div style="text-align: right; width: 42%;">
-                                <div style="text-align: center;">
+                            <div style="text-align: right; width: 42%; padding-right: 0; margin-right: 0;">
+                                <div style="text-align: right;">
                                     {qr_track_tag}
                                 </div>
                             </div>
@@ -1121,8 +1121,8 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                     <span>ช่างผู้รับซ่อม: ......................................................</span>
                                 </div>
                             </div>
-                            <div style="text-align: right; width: 42%;">
-                                <div style="text-align: center;">
+                            <div style="text-align: right; width: 42%; padding-right: 0; margin-right: 0;">
+                                <div style="text-align: right;">
                                     {qr_track_tag}
                                 </div>
                             </div>
@@ -1368,7 +1368,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
+                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="doc-box">
@@ -1623,8 +1623,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <div class="content-wrap">
                                         <div class="footer-section">
                                             <div class="footer-box">
-                                                <div style="width: 55%;">
-                                                    <table style="width: 100%; text-align: left; font-size: 11px; border-collapse: collapse;">
+                                                <div style="width: 55%; margin: 0 auto;">
+                                                    <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                         <tr>
                                                             <td style="padding-bottom: 5px; width: 50%;">
                                                                 ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
@@ -1640,7 +1640,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                                                 <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                                     <div style="text-align: center;">
-                                                        {qr_tag}
+                                                        {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
                                                     </div>
                                                     <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                         <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
@@ -1888,10 +1888,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
 
                     social_html = ""
-                    if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
-                    if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
-                    if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
-                    if STORE_YOUTUBE: social_html += make_social_qr(STORE_YOUTUBE, "YouTube")
+                    if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
+                    if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
+                    if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+                    if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
 
                     watermark_html = ""
                     if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
