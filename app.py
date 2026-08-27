@@ -1314,6 +1314,14 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 </div>
                                 '''
 
+                        subtotal = float(subtotal)
+                        grand_total = float(grand_total)
+
+                        tax_cust_name = tax_cust_name if 'tax_cust_name' in locals() and tax_cust_name else selected_row['customer_name']
+                        tax_cust_address = tax_cust_address if 'tax_cust_address' in locals() and tax_cust_address else selected_row['address']
+                        tax_cust_id = tax_cust_id if 'tax_cust_id' in locals() and tax_cust_id else '-'
+                        tax_cust_branch = tax_cust_branch if 'tax_cust_branch' in locals() and tax_cust_branch else 'สำนักงานใหญ่'
+
                         if "ใบคืนสินค้า" in doc_choice:
                             final_html = f"""
                             <html>
@@ -1323,6 +1331,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }}
                                 .print-btn {{ background-color: #16a34a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
                                 .print-btn:hover {{ background-color: #15803d; }}
+                                .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }}
+                                .btn-print-nodate:hover {{ background-color: #64748b; }}
+                                .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                                 .doc-box {{ background: white; border: 1px solid #cbd5e1; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
                                 .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
@@ -1335,12 +1346,25 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .ftr {{ display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; align-items: flex-end; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
+                                    .print-btn-container {{ display: none; }}
                                     .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                                 }}
                             </style>
+                            <script>
+                                function printNoDate() {{
+                                    var fields = document.getElementsByClassName('date-field');
+                                    for(var i=0; i<fields.length; i++) {{
+                                        fields[i].innerText = '....................................';
+                                    }}
+                                    window.print();
+                                }}
+                            </script>
                             </head>
                             <body>
-                                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (สไตล์โมเดิร์น)</button>
+                                <div class="print-btn-container">
+                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
+                                    <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
+                                </div>
                                 <div class="doc-box">
                                     <!-- ครึ่งบน: สำหรับลูกค้า -->
                                     <div class="section-box" style="justify-content: flex-end;">
@@ -1366,7 +1390,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             ใบคืนสินค้า (CUSTOMER)
                                                         </div>
                                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="date-field">{datetime.today().strftime('%Y-%m-%d')}</span></p>
                                                     </td>
                                                 </tr>
                                             </table>
@@ -1425,7 +1449,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                             ใบคืนสินค้า (STORE COPY)
                                                         </div>
                                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> {datetime.today().strftime('%Y-%m-%d')}</p>
+                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="date-field">{datetime.today().strftime('%Y-%m-%d')}</span></p>
                                                     </td>
                                                 </tr>
                                             </table>
@@ -1460,11 +1484,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
                             doc_color = "#4f46e5" if is_tax else "#16a34a"
 
-                            tax_cust_name = cur_doc['customer_name'] if 'cur_doc' in locals() and cur_doc['customer_name'] else selected_row['customer_name']
-                            tax_cust_address = cur_doc['customer_address'] if 'cur_doc' in locals() and cur_doc['customer_address'] else selected_row['address']
-                            tax_cust_id = cur_doc['customer_tax'] if 'cur_doc' in locals() and cur_doc['customer_tax'] else '-'
-                            tax_cust_branch = cur_doc['customer_branch'] if 'cur_doc' in locals() and cur_doc['customer_branch'] else 'สำนักงานใหญ่'
-
                             final_html = f"""
                             <html>
                             <head>
@@ -1490,7 +1509,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; }}
-                                    .print-btn-container {{ display: none; }}
                                     .flow-container {{ border: none; box-shadow: none; padding: 0; width: 100%; min-height: auto; }}
                                 }}
                             </style>
@@ -1641,7 +1659,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                 
                 doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
                     "1. ใบเสนอราคา (Quotation - QT)",
-                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
+                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
                     "3. ใบกำกับภาษี (Tax Invoice - TAX)",
                     "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
                     "5. ใบลดหนี้ (Credit Note - CN)",
@@ -1999,7 +2017,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
                                             </div>
                                         </div>
