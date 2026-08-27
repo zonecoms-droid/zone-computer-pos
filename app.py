@@ -682,7 +682,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1014,15 +1014,17 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 50%;">
-                                <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
-                            </div>
-                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
                                 </div>
+                                <div>
+                                    <span>ลงชื่อลูกค้า: ......................................................</span><br>
+                                    <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right; width: 42%;">
                                 <div style="text-align: center;">
                                     {qr_track_tag}
                                 </div>
@@ -1081,15 +1083,17 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                             </table>
                         </div>
                         <div class="signature-row" style="position: relative; z-index: 1;">
-                            <div style="width: 50%;">
-                                <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
-                                <span>ช่างผู้รับซ่อม: ......................................................</span>
-                            </div>
-                            <div style="text-align: right; width: 50%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 10px;">
+                            <div style="width: 55%; display: flex; align-items: flex-end; gap: 10px;">
                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                     <div style="display: flex; gap: 3px;">{social_html}</div>
                                 </div>
+                                <div>
+                                    <span>ลงชื่อลูกค้า (รับทราบเงื่อนไข): ......................................................</span><br><br>
+                                    <span>ช่างผู้รับซ่อม: ......................................................</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right; width: 42%;">
                                 <div style="text-align: center;">
                                     {qr_track_tag}
                                 </div>
@@ -1795,6 +1799,19 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                 </div>
                                 '''
 
+                        # 🌟 เพิ่ม PromptPay QR ใต้ตู้สรุปยอด สำหรับ ใบเสร็จ (RC) และ ใบกำกับภาษี (TAX)
+                        commercial_qr_tag = ""
+                        if d_t in ['RC', 'TAX'] and STORE_PROMPTPAY:
+                            q_payload = generate_promptpay_payload(STORE_PROMPTPAY, cur_doc['grand_total'])
+                            q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                            b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                            commercial_qr_tag = f'''
+                            <div style="text-align: right; margin-top: 10px;">
+                                <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
+                                <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {cur_doc['grand_total']:,.2f} {cur_doc['currency']}</b></span>
+                            </div>
+                            '''
+
                         print_html_full = f"""
                         <html>
                         <head>
@@ -1888,6 +1905,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{cur_doc['subtotal']:,.2f} {cur_doc['currency']}</td></tr>
                                                     <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{cur_doc['grand_total']:,.2f} {cur_doc['currency']}</b></td></tr>
                                                 </table>
+                                                {commercial_qr_tag}
                                             </td>
                                         </tr>
                                     </table>
