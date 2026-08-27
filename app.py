@@ -295,7 +295,7 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow)
+    # ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow) - สร้างอัตโนมัติเสมอ ป้องกันข้อผิดพลาด
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -622,7 +622,7 @@ if track_doc:
         """
         components.html(public_doc_html, height=620, scrolling=True)
     else:
-        st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
+        st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
     st.stop()
 
 # 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
@@ -956,9 +956,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 6mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
                 .signature-row {{ display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 8px; }}
                 @media print {{
-                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                    body {{ background: white; padding: 0; }}
                     .print-btn-container {{ display: none; }}
-                    .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                    .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                 }}
             </style>
             </head>
@@ -1530,10 +1530,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                     <tr>
                                                         <td style="padding-bottom: 5px; width: 50%;">
                                                             ลงชื่อ ...................................................... ผู้รับเงิน / ผู้ออกเอกสาร<br>
+                                                            ( ...................................................... )<br>
                                                             วันที่ ......................................................
                                                         </td>
                                                         <td style="padding-bottom: 5px; width: 50%;">
                                                             ลงชื่อ ...................................................... ผู้จ่ายเงิน / ลูกค้า<br>
+                                                            ( ...................................................... )<br>
                                                             วันที่ ......................................................
                                                         </td>
                                                     </tr>
