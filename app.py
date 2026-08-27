@@ -991,7 +991,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 </div>
                 
                 <div class="print-container">
-                    <!-- ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับเดิม) -->
+                    <!-- ส่วนที่ 1: สำหรับลูกค้า (ต้นฉบับ) -->
                     <div class="section-box">
                         {watermark_html}
                         <div class="content-wrap" style="position: relative; z-index: 1;">
@@ -1862,7 +1862,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                             <div style="text-align: center;">
-                                                {qr_tag if 'qr_tag' in locals() else ''}
+                                                {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
                                             </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                 <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
