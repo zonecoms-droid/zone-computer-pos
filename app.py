@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1100,7 +1100,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                     <th style="text-align: right; width: 130px;">ประเมินราคา (บาท)</th>
                                 </tr>
                                 <tr>
-                                    <td><b>อาการเสีย:</b> {prob}<br><span style="font-size: 11px; color: #64748b;">อุปกรณ์: {acc if acc else '-'}</span></td>
+                                    <td><b>อาการเสีย:</b> {prob}<br><span style="text-align: 11px; color: #64748b;">อุปกรณ์: {acc if acc else '-'}</span></td>
                                     <td style="text-align: right; font-weight: bold; color: #0f172a; vertical-align: middle;">{cost:,.2f}</td>
                                 </tr>
                             </table>
@@ -1483,6 +1483,18 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
                             doc_color = "#4f46e5" if is_tax else "#16a34a"
 
+                            commercial_qr_tag = ""
+                            if d_t in ['RC', 'TAX'] and STORE_PROMPTPAY:
+                                q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                                q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                                b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                                commercial_qr_tag = f'''
+                                <div style="text-align: right; margin-top: 10px;">
+                                    <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
+                                    <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {cur_doc['currency']}</b></span>
+                                </div>
+                                '''
+
                             final_html = f"""
                             <html>
                             <head>
@@ -1860,10 +1872,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
 
                     social_html = ""
-                    if STORE_LINE: social_html += make_social_qr(STORE_LINE, "Line")
-                    if STORE_FB: social_html += make_social_qr(STORE_FB, "Facebook")
-                    if STORE_TIKTOK: social_html += make_social_qr(STORE_TIKTOK, "TikTok")
-                    if STORE_YOUTUBE: social_html += make_social_qr(STORE_YOUTUBE, "YouTube")
+                    if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
+                    if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
+                    if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+                    if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
 
                     watermark_html = ""
                     if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
