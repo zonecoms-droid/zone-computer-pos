@@ -1228,7 +1228,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 ])
                 
                 with st.form(f"form_doc_{selected_job}"):
-                    # กำหนดค่าเริ่มต้นสำหรับข้อมูลลูกค้าและภาษี
+                    # กำหนดค่าเริ่มต้นสำหรับข้อมูลลูกค้าและภาษี ป้องกัน NameError ทุกกรณี
                     tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
                     tax_cust_id = repair_full['tax_id'] if pd.notna(repair_full['tax_id']) else ""
                     tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else "สำนักงานใหญ่"
@@ -1323,61 +1323,52 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         grand_total = float(grand_total) if pd.notna(grand_total) else 0.0
 
                         if "ใบคืนสินค้า" in doc_choice:
-                            doc_title = "ใบคืนสินค้า / DELIVERY SLIP"
-                            doc_color = "#16a34a"
-                            t_color = "#16a34a"
+                            d_t = "Slip"
+                            t_title, t_color = "ใบคืนสินค้า / DELIVERY SLIP", "#16a34a"
                             l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                             r_sign = "ผู้รับสินค้า / ลูกค้า"
                             commercial_qr_tag = ""
-                        elif "ใบเสร็จรับเงิน" in doc_choice:
-                            doc_title = "ใบเสร็จรับเงิน / CASH RECEIPT"
-                            doc_color = "#16a34a"
-                            t_color = "#16a34a"
-                            l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร"
-                            r_sign = "ผู้จ่ายเงิน / ลูกค้า"
-                            commercial_qr_tag = ""
-                            if "PromptPay" in pay_chanel and STORE_PROMPTPAY:
-                                q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
-                                q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
-                                b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                                commercial_qr_tag = f'''
-                                <div style="text-align: right; margin-top: 10px;">
-                                    <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
-                                    <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
-                                </div>
-                                '''
-                        else:
-                            doc_title = "ใบกำกับภาษี / TAX INVOICE"
-                            doc_color = "#4f46e5"
-                            t_color = "#4f46e5"
-                            l_sign = "ผู้มีอำนาจออกเอกสาร"
-                            r_sign = "ผู้รับบริการ / ลูกค้า"
-                            commercial_qr_tag = ""  # ไม่มี QR Code สำหรับใบกำกับภาษี
-
-                        if "ใบคืนสินค้า" in doc_choice:
+                            
+                            # ใบคืนสินค้าแบบเต็มแผ่น 1 หน้ากระดาษ A4
                             final_html = f"""
                             <html>
                             <head>
                             <style>
-                                @page {{ size: A4 portrait; margin: 8mm; }}
+                                @page {{ size: A4 portrait; margin: 10mm; }}
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                                 .print-btn {{ background-color: #16a34a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
-                                .doc-box {{ background: white; border: 1px solid #cbd5e1; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
-                                .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
+                                .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                                .content-wrap {{ position: relative; z-index: 1; }}
                                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
-                                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin: 6mm 0; font-size: 11px; }}
-                                .cust-box td {{ padding: 2px 4px; word-break: break-word; }}
-                                .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6mm; font-size: 11px; }}
-                                .items-tbl th {{ background: #16a34a; color: white; padding: 6px; text-align: left; font-weight: 600; }}
-                                .items-tbl td {{ padding: 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
-                                .perforation {{ border-top: 2px dashed #94a3b8; margin: 4mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
+                                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
+                                .cust-box td {{ padding: 4px 8px; word-break: break-word; }}
+                                .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
+                                .items-tbl th {{ background: #16a34a; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                                .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
+                                .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
+                                .summary-tbl td {{ padding: 6px 10px; }}
+                                .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }}
+                                .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 12px; }}
                                 .nodate-field {{ display: none; }}
                                 @media print {{
-                                    body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                    body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                                     .print-btn-container {{ display: none !important; }}
-                                    .doc-box {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
+                                    .flow-container {{ 
+                                        border: none; 
+                                        box-shadow: none; 
+                                        padding: 10mm; 
+                                        width: 100%; 
+                                        height: 272mm; 
+                                        max-height: 272mm; 
+                                        display: flex; 
+                                        flex-direction: column; 
+                                        justify-content: space-between; 
+                                        page-break-after: always;
+                                        -webkit-print-color-adjust: exact;
+                                        print-color-adjust: exact;
+                                    }}
                                 }}
                             </style>
                             <script>
@@ -1399,116 +1390,91 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ใบคืนสินค้า (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
-                                <div class="doc-box">
-                                    <!-- ครึ่งบน: สำหรับลูกค้า -->
-                                    <div class="section-box" style="justify-content: flex-end;">
-                                        {watermark_html}
-                                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
-                                            <table class="header-tbl">
-                                                <tr>
-                                                    <td style="vertical-align: top; width: 60%;">
-                                                        <div style="display: flex; align-items: center; margin-bottom: 2px;">
-                                                            {logo_img_header_tag}
-                                                            <h2 style="margin: 0; color: #0f172a; font-size: 20px; line-height: 1.2;">
-                                                                <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                                <span style="font-size: 15px; font-weight: bold; color: #16a34a;">แอนด์ เซอร์วิส</span>
-                                                            </h2>
-                                                        </div>
-                                                        <p style="font-size: 11px; margin: 3px 0; color: #475569; line-height: 1.3;">
-                                                            ที่อยู่: {STORE_ADDRESS}<br>
-                                                            โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
-                                                        </p>
-                                                    </td>
-                                                    <td style="text-align: right; vertical-align: top; width: 40%;">
-                                                        <div style="background: #16a34a; color: white; padding: 5px 10px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 13px; margin-bottom: 4px;">
-                                                            ใบคืนสินค้า (CUSTOMER)
-                                                        </div>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                            <table class="cust-box tbl">
-                                                <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ชำระ:</b> {pay_chanel}</td></tr>
-                                                <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
-                                            </table>
-                                            <table class="items-tbl">
-                                                <tr><th>รายการซ่อม / อะไหล่</th><th style="text-align: center; width: 50px;">จำนวน</th><th style="text-align: right; width: 90px;">ราคา/หน่วย</th><th style="text-align: right; width: 100px;">จำนวนเงิน</th></tr>
-                                                {items_html}
-                                                <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f}</td></tr>
-                                                {vat_html}
-                                                <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px; color: #16a34a;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #16a34a;"><b>{grand_total:,.2f}</b></td></tr>
-                                            </table>
-                                        </div>
-                                        <div class="ftr" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
-                                            <div style="width: 55%;">
-                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 6px;">
-                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
-                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
-                                                </div>
-                                                <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
-                                                <p style="font-size: 10px; margin: 6px 0 0 0;">ลงชื่อรับสินค้าคืน: ...................................................... (ลูกค้า)</p>
-                                            </div>
-                                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                <div style="text-align: center;">
-                                                    
-                                                </div>
-                                            </div>
-                                        </div>
+                                <div class="flow-container">
+                                    {watermark_html}
+                                    <div class="content-wrap">
+                                        <table class="header-tbl">
+                                            <tr>
+                                                <td style="vertical-align: top; width: 60%;">
+                                                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                                        {logo_img_header_tag}
+                                                        <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
+                                                            <b>ร้านโซนคอมพิวเตอร์</b><br>
+                                                            <span style="font-size: 18px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
+                                                        </h2>
+                                                    </div>
+                                                    <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
+                                                        ที่อยู่: {STORE_ADDRESS}<br>
+                                                        โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
+                                                    </p>
+                                                </td>
+                                                <td style="text-align: right; vertical-align: top; width: 40%;">
+                                                    <div style="background: {t_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                                                        {t_title}
+                                                    </div>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> ช่างดิด | <b>สกุลเงิน:</b> {DEF_CURR}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <table class="cust-box tbl">
+                                            <tr><td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {tax_cust_name} ({selected_row['phone']})</td></tr>
+                                            <tr><td><b>ที่อยู่:</b> {tax_cust_address} | <b>อุปกรณ์:</b> {selected_row['device_name']} | <b>รับประกัน:</b> {warrant_days} วัน</td></tr>
+                                        </table>
+
+                                        <table class="items-tbl">
+                                            <tr>
+                                                <th>รายการสินค้า / บริการ / อะไหล่</th>
+                                                <th style="text-align: center; width: 70px;">จำนวน</th>
+                                                <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
+                                                <th style="text-align: right; width: 130px;">จำนวนเงิน ({DEF_CURR})</th>
+                                            </tr>
+                                            {items_html}
+                                        </table>
+
+                                        <table style="width: 100%; margin-top: 10px;">
+                                            <tr>
+                                                <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b; word-break: break-word;">
+                                                    <b>หมายเหตุ / เงื่อนไขการรับประกัน:</b><br>{custom_notes}
+                                                </td>
+                                                <td style="width: 45%;">
+                                                    <table class="summary-tbl">
+                                                        <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {DEF_CURR}</td></tr>
+                                                        {vat_html}
+                                                        <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {DEF_CURR}</b></td></tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </div>
 
-                                    <div class="perforation">✂️ - - - - - - - - - - - - - - - - - รอยฉีกสำหรับแยกระหว่างลูกค้าและร้านค้า (Cut / Tear Here) - - - - - - - - - - - - - - - - - ✂️</div>
-
-                                    <!-- ครึ่งล่าง: สำหรับร้านค้า -->
-                                    <div class="section-box" style="justify-content: flex-end;">
-                                        {watermark_html}
-                                        <div class="content-wrap" style="position: relative; z-index: 1; margin-bottom: auto;">
-                                            <table class="header-tbl">
-                                                <tr>
-                                                    <td style="vertical-align: top; width: 60%;">
-                                                        <div style="display: flex; align-items: center; margin-bottom: 2px;">
-                                                            {logo_img_header_tag}
-                                                            <h2 style="margin: 0; color: #0f172a; font-size: 20px; line-height: 1.2;">
-                                                                <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                                <span style="font-size: 15px; font-weight: bold; color: #334155;">แอนด์ เซอร์วิส</span>
-                                                            </h2>
-                                                        </div>
-                                                        <p style="font-size: 11px; margin: 3px 0; color: #475569; line-height: 1.3;">
-                                                            ที่อยู่: {STORE_ADDRESS}<br>
-                                                            โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
-                                                        </p>
-                                                    </td>
-                                                    <td style="text-align: right; vertical-align: top; width: 40%;">
-                                                        <div style="background: #334155; color: white; padding: 5px 10px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 13px; margin-bottom: 4px;">
-                                                            ใบคืนสินค้า (STORE COPY)
-                                                        </div>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
-                                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                            <table class="cust-box tbl">
-                                                <tr><td><b>ชื่อลูกค้า:</b> {selected_row['customer_name']} ({selected_row['phone']})</td><td><b>ชำระ:</b> {pay_chanel}</td></tr>
-                                                <tr><td><b>อุปกรณ์:</b> {selected_row['device_name']}</td><td><b>รับประกัน:</b> {warrant_days} วัน</td></tr>
-                                            </table>
-                                            <table class="items-tbl">
-                                                <tr><th>รายการซ่อม / อะไหล่</th><th style="text-align: center; width: 50px;">จำนวน</th><th style="text-align: right; width: 90px;">ราคา/หน่วย</th><th style="text-align: right; width: 100px;">จำนวนเงิน</th></tr>
-                                                {items_html}
-                                                <tr><td colspan="3" style="text-align: right; padding-top: 4px;"><b>รวมมูลค่า:</b></td><td style="text-align: right; padding-top: 4px;">{subtotal:,.2f}</td></tr>
-                                                {vat_html}
-                                                <tr><td colspan="3" style="text-align: right; padding: 2px; font-size: 12px; color: #334155;"><b>ยอดสุทธิ:</b></td><td style="text-align: right; padding: 2px; font-size: 12px; color: #334155;"><b>{grand_total:,.2f}</b></td></tr>
-                                            </table>
-                                        </div>
-                                        <div class="ftr" style="position: relative; z-index: 1; margin-top: auto; padding-bottom: 2mm;">
-                                            <div style="width: 100%;">
-                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 6px;">
-                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
-                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
+                                    <div class="content-wrap">
+                                        <div class="footer-section">
+                                            <div class="footer-box">
+                                                <div style="width: 55%; margin: 0 auto;">
+                                                    <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
+                                                        <tr>
+                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
+                                                                ลงชื่อ ......................................................<br>
+                                                                ({l_sign})<br>
+                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                            </td>
+                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
+                                                                ลงชื่อ ......................................................<br>
+                                                                ({r_sign})<br>
+                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
                                                 </div>
-                                                <p style="font-size: 10px; margin: 2px 0; color: #475569;"><b>หมายเหตุ:</b> {custom_notes}</p>
-                                                <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px;">
-                                                    <span>ลงชื่อลูกค้า (ตรวจรับ): ......................................................</span>
-                                                    <span>ช่างผู้ส่งมอบ: ......................................................</span>
+
+                                                <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                    <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                        <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                        <div style="display: flex; gap: 3px;">{social_html}</div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1518,6 +1484,27 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </html>
                             """
                         else:
+                            is_tax = "ใบกำกับภาษี" in doc_choice
+                            d_t = "TAX" if is_tax else "RC"
+                            doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
+                            doc_color = "#4f46e5" if is_tax else "#16a34a"
+                            t_color = doc_color
+                            l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร" if not is_tax else "ผู้มีอำนาจออกเอกสาร"
+                            r_sign = "ผู้จ่ายเงิน / ลูกค้า" if not is_tax else "ผู้รับบริการ / ลูกค้า"
+
+                            # เงื่อนไข QR Code ชำระเงิน: เฉพาะใบเสร็จรับเงิน (RC) และเลือกโอนเงินผ่าน PromptPay เท่านั้น
+                            commercial_qr_tag = ""
+                            if d_t == 'RC' and "PromptPay" in pay_chanel and STORE_PROMPTPAY:
+                                q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                                q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                                b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                                commercial_qr_tag = f'''
+                                <div style="text-align: right; margin-top: 10px;">
+                                    <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
+                                    <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
+                                </div>
+                                '''
+
                             final_html = f"""
                             <html>
                             <head>
@@ -1542,7 +1529,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .nodate-field {{ display: none; }}
                                 @media print {{
                                     body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                                    .print-btn-container {{ display: none !important; }}
                                     .flow-container {{ 
                                         border: none; 
                                         box-shadow: none; 
@@ -1601,19 +1587,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {doc_title}
                                                     </div>
                                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
-                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
+                                                    <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> ช่างดิด | <b>สกุลเงิน:</b> {DEF_CURR}</p>
                                                 </td>
                                             </tr>
                                         </table>
 
                                         <table class="cust-box tbl">
-                                            <tr>
-                                                <td style="width: 65%;"><b>ชื่อลูกค้า / บริษัท:</b> {tax_cust_name}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
-                                                <td><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'} ({tax_cust_branch})</td>
-                                            </tr>
+                                            <tr><td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {tax_cust_name}</td></tr>
+                                            <tr><td><b>ที่อยู่:</b> {tax_cust_address} | <b>เลขผู้เสียภาษี:</b> {tax_cust_id} ({tax_cust_branch})</td></tr>
                                         </table>
 
                                         <table class="items-tbl">
@@ -1621,7 +1603,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <th>รายการสินค้า / บริการ / อะไหล่</th>
                                                 <th style="text-align: center; width: 70px;">จำนวน</th>
                                                 <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
-                                                <th style="text-align: right; width: 130px;">จำนวนเงิน (บาท)</th>
+                                                <th style="text-align: right; width: 130px;">จำนวนเงิน ({DEF_CURR})</th>
                                             </tr>
                                             {items_html}
                                         </table>
@@ -1629,14 +1611,13 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <table style="width: 100%; margin-top: 10px;">
                                             <tr>
                                                 <td style="vertical-align: top; width: 55%; padding-top: 10px; font-size: 11px; color: #64748b; word-break: break-word;">
-                                                    <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
-                                                    {custom_notes}
+                                                    <b>หมายเหตุ / เงื่อนไข:</b><br>{custom_notes}
                                                 </td>
                                                 <td style="width: 45%;">
                                                     <table class="summary-tbl">
-                                                        <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
+                                                        <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {DEF_CURR}</td></tr>
                                                         {vat_html}
-                                                        <tr><td style="text-align: right; font-size: 15px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {t_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                                        <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {DEF_CURR}</b></td></tr>
                                                     </table>
                                                     {commercial_qr_tag}
                                                 </td>
@@ -1650,15 +1631,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <div style="width: 55%; margin: 0 auto;">
                                                     <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                                         <tr>
-                                                            <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
+                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                                 ลงชื่อ ......................................................<br>
                                                                 ({l_sign})<br>
-                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span>
                                                             </td>
-                                                            <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
+                                                            <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                                 ลงชื่อ ......................................................<br>
                                                                 ({r_sign})<br>
-                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span>
                                                             </td>
                                                         </tr>
                                                     </table>
@@ -2074,12 +2055,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({l_sign})<br>
-                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span>
+                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                     </td>
                                                     <td style="padding-bottom: 8px; width: 50%; line-height: 2.2;">
                                                         ลงชื่อ ......................................................<br>
                                                         ({r_sign})<br>
-                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span>
+                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                     </td>
                                                 </tr>
                                             </table>
