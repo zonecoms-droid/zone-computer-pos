@@ -1497,6 +1497,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             d_t = "TAX" if is_tax else "RC"
                             doc_title = "ใบกำกับภาษี / TAX INVOICE" if is_tax else "ใบเสร็จรับเงิน / CASH RECEIPT"
                             doc_color = "#4f46e5" if is_tax else "#16a34a"
+                            t_color = doc_color
+                            l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร" if not is_tax else "ผู้มีอำนาจออกเอกสาร"
+                            r_sign = "ผู้จ่ายเงิน / ลูกค้า" if not is_tax else "ผู้รับบริการ / ลูกค้า"
 
                             # เงื่อนไข QR Code ชำระเงิน: เฉพาะใบเสร็จรับเงิน (RC) และเลือกโอนเงินผ่าน PromptPay เท่านั้น
                             commercial_qr_tag = ""
@@ -1517,7 +1520,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <style>
                                 @page {{ size: A4 portrait; margin: 10mm; }}
                                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                                .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
+                                .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                                 .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                                 .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
@@ -1526,7 +1529,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
                                 .cust-box td {{ padding: 4px 8px; word-break: break-word; }}
                                 .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
-                                .items-tbl th {{ background: {doc_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                                .items-tbl th {{ background: {t_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
                                 .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                                 .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                                 .summary-tbl td {{ padding: 6px 10px; }}
@@ -1568,7 +1571,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="flow-container">
@@ -1581,7 +1584,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {logo_img_header_tag}
                                                         <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
                                                             <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                            <span style="font-size: 18px; font-weight: bold; color: {doc_color};">แอนด์ เซอร์วิส</span>
+                                                            <span style="font-size: 18px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
                                                         </h2>
                                                     </div>
                                                     <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
@@ -1590,7 +1593,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                     </p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: top; width: 40%;">
-                                                    <div style="background: {doc_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                                                    <div style="background: {t_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
                                                         {doc_title}
                                                     </div>
                                                     <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
@@ -1626,7 +1629,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {DEF_CURR}</b></td></tr>
                                                     </table>
-                                                    {commercial_qr_tag}
                                                 </td>
                                             </tr>
                                         </table>
