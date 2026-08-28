@@ -1228,7 +1228,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 ])
                 
                 with st.form(f"form_doc_{selected_job}"):
-                    # ประกาศตัวแปรเริ่มต้นป้องกัน NameError
                     tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
                     tax_cust_id = repair_full['tax_id'] if pd.notna(repair_full['tax_id']) else ""
                     tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else "สำนักงานใหญ่"
@@ -1263,12 +1262,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         with cols[0]:
                             desc = st.text_input(f"รายการที่ {i+1}", value=selected_row['problem_description'] if i == 0 else f"อะไหล่ชิ้นที่ {i+1}", key=f"desc_{selected_job}_{i}")
                         with cols[1]:
-                            qty = st.number_input("จำนวน", min_value=1, value=1, key=f"qty_{selected_job}_{i}")
+                            qty = st.number_input("จำนวน", min_value=1.0, value=1.0, key=f"qty_{selected_job}_{i}")
                         with cols[2]:
                             default_p = float(selected_row['estimated_cost']) if (i == 0 and pd.notna(selected_row['estimated_cost'])) else 0.0
                             price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=default_p, key=f"price_{selected_job}_{i}")
                         with cols[3]:
-                            tot = qty * price
+                            tot = float(qty) * float(price)
                             st.text_input("รวม", value=f"{tot:,.2f}", disabled=True, key=f"tot_{selected_job}_{i}")
                         subtotal += tot
                         items_data.append((desc, qty, price, tot))
@@ -1280,7 +1279,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
-                        # บันทึกข้อมูลลูกค้าและภาษีลงฐานข้อมูล repairs ทันที
                         cursor = conn.cursor()
                         cursor.execute("""
                             UPDATE repairs 
@@ -1290,7 +1288,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         conn.commit()
                         cursor.close()
 
-                        # 🌟 สร้าง items_html และ vat_html ไว้ล่วงหน้า
                         items_html = ""
                         for idx, val in enumerate(items_data):
                             items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
@@ -1322,18 +1319,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         subtotal = float(subtotal) if pd.notna(subtotal) else 0.0
                         grand_total = float(grand_total) if pd.notna(grand_total) else 0.0
 
-                        tax_cust_name = tax_cust_name if pd.notna(tax_cust_name) else selected_row['customer_name']
-                        tax_cust_address = tax_cust_address if pd.notna(tax_cust_address) else selected_row['address']
-                        tax_cust_id = tax_cust_id if pd.notna(tax_cust_id) else '-'
-                        tax_cust_branch = tax_cust_branch if pd.notna(tax_cust_branch) else 'สำนักงานใหญ่'
-
                         if "ใบคืนสินค้า" in doc_choice:
                             doc_title = "ใบคืนสินค้า / DELIVERY SLIP"
                             doc_color = "#16a34a"
+                            t_color = "#16a34a"
                             l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                             r_sign = "ผู้รับสินค้า / ลูกค้า"
-                            
-                            # สร้าง QR Code ชำระเงินสำหรับใบคืนสินค้า หากเลือกช่องทาง PromptPay
                             commercial_qr_tag = ""
                             if "PromptPay" in pay_chanel and STORE_PROMPTPAY:
                                 q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
@@ -1345,10 +1336,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
                                 </div>
                                 '''
-
                         elif "ใบเสร็จรับเงิน" in doc_choice:
                             doc_title = "ใบเสร็จรับเงิน / CASH RECEIPT"
                             doc_color = "#16a34a"
+                            t_color = "#16a34a"
                             l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร"
                             r_sign = "ผู้จ่ายเงิน / ลูกค้า"
                             commercial_qr_tag = ""
@@ -1365,9 +1356,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         else:
                             doc_title = "ใบกำกับภาษี / TAX INVOICE"
                             doc_color = "#4f46e5"
+                            t_color = "#4f46e5"
                             l_sign = "ผู้มีอำนาจออกเอกสาร"
                             r_sign = "ผู้รับบริการ / ลูกค้า"
-                            commercial_qr_tag = ""  # ไม่มี QR Code สำหรับใบกำกับภาษีตามคำขอ
+                            commercial_qr_tag = ""  # ไม่มี QR Code สำหรับใบกำกับภาษี
 
                         final_html = f"""
                         <html>
@@ -1375,7 +1367,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         <style>
                             @page {{ size: A4 portrait; margin: 10mm; }}
                             body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                            .print-btn {{ background-color: {doc_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
+                            .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                             .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                             .print-btn-container {{ margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; }}
                             .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 15mm; width: 190mm; height: 272mm; max-height: 272mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
@@ -1384,7 +1376,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px; }}
                             .cust-box td {{ padding: 4px 8px; word-break: break-word; }}
                             .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
-                            .items-tbl th {{ background: {doc_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
+                            .items-tbl th {{ background: {t_color}; color: white; padding: 10px 8px; text-align: left; font-weight: 600; }}
                             .items-tbl td {{ padding: 10px 8px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                             .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }}
                             .summary-tbl td {{ padding: 6px 10px; }}
@@ -1420,7 +1412,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 setTimeout(function() {{
                                     for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
                                     for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
-                                }, 500);
+                                }}, 500);
                             }}
                         </script>
                         </head>
@@ -1439,7 +1431,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                     {logo_img_header_tag}
                                                     <h2 style="margin: 0; color: #0f172a; font-size: 24px; line-height: 1.3;">
                                                         <b>ร้านโซนคอมพิวเตอร์</b><br>
-                                                        <span style="font-size: 18px; font-weight: bold; color: {doc_color};">แอนด์ เซอร์วิส</span>
+                                                        <span style="font-size: 18px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
                                                     </h2>
                                                 </div>
                                                 <p style="font-size: 12px; margin: 4px 0; color: #475569; line-height: 1.4; word-break: break-word;">
@@ -1448,7 +1440,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 </p>
                                             </td>
                                             <td style="text-align: right; vertical-align: top; width: 40%;">
-                                                <div style="background: {doc_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                                                <div style="background: {t_color}; color: white; padding: 8px 16px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
                                                     {doc_title}
                                                 </div>
                                                 <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
@@ -1487,7 +1479,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <table class="summary-tbl">
                                                     <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
                                                     {vat_html}
-                                                    <tr><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                                    <tr><td style="text-align: right; font-size: 15px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {t_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
                                                 </table>
                                                 {commercial_qr_tag}
                                             </td>
@@ -1516,6 +1508,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </div>
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    
+                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
