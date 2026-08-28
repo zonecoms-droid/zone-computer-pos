@@ -1388,7 +1388,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             .nodate-field {{ display: none; }}
                             @media print {{
                                 body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                                .print-btn-container {{ display: none !important; }}
                                 .flow-container {{ 
                                     border: none; 
                                     box-shadow: none; 
@@ -1415,7 +1414,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 setTimeout(function() {{
                                     for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
                                     for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
-                                }, 500);
+                                }}, 500);
                             }}
                         </script>
                         </head>
@@ -1511,6 +1510,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </div>
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    
+                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
