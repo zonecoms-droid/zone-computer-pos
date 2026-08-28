@@ -747,10 +747,10 @@ if page_param == "commercial_request":
             with cols[0]:
                 r_desc = st.text_input(f"รายการที่ {i+1}", value=f"รายการสินค้า/บริการ {i+1}", key=f"req_desc_{i}")
             with cols[1]:
-                r_qty = st.number_input("จำนวน", min_value=1, value=1, key=f"req_qty_{i}")
+                r_qty = st.number_input("จำนวน", min_value=1.0, value=1.0, key=f"req_qty_{i}")
             with cols[2]:
                 r_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"req_price_{i}")
-            tot = r_qty * r_price
+            tot = float(r_qty) * float(r_price)
             subtotal += tot
             req_items_list.append((r_desc, r_qty, r_price, tot))
             
@@ -1222,7 +1222,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
                 
                 doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
-                    "📦 ใบคืนสินค้า (Delivery Slip - A4 เต็มแผ่น สไตล์โมเดิร์น)", 
+                    "📦 ใบคืนสินค้า (Delivery Slip - A4 เต็มแผ่น หน้าเดียว)", 
                     "💵 ใบเสร็จรับเงิน (Cash Receipt - A4 เต็มแผ่น FlowAccount Style)", 
                     "📄 ใบกำกับภาษี (Tax Invoice - A4 เต็มแผ่น FlowAccount Style)"
                 ])
@@ -1385,7 +1385,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             .nodate-field {{ display: none; }}
                             @media print {{
                                 body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                                .print-btn-container {{ display: none !important; }}
                                 .flow-container {{ 
                                     border: none; 
                                     box-shadow: none; 
@@ -1509,7 +1508,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
                                                 <div style="text-align: center;">
-                                                    
+                                                    {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
                                                 </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
@@ -1813,7 +1812,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         .nodate-field {{ display: none; }}
                         @media print {{ 
                             body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }} 
-                            .print-btn-container {{ display: none !important; }} 
                             .flow-container {{ 
                                 border: none; 
                                 box-shadow: none; 
