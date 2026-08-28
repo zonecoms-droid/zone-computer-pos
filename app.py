@@ -1279,12 +1279,22 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     if generate_btn:
                         grand_total = subtotal * 1.07 if include_vat else subtotal
                         
+                        # บันทึกข้อมูลลูกค้าและภาษีลงฐานข้อมูล repairs ทันที
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            UPDATE repairs 
+                            SET tax_name = ?, tax_id = ?, tax_branch = ?, tax_address = ?
+                            WHERE job_code = ?
+                        """, (tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, selected_job))
+                        conn.commit()
+                        cursor.close()
+
                         # 🌟 สร้าง items_html และ vat_html ไว้ล่วงหน้า ป้องกัน NameError
                         items_html = ""
                         for idx, val in enumerate(items_data):
                             items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
 
-                        vat_html = f"<tr><td colspan='3' style='text-align:right; padding:8px;'><b>VAT 7%:</b></td><td style='text-align:right; padding:8px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
+                        vat_html = f"<tr><td style='text-align: right; padding: 4px;'><b>VAT 7%:</b></td><td style='text-align: right; width: 120px; padding: 4px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
                         qr_tag = ""
                         if "PromptPay" in pay_chanel and ("ใบคืนสินค้า" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice):
@@ -1502,8 +1512,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
                                 b64_qr = base64.b64encode(q_stream.getvalue()).decode()
                                 commercial_qr_tag = f'''
-                                <div style="position: absolute; bottom: 25mm; right: 15mm; text-align: right;">
-                                    <img src="data:image/png;base64,{b64_qr}" width="100px"><br>
+                                <div style="text-align: right; margin-top: 15px;">
+                                    <img src="data:image/png;base64,{b64_qr}" width="110px"><br>
                                     <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
                                 </div>
                                 '''
@@ -1552,7 +1562,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             </head>
                             <body>
                                 <div class="print-btn-container">
-                                    <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                                    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                                     <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                                 </div>
                                 <div class="flow-container">
@@ -1615,37 +1625,38 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                         {vat_html}
                                                         <tr><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {doc_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
                                                     </table>
+                                                    {commercial_qr_tag}
                                                 </td>
                                             </tr>
                                         </table>
-                                        {commercial_qr_tag}
                                     </div>
 
-                                    <div class="content-wrap">
-                                        <div class="footer-section">
-                                            <div class="footer-box">
-                                                <div style="width: 55%; margin: 0 auto;">
-                                                    <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
-                                                        <tr>
-                                                            <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
-                                                                ลงชื่อ ......................................................<br>
-                                                                (ผู้รับเงิน / ผู้ออกเอกสาร)<br>
-                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
-                                                            </td>
-                                                            <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
-                                                                ลงชื่อ ......................................................<br>
-                                                                (ผู้จ่ายเงิน / ลูกค้า)<br>
-                                                                วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
-                                                            </td>
-                                                        </tr>
-                                                    </table>
-                                                </div>
+                                    <div class="footer-section">
+                                        <div class="footer-box">
+                                            <div style="width: 55%; margin: 0 auto;">
+                                                <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
+                                                    <tr>
+                                                        <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
+                                                            ลงชื่อ ......................................................<br>
+                                                            (ผู้รับเงิน / ผู้ออกเอกสาร)<br>
+                                                            วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                        </td>
+                                                        <td style="padding-bottom: 5px; width: 50%; line-height: 2.2;">
+                                                            ลงชื่อ ......................................................<br>
+                                                            (ผู้จ่ายเงิน / ลูกค้า)<br>
+                                                            วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </div>
 
-                                                <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                    <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                                        <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
-                                                        <div style="display: flex; gap: 3px;">{social_html}</div>
-                                                    </div>
+                                            <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                                <div style="text-align: center;">
+                                                    {qr_tag}
+                                                </div>
+                                                <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                    <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
+                                                    <div style="display: flex; gap: 3px;">{social_html}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1686,7 +1697,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                 
                 doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
                     "1. ใบเสนอราคา (Quotation - QT)",
-                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
+                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
                     "3. ใบกำกับภาษี (Tax Invoice - TAX)",
                     "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
                     "5. ใบลดหนี้ (Credit Note - CN)",
