@@ -1227,16 +1227,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     "📄 ใบกำกับภาษี (Tax Invoice - A4 เต็มแผ่น FlowAccount Style)"
                 ])
                 
-                # ใช้ Session State เก็บรายการสินค้าในหน้าจัดการซ่อม เพื่อให้คำนวณราคาได้แบบเรียลไทม์
-                items_state_key = f"repair_items_{selected_job}"
-                if items_state_key not in st.session_state:
-                    default_p = float(repair_full['estimated_cost']) if pd.notna(repair_full['estimated_cost']) else 0.0
-                    st.session_state[items_state_key] = [{
-                        'desc': repair_full['problem_description'] if pd.notna(repair_full['problem_description']) else selected_row['problem_description'],
-                        'qty': 1.0,
-                        'price': default_p
-                    }]
-
                 tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
                 tax_cust_id = repair_full['tax_id'] if pd.notna(repair_full['tax_id']) else ""
                 tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else "สำนักงานใหญ่"
@@ -1262,6 +1252,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                 st.markdown("#### 🛒 ปรับแต่งรายการค่าบริการและอะไหล่ (คำนวณยอดรวมอัตโนมัติ)")
                 
+                items_state_key = f"repair_items_{selected_job}"
+                if items_state_key not in st.session_state:
+                    default_p = float(repair_full['estimated_cost']) if pd.notna(repair_full['estimated_cost']) else 0.0
+                    st.session_state[items_state_key] = [{
+                        'desc': repair_full['problem_description'] if pd.notna(repair_full['problem_description']) else selected_row['problem_description'],
+                        'qty': 1.0,
+                        'price': default_p
+                    }]
+
                 subtotal = 0.0
                 updated_items_data = []
                 for idx, row in enumerate(st.session_state[items_state_key]):
