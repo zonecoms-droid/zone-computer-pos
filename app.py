@@ -1374,7 +1374,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         t_color = "#4f46e5"
                         l_sign = "ผู้มีอำนาจออกเอกสาร"
                         r_sign = "ผู้รับบริการ / ลูกค้า"
-                        commercial_qr_tag = ""  # ไม่มี QR Code สำหรับใบกำกับภาษี
+                        commercial_qr_tag = ""
 
                     final_html = f"""
                     <html>
@@ -1552,7 +1552,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
     st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
     st.markdown("จัดการวงจรการขายครบวงจร: ใบเสนอราคา ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (พร้อมใบลดหนี้และใบเพิ่มหนี้ แยกสีธีมตามประเภทเอกสาร)")
 
-    sub_menu = st.radio("🗂️ เลือกโหมดการจัดการ", ["📝 สร้างเอกสารใหม่ (Create Document)", "📋 ติดตามสถานะและส่งต่อเอกสาร (Sales Pipeline)"], horizontal=True)
+    sub_menu = st.radio("🖨️ เลือกโหมดการจัดการ", ["📝 สร้างเอกสารใหม่ (Create Document)", "📋 ติดตามสถานะและส่งต่อเอกสาร (Sales Pipeline)"], horizontal=True)
     st.markdown("---")
 
     if sub_menu == "📝 สร้างเอกสารใหม่ (Create Document)":
