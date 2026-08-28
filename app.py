@@ -1290,7 +1290,10 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                         items_html = ""
                         for idx, val in enumerate(items_data):
-                            items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+                            q_v = float(val[1]) if pd.notna(val[1]) else 1.0
+                            p_v = float(val[2]) if pd.notna(val[2]) else 0.0
+                            t_v = float(val[3]) if len(val) > 3 and pd.notna(val[3]) else q_v * p_v
+                            items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{q_v}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{p_v:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{t_v:,.2f}</td></tr>"
 
                         vat_html = f"<tr><td style='text-align: right; padding: 6px;'><b>VAT 7%:</b></td><td style='text-align: right; width: 150px; padding: 6px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
@@ -1385,6 +1388,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             .nodate-field {{ display: none; }}
                             @media print {{
                                 body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                                .print-btn-container {{ display: none !important; }}
                                 .flow-container {{ 
                                     border: none; 
                                     box-shadow: none; 
@@ -1411,7 +1415,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                 setTimeout(function() {{
                                     for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
                                     for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
-                                }}, 500);
+                                }, 500);
                             }}
                         </script>
                         </head>
@@ -1507,9 +1511,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             </div>
 
                                             <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                                <div style="text-align: center;">
-                                                    {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
-                                                </div>
                                                 <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                     <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                                     <div style="display: flex; gap: 3px;">{social_html}</div>
@@ -1727,7 +1728,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     items_parsed = json.loads(cur_doc['items_json'])
                     print_items_html = ""
                     for idx, val in enumerate(items_parsed):
-                        print_items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{val[1]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[2]:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{val[3]:,.2f}</td></tr>"
+                        q_v = float(val[1]) if len(val) > 1 and pd.notna(val[1]) else 1.0
+                        p_v = float(val[2]) if len(val) > 2 and pd.notna(val[2]) else 0.0
+                        t_v = float(val[3]) if len(val) > 3 and pd.notna(val[3]) else q_v * p_v
+                        print_items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{q_v}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{p_v:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{t_v:,.2f}</td></tr>"
 
                     d_t = cur_doc['doc_type']
                     if d_t == 'QT':
