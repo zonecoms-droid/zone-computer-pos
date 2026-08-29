@@ -1502,12 +1502,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                             <table class="cust-box tbl">
                                 <tr>
-                                    <td style="width: 65%;"><b>ชื่อลูกค้า / บริษัท:</b> {tax_cust_name}</td>
-                                    <td><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
+                                    <td style="width: 50%;"><b>ชื่อลูกค้า / บริษัท:</b> {tax_cust_name}</td>
+                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
                                 </tr>
                                 <tr>
-                                    <td><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
-                                    <td><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'} ({tax_cust_branch})</td>
+                                    <td style="width: 50%;"><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
+                                    <td style="width: 50%;"><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'} ({tax_cust_branch})</td>
                                 </tr>
                             </table>
 
@@ -1942,12 +1942,12 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                 <table class="cust-box tbl">
                                     <tr>
-                                        <td style="width: 65%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']}</td>
-                                        <td><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
+                                        <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']}</td>
+                                        <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
                                     </tr>
                                     <tr>
-                                        <td><b>ที่อยู่:</b> {cur_doc['customer_address']}</td>
-                                        <td><b>เลขผู้เสียภาษี:</b> {c_tax_val} ({c_branch_val})</td>
+                                        <td style="width: 50%;"><b>ที่อยู่:</b> {cur_doc['customer_address']}</td>
+                                        <td style="width: 50%;"><b>เลขผู้เสียภาษี:</b> {c_tax_val} ({c_branch_val})</td>
                                     </tr>
                                 </table>
 
