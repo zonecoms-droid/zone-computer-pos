@@ -1488,7 +1488,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     </td>
                                     <td style="text-align: right; vertical-align: top; width: 40%;">
                                         <div style="background: {t_color}; color: white; padding: 5px 12px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 13px; margin-bottom: 4px;">
-                                            {t_title}
+                                            {doc_title}
                                         </div>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
