@@ -1489,20 +1489,19 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div style="background: {t_color}; color: white; padding: 6px 14px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
                                             {doc_title}
                                         </div>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>พนักงานขาย:</b> {cur_doc['salesperson']} | <b>สกุลเงิน:</b> {cur_doc['currency']}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
                             </table>
 
                             <table class="cust-box tbl">
                                 <tr>
-                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']} ({tax_cust_branch})</td>
-                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
+                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {tax_cust_name} ({tax_cust_branch})</td>
+                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
                                 </tr>
                                 <tr>
-                                    <td style="width: 50%;"><b>ที่อยู่:</b> {cur_doc['customer_address']}</td>
+                                    <td style="width: 50%;"><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
                                     <td style="width: 50%;"><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'}</td>
                                 </tr>
                             </table>
@@ -1510,22 +1509,24 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <table class="items-tbl">
                                 <tr>
                                     <th>รายการสินค้า / บริการ / อะไหล่</th>
-                                    <th style="text-align: center; width: 50px;">จำนวน</th>
-                                    <th style="text-align: right; width: 90px;">ราคา/หน่วย</th>
-                                    <th style="text-align: right; width: 110px;">จำนวนเงิน ({cur_doc['currency']})</th>
+                                    <th style="text-align: center; width: 60px;">จำนวน</th>
+                                    <th style="text-align: right; width: 100px;">ราคา/หน่วย</th>
+                                    <th style="text-align: right; width: 120px;">จำนวนเงิน (บาท)</th>
                                 </tr>
-                                {print_items_html}
+                                {items_html}
                             </table>
 
-                            <table style="width: 100%; margin-top: 6px;">
+                            <table style="width: 100%; margin-top: 8px;">
                                 <tr>
-                                    <td style="vertical-align: top; width: 55%; padding-top: 4px; font-size: 11px; color: #64748b; word-break: normal;">
-                                        <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
+                                    <td style="vertical-align: top; width: 55%; padding-top: 5px; font-size: 11px; color: #64748b; word-break: normal;">
+                                        <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
+                                        {custom_notes}
                                     </td>
                                     <td style="width: 45%;">
                                         <table class="summary-tbl">
-                                            {summary_rows}
-                                            <tr><td style="text-align: right; font-size: 13px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; width: 120px; font-size: 13px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
+                                            <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 110px;">{subtotal:,.2f} บาท</td></tr>
+                                            {vat_html}
+                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                         </table>
                                         {commercial_qr_tag}
                                     </td>
@@ -1537,25 +1538,25 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <div class="footer-section">
                                 <div class="footer-box">
                                     <div style="width: 55%; margin: 0 auto;">
-                                        <table style="width: 100%; text-align: center; font-size: 10px; border-collapse: collapse;">
+                                        <table style="width: 100%; text-align: center; font-size: 11px; border-collapse: collapse;">
                                             <tr>
-                                                <td style="padding-bottom: 2px; width: 50%; line-height: 1.8;">
+                                                <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({l_sign})<br>
-                                                    วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
+                                                    วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                 </td>
-                                                <td style="padding-bottom: 2px; width: 50%; line-height: 1.8;">
+                                                <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({r_sign})<br>
-                                                    วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
+                                                    วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                 </td>
                                             </tr>
                                         </table>
                                     </div>
 
-                                    <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 6px;">
-                                        <div style="text-align: center; background: #f8fafc; padding: 3px 5px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                            <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
+                                    <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
+                                        <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                            <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้าน</div>
                                             <div style="display: flex; gap: 3px;">{social_html}</div>
                                         </div>
                                     </div>
@@ -1568,6 +1569,455 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 """
 
                 components.html(final_html, height=1050, scrolling=True)
+
+# ==========================================
+# 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท
+# ==========================================
+elif menu == "📄 ระบบออกเอกสารการค้า":
+    st.header("📄 ระบบออกเอกสารทางการค้าครบวงจร (FlowAccount Pipeline Style)")
+    st.markdown("จัดการวงจรการขายครบวงจร: ใบเสนอราคา ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (พร้อมใบลดหนี้และใบเพิ่มหนี้ แยกสีธีมตามประเภทเอกสาร)")
+
+    sub_menu = st.radio("🖨️ เลือกโหมดการจัดการ", ["📝 สร้างเอกสารใหม่ (Create Document)", "📋 ติดตามสถานะและส่งต่อเอกสาร (Sales Pipeline)"], horizontal=True)
+    st.markdown("---")
+
+    if sub_menu == "📝 สร้างเอกสารใหม่ (Create Document)":
+        c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด", key="comm_c_name")
+        c_target_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value="", key="comm_c_phone")
+        c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012", key="comm_c_tax")
+        c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่", key="comm_c_branch")
+        c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี", key="comm_c_addr")
+        
+        doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
+            "1. ใบเสนอราคา (Quotation - QT)",
+            "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
+            "3. ใบกำกับภาษี (Tax Invoice - TAX)",
+            "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
+            "5. ใบลดหนี้ (Credit Note - CN)",
+            "6. ใบเพิ่มหนี้ (Debit Note - DN)"
+        ], key="comm_doc_type")
+
+        date_mode = st.radio("รูปแบบวันที่ออกเอกสาร", ["ระบุวันที่อัตโนมัติ", "เว้นช่องว่างเส้นประ (สำหรับลงวันที่ด้วยมือ)"], horizontal=True, key="comm_date_mode")
+        if date_mode == "ระบุวันที่อัตโนมัติ":
+            c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today(), key="comm_doc_date")
+            c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
+            credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30, key="comm_credit_days")
+            due_date = c_doc_date + timedelta(days=int(credit_days))
+            due_date_str = due_date.strftime('%Y-%m-%d')
+        else:
+            c_doc_date_str = "...................................."
+            due_date_str = "...................................."
+        
+        salesperson = st.text_input("พนักงานขาย", value="ช่างดิด", key="comm_salesperson")
+        currency = st.selectbox("สกุลเงิน", [DEF_CURR, "THB", "USD", "EUR"], key="comm_currency")
+        
+        is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
+        c_pay_method = "โอนเงินผ่าน PromptPay QR"
+        if not is_no_payment_doc:
+            c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "บัตรเครดิต"], key="comm_pay_method")
+
+        ref_doc_no_input = ""
+        cn_dn_reason = ""
+        if "ลดหนี้" in doc_type_selected or "เพิ่มหนี้" in doc_type_selected:
+            st.markdown("---")
+            st.subheader("📎 ข้อมูลอ้างอิงเอกสารเดิม")
+            r_col1, r_col2 = st.columns(2)
+            with r_col1:
+                ref_doc_no_input = st.text_input("อ้างอิงเลขที่ใบกำกับภาษีเดิม", value="IV-20260301-001", key="comm_ref_doc")
+            with r_col2:
+                cn_dn_reason = st.text_input("สาเหตุ", value="คืนสินค้าชำรุด / คิดราคาผิดพลาด", key="comm_reason")
+
+        st.markdown("---")
+        st.subheader("🛒 รายการสินค้า / บริการ")
+
+        if 'new_comm_items' not in st.session_state:
+            st.session_state.new_comm_items = [
+                {'desc': 'จำหน่าย/บริการคอมพิวเตอร์ รายการที่ 1', 'qty': 1.0, 'price': 1500.0}
+            ]
+
+        com_subtotal = 0.0
+        com_items_list = []
+
+        for idx, row in enumerate(st.session_state.new_comm_items):
+            ccols = st.columns([3, 1, 1, 1])
+            with ccols[0]:
+                d_val = st.text_input(f"รายการที่ {idx+1}", value=row['desc'], key=f"comm_desc_{idx}")
+            with ccols[1]:
+                q_val = st.number_input("จำนวน", min_value=1.0, value=float(row['qty']), key=f"comm_qty_{idx}")
+            with ccols[2]:
+                p_val = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=float(row['price']), key=f"comm_price_{idx}")
+            with ccols[3]:
+                tot_val = q_val * p_val
+                st.markdown(f"<div style='padding-top: 28px; font-weight: bold;'>{tot_val:,.2f}</div>", unsafe_allow_html=True)
+            
+            com_subtotal += tot_val
+            com_items_list.append((d_val, q_val, p_val, tot_val))
+            st.session_state.new_comm_items[idx] = {'desc': d_val, 'qty': q_val, 'price': p_val}
+
+        b_col1, b_col2 = st.columns([1, 1])
+        with b_col1:
+            if st.button("➕ เพิ่มแถวรายการ", key="comm_add_row_btn"):
+                st.session_state.new_comm_items.append({'desc': f'รายการสินค้า/บริการ {len(st.session_state.new_comm_items)+1}', 'qty': 1.0, 'price': 1500.0})
+                st.rerun()
+        with b_col2:
+            if len(st.session_state.new_comm_items) > 1:
+                if st.button("🗑️ ลบแถวสุดท้าย", key="comm_del_row_btn"):
+                    st.session_state.new_comm_items.pop()
+                    st.rerun()
+
+        st.markdown("---")
+        col_note, col_summary = st.columns([2, 1])
+        with col_note:
+            com_notes = st.text_area("หมายเหตุท้ายเอกสาร / เงื่อนไข", value=STORE_NOTE, key="comm_notes")
+        with col_summary:
+            discount_pct = st.number_input("ส่วนลด %", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="comm_disc")
+            include_com_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True, key="comm_vat")
+
+        save_doc_btn = st.button("💾 บันทึกเอกสารเข้าสู่ระบบ Sales Pipeline", type="primary", key="comm_save_btn_action")
+
+        if save_doc_btn:
+            discount_amount = com_subtotal * (discount_pct / 100.0)
+            price_after_discount = com_subtotal - discount_amount
+            vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
+            com_grand = price_after_discount + vat_amount
+
+            if "1." in doc_type_selected:
+                d_type, prefix, initial_status = "QT", P_QT, "รออนุมัติ"
+            elif "2." in doc_type_selected:
+                d_type, prefix, initial_status = "IV", P_IV, "รอส่งสินค้า"
+            elif "3." in doc_type_selected:
+                d_type, prefix, initial_status = "TAX", P_TAX, "รอออกใบเสร็จ"
+            elif "4." in doc_type_selected:
+                d_type, prefix, initial_status = "RC", P_RC, "เสร็จสิ้นการขาย"
+            elif "5." in doc_type_selected:
+                d_type, prefix, initial_status = "CN", P_CN, "ใบลดหนี้"
+            else:
+                d_type, prefix, initial_status = "DN", P_DN, "ใบเพิ่มหนี้"
+
+            doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+            items_json_str = json.dumps(com_items_list, ensure_ascii=False)
+
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_phone, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, 0.0, vat_amount, com_grand, com_notes))
+                conn.commit()
+                cursor.close()
+                st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
+
+    else:
+        # --- TAB 2: Sales Pipeline & Workflow Tracking ---
+        st.subheader("📋 ติดตามสถานะเอกสารและการส่งข้อมูล (Sales Pipeline)")
+        st.markdown("ระบบจะควบคุมลำดับ: **ใบเสนอราคา (รออนุมัติ) ➡️ ใบส่งสินค้า/แจ้งหนี้ ➡️ ใบกำกับภาษี ➡️ ใบเสร็จรับเงิน (เสร็จสิ้น)**")
+
+        try:
+            pipeline_df = pd.read_sql("SELECT id, doc_no, doc_type, status, customer_name, grand_total, currency, created_at FROM commercial_docs ORDER BY id DESC;", conn)
+        except Exception:
+            init_db(conn)
+            try:
+                pipeline_df = pd.read_sql("SELECT id, doc_no, doc_type, status, customer_name, grand_total, currency, created_at FROM commercial_docs ORDER BY id DESC;", conn)
+            except Exception:
+                pipeline_df = pd.DataFrame()
+
+        if not pipeline_df.empty:
+            st.dataframe(pipeline_df, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("⚙️ ดำเนินการส่งต่อสถานะ (Convert & Workflow Actions)")
+            
+            selected_doc_no = st.selectbox("เลือกเลขที่เอกสารที่ต้องการจัดการ", pipeline_df['doc_no'].tolist())
+            cur_doc = pd.read_sql(f"SELECT * FROM commercial_docs WHERE doc_no = '{selected_doc_no}';", conn).iloc[0]
+
+            st.info(f"📄 **เอกสาร:** {cur_doc['doc_no']} | **ประเภท:** {cur_doc['doc_type']} | **ลูกค้า:** {cur_doc['customer_name']} | **สถานะปัจจุบัน:** 📌 **{cur_doc['status']}** | **ยอดรวม:** {cur_doc['grand_total']:,.2f} {cur_doc['currency']}")
+
+            col_act1, col_act2 = st.columns(2)
+            with col_act1:
+                next_action_label = ""
+                target_next_type = ""
+                target_next_status = ""
+
+                if cur_doc['doc_type'] == 'QT' and cur_doc['status'] == 'รออนุมัติ':
+                    next_action_label = "✅ อนุมัติ และส่งข้อมูลไปใบส่งสินค้า/แจ้งหนี้ (DO/IV)"
+                    target_next_type, target_next_status = "IV", "รอส่งสินค้า"
+                elif cur_doc['doc_type'] == 'IV' and cur_doc['status'] in ['รอส่งสินค้า', 'อนุมัติแล้ว']:
+                    next_action_label = "🚚 ส่งสินค้าแล้ว และส่งข้อมูลไปใบกำกับภาษี (TAX)"
+                    target_next_type, target_next_status = "TAX", "รอออกใบเสร็จ"
+                elif cur_doc['doc_type'] == 'TAX' and cur_doc['status'] == 'รอออกใบเสร็จ':
+                    next_action_label = "💵 ออกใบเสร็จรับเงิน (RC) เพื่อรับชำระ"
+                    target_next_type, target_next_status = "RC", "เสร็จสิ้นการขาย"
+                elif cur_doc['doc_type'] == 'RC' and cur_doc['status'] != 'เสร็จสิ้นการขาย':
+                    next_action_label = "🎉 ยืนยันรับชำระ (เสร็จสิ้นการขาย)"
+                    target_next_status = "เสร็จสิ้นการขาย"
+
+                if next_action_label:
+                    if st.button(next_action_label):
+                        cursor = conn.cursor()
+                        if target_next_type:
+                            if target_next_type == 'IV': prefix = P_IV
+                            elif target_next_type == 'TAX': prefix = P_TAX
+                            else: prefix = P_RC
+
+                            new_doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+                            cursor.execute("""
+                                INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (new_doc_no_gen, target_next_type, target_next_status, cur_doc['customer_name'], cur_doc.get('customer_phone', ''), cur_doc['customer_tax'], cur_doc['customer_branch'], cur_doc['customer_address'], cur_doc['doc_date'], cur_doc['due_date'], cur_doc['salesperson'], cur_doc['currency'], cur_doc['items_json'], cur_doc['subtotal'], cur_doc['discount_pct'], cur_doc['vat_amount'], cur_doc['grand_total'], cur_doc['doc_no'], cur_doc['notes']))
+                        
+                        cursor.execute("UPDATE commercial_docs SET status = 'อนุมัติ/ส่งต่อแล้ว' WHERE doc_no = ?", (selected_doc_no,))
+                        conn.commit()
+                        cursor.close()
+                        st.success(f"ส่งข้อมูลและอัปเดตสถานะสำเร็จ!")
+                        st.rerun()
+                else:
+                    st.success("🎉 เอกสารฉบับนี้อยู่ในสถานะ 'เสร็จสิ้นการขาย' สมบูรณ์แล้ว")
+
+            with col_act2:
+                if st.button("🖨️ พิมพ์เอกสารนี้ทันที (FlowAccount Style)"):
+                    items_parsed = json.loads(cur_doc['items_json'])
+                    print_items_html = ""
+                    for idx, val in enumerate(items_parsed):
+                        q_v = float(val[1]) if len(val) > 1 and pd.notna(val[1]) else 1.0
+                        p_v = float(val[2]) if len(val) > 2 and pd.notna(val[2]) else 0.0
+                        t_v = float(val[3]) if len(val) > 3 and pd.notna(val[3]) else q_v * p_v
+                        print_items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:8px;'>{idx+1}. {val[0]}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:center;'>{q_v}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{p_v:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:8px; text-align:right;'>{t_v:,.2f}</td></tr>"
+
+                    d_t = cur_doc['doc_type']
+                    if d_t == 'QT':
+                        t_title, t_color, l_sign, r_sign = "ใบเสนอราคา / QUOTATION", "#0d9488", "ผู้เสนอราคา", "ผู้อนุมัติ / ลูกค้า"
+                    elif d_t == 'IV':
+                        t_title, t_color, l_sign, r_sign = "ใบส่งสินค้า / ใบแจ้งหนี้", "#2563eb", "ผู้ส่งสินค้า / ผู้ออกเอกสาร", "ผู้รับสินค้า / ลูกค้า"
+                    elif d_t == 'TAX':
+                        t_title, t_color, l_sign, r_sign = "ใบกำกับภาษี / TAX INVOICE", "#4f46e5", "ผู้มีอำนาจออกเอกสาร", "ผู้รับบริการ / ลูกค้า"
+                    elif d_t == 'RC':
+                        t_title, t_color, l_sign, r_sign = "ใบเสร็จรับเงิน / CASH RECEIPT", "#16a34a", "ผู้รับเงิน / ผู้ออกเอกสาร", "ผู้จ่ายเงิน / ลูกค้า"
+                    elif d_t == 'CN':
+                        t_title, t_color, l_sign, r_sign = "ใบลดหนี้ / CREDIT NOTE", "#d97706", "ผู้ออกใบลดหนี้", "ผู้รับใบลดหนี้ / ลูกค้า"
+                    else:
+                        t_title, t_color, l_sign, r_sign = "ใบเพิ่มหนี้ / DEBIT NOTE", "#e11d48", "ผู้ออกใบเพิ่มหนี้", "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
+
+                    logo_img_header_tag = ""
+                    if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+                        logo_hdr_uri = get_img_base64(LOGO_PATH)
+                        if logo_hdr_uri:
+                            logo_img_header_tag = f'<img src="{logo_hdr_uri}" style="max-height: 45px; vertical-align: middle; margin-right: 10px;">'
+
+                    def make_social_qr(link, label):
+                        if not link: return ""
+                        s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
+                        s_b64 = base64.b64encode(s_stream.getvalue()).decode()
+                        return f'<div style="text-align:center; display:inline-block; margin: 0 6px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:8px;">{label}</span></div>'
+
+                    social_html = ""
+                    if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
+                    if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
+                    if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+                    if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
+
+                    watermark_html = ""
+                    if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+                        wm_data_uri = get_img_base64(WATERMARK_PATH)
+                        if wm_data_uri:
+                            watermark_html = f'''
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: {WM_OPACITY}; z-index: 0; pointer-events: none; text-align: center; width: {WM_SIZE}%;">
+                                <img src="{wm_data_uri}" style="width: 100%; height: auto;">
+                            </div>
+                            '''
+
+                    subtotal = float(cur_doc['subtotal']) if cur_doc['subtotal'] is not None else 0.0
+                    discount_pct = float(cur_doc['discount_pct']) if pd.notna(cur_doc['discount_pct']) else 0.0
+                    vat_amount = float(cur_doc['vat_amount']) if pd.notna(cur_doc['vat_amount']) else 0.0
+                    grand_total = float(cur_doc['grand_total']) if cur_doc['grand_total'] is not None else 0.0
+                    
+                    discount_amount = subtotal * (discount_pct / 100.0)
+                    
+                    summary_rows = f'<tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 100px;">{subtotal:,.2f}</td></tr>'
+                    if discount_amount > 0:
+                        summary_rows += f'<tr><td style="text-align: right;"><b>ส่วนลด ({discount_pct}%):</b></td><td style="text-align: right; width: 100px;">-{discount_amount:,.2f}</td></tr>'
+                    if vat_amount > 0:
+                        summary_rows += f'<tr><td style="text-align: right;"><b>ภาษีมูลค่าเพิ่ม 7%:</b></td><td style="text-align: right; width: 100px;">{vat_amount:,.2f}</td></tr>'
+
+                    commercial_qr_tag = ""
+                    if d_t in ['RC', 'TAX', 'IV'] and STORE_PROMPTPAY:
+                        q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                        q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                        b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                        commercial_qr_tag = f'''
+                        <div style="text-align: right; margin-top: 4px;">
+                            <img src="data:image/png;base64,{b64_qr}" width="95px"><br>
+                            <span style="font-size:8px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {cur_doc['currency']}</b></span>
+                        </div>
+                        '''
+
+                    c_phone_val = cur_doc['customer_phone'] if 'customer_phone' in cur_doc.index and pd.notna(cur_doc['customer_phone']) else "-"
+                    c_tax_val = cur_doc['customer_tax'] if pd.notna(cur_doc['customer_tax']) else "-"
+                    c_branch_val = cur_doc['customer_branch'] if pd.notna(cur_doc['customer_branch']) else "-"
+                    c_addr_val = cur_doc['customer_address'] if pd.notna(cur_doc['customer_address']) else "-"
+
+                    print_html_full = f"""
+                    <html>
+                    <head>
+                    <style>
+                        @page {{ size: A4 portrait; margin: 5mm; }}
+                        body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 5px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                        .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
+                        .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
+                        .print-btn-container {{ margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }}
+                        .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 8mm 10mm; width: 190mm; height: 260mm; max-height: 260mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+                        .content-wrap {{ position: relative; z-index: 1; }}
+                        .header-tbl {{ width: 100%; border-collapse: collapse; }}
+                        .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8mm; margin: 6px 0; font-size: 11px; }}
+                        .cust-box td {{ padding: 2px 4px; word-break: normal; overflow-wrap: break-word; }}
+                        .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }}
+                        .items-tbl th {{ background: {t_color}; color: white; padding: 6px 6px; text-align: left; font-weight: 600; }}
+                        .items-tbl td {{ padding: 5px 6px; border-bottom: 1px solid #e2e8f0; word-break: normal; overflow-wrap: break-word; }}
+                        .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }}
+                        .summary-tbl td {{ padding: 3px 6px; }}
+                        .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 8px; }}
+                        .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 10px; }}
+                        .nodate-field {{ display: none; }}
+                        @media print {{
+                            body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                            .flow-container {{ 
+                                border: none; 
+                                box-shadow: none; 
+                                padding: 6mm 8mm; 
+                                width: 100%; 
+                                height: 285mm; 
+                                max-height: 285mm; 
+                                display: flex; 
+                                flex-direction: column; 
+                                justify-content: space-between; 
+                                page-break-after: avoid;
+                                page-break-inside: avoid;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }}
+                        }}
+                    </style>
+                    <script>
+                        function printNoDate() {{
+                            var normalDates = document.getElementsByClassName('normal-date');
+                            var nodateFields = document.getElementsByClassName('nodate-field');
+                            for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'none'; }}
+                            for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'inline'; }}
+                            window.print();
+                            setTimeout(function() {{
+                                for(var i=0; i<normalDates.length; i++) {{ normalDates[i].style.display = 'inline'; }}
+                                for(var i=0; i<nodateFields.length; i++) {{ nodateFields[i].style.display = 'none'; }}
+                            }}, 500);
+                        }}
+                    </script>
+                    </head>
+                    <body>
+                        <div class="print-btn-container">
+                            <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                            <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
+                        </div>
+                        <div class="flow-container">
+                            {watermark_html}
+                            <div class="content-wrap">
+                                <table class="header-tbl">
+                                    <tr>
+                                        <td style="vertical-align: top; width: 60%;">
+                                            <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                                                {logo_img_header_tag}
+                                                <h2 style="margin: 0; color: #0f172a; font-size: 20px; line-height: 1.1;">
+                                                    <b>ร้านโซนคอมพิวเตอร์</b><br>
+                                                    <span style="font-size: 15px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
+                                                </h2>
+                                            </div>
+                                            <p style="font-size: 11px; margin: 2px 0; color: #475569; line-height: 1.2; word-break: normal;">
+                                                ที่อยู่: {STORE_ADDRESS}<br>
+                                                โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
+                                            </p>
+                                        </td>
+                                        <td style="text-align: right; vertical-align: top; width: 40%;">
+                                            <div style="background: {t_color}; color: white; padding: 5px 12px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 13px; margin-bottom: 4px;">
+                                                {t_title}
+                                            </div>
+                                            <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
+                                            <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
+                                            <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>พนักงานขาย:</b> {cur_doc['salesperson']} | <b>สกุลเงิน:</b> {cur_doc['currency']}</p>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <table class="cust-box tbl">
+                                    <tr>
+                                        <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']} ({c_branch_val})</td>
+                                        <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width: 50%;"><b>ที่อยู่:</b> {cur_doc['customer_address']}</td>
+                                        <td style="width: 50%;"><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'}</td>
+                                    </tr>
+                                </table>
+
+                                <table class="items-tbl">
+                                    <tr>
+                                        <th>รายการสินค้า / บริการ / อะไหล่</th>
+                                        <th style="text-align: center; width: 50px;">จำนวน</th>
+                                        <th style="text-align: right; width: 90px;">ราคา/หน่วย</th>
+                                        <th style="text-align: right; width: 110px;">จำนวนเงิน ({cur_doc['currency']})</th>
+                                    </tr>
+                                    {print_items_html}
+                                </table>
+
+                                <table style="width: 100%; margin-top: 6px;">
+                                    <tr>
+                                        <td style="vertical-align: top; width: 55%; padding-top: 4px; font-size: 11px; color: #64748b; word-break: normal;">
+                                            <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
+                                        </td>
+                                        <td style="width: 45%;">
+                                            <table class="summary-tbl">
+                                                {summary_rows}
+                                                <tr><td style="text-align: right; font-size: 13px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; width: 120px; font-size: 13px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
+                                            </table>
+                                            {commercial_qr_tag}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="content-wrap">
+                                <div class="footer-section">
+                                    <div class="footer-box">
+                                        <div style="width: 55%; margin: 0 auto;">
+                                            <table style="width: 100%; text-align: center; font-size: 10px; border-collapse: collapse;">
+                                                <tr>
+                                                    <td style="padding-bottom: 2px; width: 50%; line-height: 1.8;">
+                                                        ลงชื่อ ......................................................<br>
+                                                        ({l_sign})<br>
+                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
+                                                    </td>
+                                                    <td style="padding-bottom: 2px; width: 50%; line-height: 1.8;">
+                                                        ลงชื่อ ......................................................<br>
+                                                        ({r_sign})<br>
+                                                        วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+
+                                        <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 6px;">
+                                            <div style="text-align: center; background: #f8fafc; padding: 3px 5px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
+                                                <div style="display: flex; gap: 3px;">{social_html}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                    components.html(print_html_full, height=1050, scrolling=True)
+        else:
+            st.info("ยังไม่มีเอกสารการค้าในระบบ สามารถไปที่แท็บ 'สร้างเอกสารใหม่' เพื่อเริ่มใช้งานได้เลยครับ")
 
 # ==========================================
 # 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
