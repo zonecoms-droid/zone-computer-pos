@@ -1435,7 +1435,21 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     .nodate-field {{ display: none; }}
                     @media print {{
                         body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                        .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; height: auto; }}
+                        .flow-container {{ 
+                            border: none; 
+                            box-shadow: none; 
+                            padding: 8mm 10mm; 
+                            width: 100%; 
+                            height: 275mm; 
+                            max-height: 275mm; 
+                            display: flex; 
+                            flex-direction: column; 
+                            justify-content: space-between; 
+                            page-break-after: avoid;
+                            page-break-inside: avoid;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }}
                     }}
                 </style>
                 <script>
@@ -1571,121 +1585,137 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
     st.markdown("---")
 
     if sub_menu == "📝 สร้างเอกสารใหม่ (Create Document)":
-        with st.form("commercial_docs_form"):
-            col_c1, col_c2 = st.columns(2)
-            with col_c1:
-                st.subheader("🏢 ข้อมูลลูกค้า / คู่ค้า")
-                c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด")
-                c_target_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value="")
-                c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012")
-                c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
-                c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี")
-            with col_c2:
-                st.subheader("📅 ประเภทเอกสาร & เงื่อนไข")
-                
-                doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
-                    "1. ใบเสนอราคา (Quotation - QT)",
-                    "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
-                    "3. ใบกำกับภาษี (Tax Invoice - TAX)",
-                    "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
-                    "5. ใบลดหนี้ (Credit Note - CN)",
-                    "6. ใบเพิ่มหนี้ (Debit Note - DN)"
-                ])
-
-                date_mode = st.radio("รูปแบบวันที่ออกเอกสาร", ["ระบุวันที่อัตโนมัติ", "เว้นช่องว่างเส้นประ (สำหรับลงวันที่ด้วยมือ)"], horizontal=True)
-                if date_mode == "ระบุวันที่อัตโนมัติ":
-                    c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today())
-                    c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
-                    credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30)
-                    due_date = c_doc_date + timedelta(days=int(credit_days))
-                    due_date_str = due_date.strftime('%Y-%m-%d')
-                else:
-                    c_doc_date_str = "...................................."
-                    due_date_str = "...................................."
-                
-                salesperson = st.text_input("พนักงานขาย", value="ช่างดิด")
-                currency = st.selectbox("สกุลเงิน", [DEF_CURR, "THB", "USD", "EUR"])
-                
-                is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
-                c_pay_method = "โอนเงินผ่าน PromptPay QR"
-                if not is_no_payment_doc:
-                    c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "บัตรเครดิต"])
-
-            ref_doc_no_input = ""
-            cn_dn_reason = ""
-            if "ลดหนี้" in doc_type_selected or "เพิ่มหนี้" in doc_type_selected:
-                st.markdown("---")
-                st.subheader("📎 ข้อมูลอ้างอิงเอกสารเดิม")
-                r_col1, r_col2 = st.columns(2)
-                with r_col1:
-                    ref_doc_no_input = st.text_input("อ้างอิงเลขที่ใบกำกับภาษีเดิม", value="IV-20260301-001")
-                with r_col2:
-                    cn_dn_reason = st.text_input("สาเหตุ", value="คืนสินค้าชำรุด / คิดราคาผิดพลาด")
-
-            st.markdown("---")
-            st.subheader("🛒 รายการสินค้า / บริการ")
-            num_com_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.subheader("🏢 ข้อมูลลูกค้า / คู่ค้า")
+            c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด", key="comm_c_name")
+            c_target_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value="", key="comm_c_phone")
+            c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012", key="comm_c_tax")
+            c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่", key="comm_c_branch")
+            c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี", key="comm_c_addr")
+        with col_c2:
+            st.subheader("📅 ประเภทเอกสาร & เงื่อนไข")
             
-            com_subtotal = 0.0
-            com_items_list = []
+            doc_type_selected = st.selectbox("🎯 เลือกประเภทเอกสารเริ่มต้น", [
+                "1. ใบเสนอราคา (Quotation - QT)",
+                "2. ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - DO/IV)",
+                "3. ใบกำกับภาษี (Tax Invoice - TAX)",
+                "4. ใบเสร็จรับเงิน (Cash Receipt - RC)",
+                "5. ใบลดหนี้ (Credit Note - CN)",
+                "6. ใบเพิ่มหนี้ (Debit Note - DN)"
+            ], key="comm_doc_type")
+
+            date_mode = st.radio("รูปแบบวันที่ออกเอกสาร", ["ระบุวันที่อัตโนมัติ", "เว้นช่องว่างเส้นประ (สำหรับลงวันที่ด้วยมือ)"], horizontal=True, key="comm_date_mode")
+            if date_mode == "ระบุวันที่อัตโนมัติ":
+                c_doc_date = st.date_input("วันที่ออกเอกสาร", datetime.today(), key="comm_doc_date")
+                c_doc_date_str = c_doc_date.strftime('%Y-%m-%d')
+                credit_days = st.number_input("เครดิต (วัน)", min_value=0, value=30, key="comm_credit_days")
+                due_date = c_doc_date + timedelta(days=int(credit_days))
+                due_date_str = due_date.strftime('%Y-%m-%d')
+            else:
+                c_doc_date_str = "...................................."
+                due_date_str = "...................................."
             
-            for ci in range(int(num_com_items)):
-                ccols = st.columns([3, 1, 1, 1])
-                with ccols[0]:
-                    c_desc = st.text_input(f"รายการที่ {ci+1}", value=f"จำหน่าย/บริการคอมพิวเตอร์ รายการที่ {ci+1}", key=f"com_desc_{ci}")
-                with ccols[1]:
-                    c_qty = st.number_input("จำนวน", min_value=1.0, value=1.0, key=f"com_qty_{ci}")
-                with ccols[2]:
-                    c_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"com_price_{ci}")
-                with ccols[3]:
-                    c_tot = float(c_qty) * float(c_price)
-                    st.text_input("รวม", value=f"{c_tot:,.2f}", disabled=True, key=f"com_tot_{ci}")
-                com_subtotal += c_tot
-                com_items_list.append((c_desc, c_qty, c_price, c_tot))
+            salesperson = st.text_input("พนักงานขาย", value="ช่างดิด", key="comm_salesperson")
+            currency = st.selectbox("สกุลเงิน", [DEF_CURR, "THB", "USD", "EUR"], key="comm_currency")
+            
+            is_no_payment_doc = any(k in doc_type_selected for k in ["ใบเสนอราคา", "ใบส่งสินค้า", "ใบกำกับภาษี"])
+            c_pay_method = "โอนเงินผ่าน PromptPay QR"
+            if not is_no_payment_doc:
+                c_pay_method = st.selectbox("ช่องทางการชำระเงิน", ["โอนเงินผ่าน PromptPay QR", "เงินสด", "บัตรเครดิต"], key="comm_pay_method")
 
+        ref_doc_no_input = ""
+        cn_dn_reason = ""
+        if "ลดหนี้" in doc_type_selected or "เพิ่มหนี้" in doc_type_selected:
             st.markdown("---")
-            col_note, col_summary = st.columns([2, 1])
-            with col_note:
-                com_notes = st.text_area("หมายเหตุท้ายเอกสาร / เงื่อนไข", value=STORE_NOTE)
-            with col_summary:
-                discount_pct = st.number_input("ส่วนลด %", min_value=0.0, max_value=100.0, value=0.0, step=0.1)
-                include_com_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True)
+            st.subheader("📎 ข้อมูลอ้างอิงเอกสารเดิม")
+            r_col1, r_col2 = st.columns(2)
+            with r_col1:
+                ref_doc_no_input = st.text_input("อ้างอิงเลขที่ใบกำกับภาษีเดิม", value="IV-20260301-001", key="comm_ref_doc")
+            with r_col2:
+                cn_dn_reason = st.text_input("สาเหตุ", value="คืนสินค้าชำรุด / คิดราคาผิดพลาด", key="comm_reason")
 
-            save_doc_btn = st.form_submit_button("💾 บันทึกเอกสารเข้าสู่ระบบ Sales Pipeline")
+        st.markdown("---")
+        st.subheader("🛒 รายการสินค้า / บริการ")
 
-            if save_doc_btn:
-                discount_amount = com_subtotal * (discount_pct / 100.0)
-                price_after_discount = com_subtotal - discount_amount
-                vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
-                com_grand = price_after_discount + vat_amount
+        if 'new_comm_items' not in st.session_state:
+            st.session_state.new_comm_items = [
+                {'desc': 'จำหน่าย/บริการคอมพิวเตอร์ รายการที่ 1', 'qty': 1.0, 'price': 1500.0}
+            ]
 
-                if "1." in doc_type_selected:
-                    d_type, prefix, initial_status = "QT", P_QT, "รออนุมัติ"
-                elif "2." in doc_type_selected:
-                    d_type, prefix, initial_status = "IV", P_IV, "รอส่งสินค้า"
-                elif "3." in doc_type_selected:
-                    d_type, prefix, initial_status = "TAX", P_TAX, "รอออกใบเสร็จ"
-                elif "4." in doc_type_selected:
-                    d_type, prefix, initial_status = "RC", P_RC, "เสร็จสิ้นการขาย"
-                elif "5." in doc_type_selected:
-                    d_type, prefix, initial_status = "CN", P_CN, "ใบลดหนี้"
-                else:
-                    d_type, prefix, initial_status = "DN", P_DN, "ใบเพิ่มหนี้"
+        com_subtotal = 0.0
+        com_items_list = []
 
-                doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
-                items_json_str = json.dumps(com_items_list, ensure_ascii=False)
+        for idx, row in enumerate(st.session_state.new_comm_items):
+            ccols = st.columns([3, 1, 1, 1])
+            with ccols[0]:
+                d_val = st.text_input(f"รายการที่ {idx+1}", value=row['desc'], key=f"comm_desc_{idx}")
+            with ccols[1]:
+                q_val = st.number_input("จำนวน", min_value=1.0, value=float(row['qty']), key=f"comm_qty_{idx}")
+            with ccols[2]:
+                p_val = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=float(row['price']), key=f"comm_price_{idx}")
+            with ccols[3]:
+                tot_val = q_val * p_val
+                st.markdown(f"<div style='padding-top: 28px; font-weight: bold;'>{tot_val:,.2f}</div>", unsafe_allow_html=True)
+            
+            com_subtotal += tot_val
+            com_items_list.append((d_val, q_val, p_val, tot_val))
+            st.session_state.new_comm_items[idx] = {'desc': d_val, 'qty': q_val, 'price': p_val}
 
-                try:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_phone, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, com_notes))
-                    conn.commit()
-                    cursor.close()
-                    st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
-                except Exception as e:
-                    st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
+        b_col1, b_col2 = st.columns([1, 1])
+        with b_col1:
+            if st.button("➕ เพิ่มแถวรายการ", key="comm_add_row"):
+                st.session_state.new_comm_items.append({'desc': f'รายการสินค้า/บริการ {len(st.session_state.new_comm_items)+1}', 'qty': 1.0, 'price': 1500.0})
+                st.rerun()
+        with b_col2:
+            if len(st.session_state.new_comm_items) > 1:
+                if st.button("🗑️ ลบแถวสุดท้าย", key="comm_del_row"):
+                    st.session_state.new_comm_items.pop()
+                    st.rerun()
+
+        st.markdown("---")
+        col_note, col_summary = st.columns([2, 1])
+        with col_note:
+            com_notes = st.text_area("หมายเหตุท้ายเอกสาร / เงื่อนไข", value=STORE_NOTE, key="comm_notes")
+        with col_summary:
+            discount_pct = st.number_input("ส่วนลด %", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="comm_disc")
+            include_com_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True, key="comm_vat")
+
+        save_doc_btn = st.button("💾 บันทึกเอกสารเข้าสู่ระบบ Sales Pipeline", type="primary", key="comm_save_btn")
+
+        if save_doc_btn:
+            discount_amount = com_subtotal * (discount_pct / 100.0)
+            price_after_discount = com_subtotal - discount_amount
+            vat_amount = price_after_discount * 0.07 if include_com_vat else 0.0
+            com_grand = price_after_discount + vat_amount
+
+            if "1." in doc_type_selected:
+                d_type, prefix, initial_status = "QT", P_QT, "รออนุมัติ"
+            elif "2." in doc_type_selected:
+                d_type, prefix, initial_status = "IV", P_IV, "รอส่งสินค้า"
+            elif "3." in doc_type_selected:
+                d_type, prefix, initial_status = "TAX", P_TAX, "รอออกใบเสร็จ"
+            elif "4." in doc_type_selected:
+                d_type, prefix, initial_status = "RC", P_RC, "เสร็จสิ้นการขาย"
+            elif "5." in doc_type_selected:
+                d_type, prefix, initial_status = "CN", P_CN, "ใบลดหนี้"
+            else:
+                d_type, prefix, initial_status = "DN", P_DN, "ใบเพิ่มหนี้"
+
+            doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+            items_json_str = json.dumps(com_items_list, ensure_ascii=False)
+
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_phone, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, com_notes))
+                conn.commit()
+                cursor.close()
+                st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
 
     else:
         # --- TAB 2: Sales Pipeline & Workflow Tracking ---
@@ -1955,7 +1985,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                 {summary_rows}
                                                 <tr><td style="text-align: right; font-size: 13px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; width: 120px; font-size: 13px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                             </table>
-                                            {commercial_qr_tag}
                                         </td>
                                     </tr>
                                 </table>
