@@ -1435,22 +1435,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     .nodate-field {{ display: none; }}
                     @media print {{
                         body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                        .print-btn-container {{ display: none !important; }}
-                        .flow-container {{ 
-                            border: none; 
-                            box-shadow: none; 
-                            padding: 8mm 10mm; 
-                            width: 100%; 
-                            height: 275mm; 
-                            max-height: 275mm; 
-                            display: flex; 
-                            flex-direction: column; 
-                            justify-content: space-between; 
-                            page-break-after: avoid;
-                            page-break-inside: avoid;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }}
+                        .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; height: auto; }}
                     }}
                 </style>
                 <script>
@@ -1874,7 +1859,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         .nodate-field {{ display: none; }}
                         @media print {{
                             body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                            .print-btn-container {{ display: none !important; }}
                             .flow-container {{ 
                                 border: none; 
                                 box-shadow: none; 
