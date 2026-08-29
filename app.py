@@ -1415,35 +1415,41 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 <html>
                 <head>
                 <style>
-                    @page {{ size: A4 portrait; margin: 0; }}
+                    @page {{ size: A4 portrait; margin: 8mm; }}
                     body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                     .print-btn {{ background-color: {t_color}; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                     .btn-print-nodate {{ background-color: #475569; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; }}
                     .print-btn-container {{ margin-bottom: 12px; display: flex; gap: 10px; justify-content: center; }}
-                    .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 10mm 12mm; width: 190mm; min-height: 260mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; margin: 0 auto; }}
+                    .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 10mm 12mm; width: 190mm; height: 265mm; max-height: 265mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                     .content-wrap {{ position: relative; z-index: 1; }}
                     .header-tbl {{ width: 100%; border-collapse: collapse; }}
                     .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 12px; }}
-                    .cust-box td {{ padding: 3px 6px; word-break: break-word; }}
+                    .cust-box td {{ padding: 3px 6px; word-break: normal; overflow-wrap: break-word; }}
                     .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }}
                     .items-tbl th {{ background: {t_color}; color: white; padding: 8px 6px; text-align: left; font-weight: 600; }}
-                    .items-tbl td {{ padding: 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
+                    .items-tbl td {{ padding: 6px; border-bottom: 1px solid #e2e8f0; word-break: normal; overflow-wrap: break-word; }}
                     .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }}
                     .summary-tbl td {{ padding: 4px 8px; }}
-                    .footer-section {{ margin-top: 25px; border-top: 1px solid #cbd5e1; padding-top: 10px; }}
+                    .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 10px; }}
                     .footer-box {{ display: flex; justify-content: space-between; align-items: flex-start; font-size: 11px; }}
                     .nodate-field {{ display: none; }}
                     @media print {{
-                        body {{ background: white; padding: 0; margin: 0; }}
+                        body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                         .print-btn-container {{ display: none !important; }}
                         .flow-container {{ 
-                            border: none !important; 
-                            box-shadow: none !important; 
-                            padding: 10mm !important; 
-                            width: 100% !important; 
-                            min-height: auto !important;
-                            height: auto !important;
-                            margin: 0 !important;
+                            border: none; 
+                            box-shadow: none; 
+                            padding: 8mm 10mm; 
+                            width: 100%; 
+                            height: 275mm; 
+                            max-height: 275mm; 
+                            display: flex; 
+                            flex-direction: column; 
+                            justify-content: space-between; 
+                            page-break-after: avoid;
+                            page-break-inside: avoid;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }}
                     }}
                 </style>
@@ -1463,7 +1469,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 </head>
                 <body>
                     <div class="print-btn-container">
-                        <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                        <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                         <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                     </div>
                     <div class="flow-container">
@@ -1479,7 +1485,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <span style="font-size: 16px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
                                             </h2>
                                         </div>
-                                        <p style="font-size: 11px; margin: 3px 0; color: #475569; line-height: 1.3; word-break: break-word;">
+                                        <p style="font-size: 11px; margin: 3px 0; color: #475569; line-height: 1.3; word-break: normal;">
                                             ที่อยู่: {STORE_ADDRESS}<br>
                                             โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                         </p>
@@ -1517,14 +1523,15 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                             <table style="width: 100%; margin-top: 8px;">
                                 <tr>
-                                    <td style="vertical-align: top; width: 55%; padding-top: 5px; font-size: 11px; color: #64748b; word-break: break-word;">
+                                    <td style="vertical-align: top; width: 55%; padding-top: 5px; font-size: 11px; color: #64748b; word-break: normal;">
                                         <b>หมายเหตุ / เงื่อนไขการรับประกัน ({warrant_days} วัน):</b><br>
                                         {custom_notes}
                                     </td>
                                     <td style="width: 45%;">
                                         <table class="summary-tbl">
-                                            {summary_rows}
-                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
+                                            <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 110px;">{subtotal:,.2f} บาท</td></tr>
+                                            {vat_html}
+                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                         </table>
                                         {commercial_qr_tag}
                                     </td>
@@ -1856,10 +1863,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                         .content-wrap {{ position: relative; z-index: 1; }}
                         .header-tbl {{ width: 100%; border-collapse: collapse; }}
                         .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8mm; margin: 6px 0; font-size: 11px; }}
-                        .cust-box td {{ padding: 2px 4px; word-break: break-word; }}
+                        .cust-box td {{ padding: 2px 4px; word-break: normal; overflow-wrap: break-word; }}
                         .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }}
                         .items-tbl th {{ background: {t_color}; color: white; padding: 6px 6px; text-align: left; font-weight: 600; }}
-                        .items-tbl td {{ padding: 5px 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
+                        .items-tbl td {{ padding: 5px 6px; border-bottom: 1px solid #e2e8f0; word-break: normal; overflow-wrap: break-word; }}
                         .summary-tbl {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }}
                         .summary-tbl td {{ padding: 3px 6px; }}
                         .footer-section {{ margin-top: auto; border-top: 1px solid #cbd5e1; padding-top: 8px; }}
@@ -1917,7 +1924,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                     <span style="font-size: 15px; font-weight: bold; color: {t_color};">แอนด์ เซอร์วิส</span>
                                                 </h2>
                                             </div>
-                                            <p style="font-size: 11px; margin: 2px 0; color: #475569; line-height: 1.2; word-break: break-word;">
+                                            <p style="font-size: 11px; margin: 2px 0; color: #475569; line-height: 1.2; word-break: normal;">
                                                 ที่อยู่: {STORE_ADDRESS}<br>
                                                 โทร: {STORE_PHONE} | เลขผู้เสียภาษี: 1340700066417
                                             </p>
@@ -1956,7 +1963,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                                 <table style="width: 100%; margin-top: 6px;">
                                     <tr>
-                                        <td style="vertical-align: top; width: 55%; padding-top: 4px; font-size: 11px; color: #64748b; word-break: break-word;">
+                                        <td style="vertical-align: top; width: 55%; padding-top: 4px; font-size: 11px; color: #64748b; word-break: normal;">
                                             <b>หมายเหตุ / เงื่อนไข:</b><br>{cur_doc['notes']}
                                         </td>
                                         <td style="width: 45%;">
