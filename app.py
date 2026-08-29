@@ -495,7 +495,7 @@ page_param = query_params.get("page", None)
 if track_code:
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT r.job_code, r.device_name, r.problem_description, r.status, r.created_at, r.updated_at, c.name, r.estimated_cost
+        SELECT r.job_code, r.device_name, r.problem_description, r.status, r.created_at, r.updated_at, c.name, r.estimated_cost, c.phone
         FROM repairs r JOIN customers c ON r.customer_id = c.id
         WHERE r.job_code = ?
     """, (track_code,))
@@ -503,7 +503,7 @@ if track_code:
     cursor.close()
     
     if job_data:
-        j_code, dev, prob, stat, d_in, d_up, c_name, cost_val = job_data
+        j_code, dev, prob, stat, d_in, d_up, c_name, cost_val, c_phone = job_data
         cost_val = float(cost_val) if cost_val is not None else 0.0
         
         status_dict = {
@@ -520,7 +520,6 @@ if track_code:
         name_parts = c_name.split()
         masked_name = f"คุณ {name_parts[0]} ({name_parts[1][0]}***)" if len(name_parts) > 1 else f"คุณ {c_name}"
 
-        # ถ้าซ่อมเสร็จแล้ว (COMPLETED) และมีค่าบริการ พร้อมมีพร้อมเพย์ ให้สร้าง QR Code สำหรับสแกนจ่ายเงิน
         payment_qr_public_html = ""
         if stat == "COMPLETED" and cost_val > 0 and STORE_PROMPTPAY:
             pay_payload = generate_promptpay_payload(STORE_PROMPTPAY, cost_val)
@@ -569,8 +568,10 @@ if track_code:
                 <div class="info-box">
                     <p><b>เลขที่ใบงาน:</b> {j_code}</p>
                     <p><b>ชื่อลูกค้า:</b> {masked_name}</p>
+                    <p><b>เบอร์โทรศัพท์:</b> {c_phone}</p>
                     <p><b>รุ่นอุปกรณ์:</b> {dev}</p>
                     <p><b>อาการแจ้งซ่อม:</b> {prob}</p>
+                    <p><b>ราคาประเมิน / ค่าบริการ:</b> <b style="color: #0284c7;">{cost_val:,.2f} บาท</b></p>
                     <p><b>วันที่แจ้งซ่อม:</b> {d_in}</p>
                 </div>
                 
@@ -587,7 +588,7 @@ if track_code:
         </body>
         </html>
         """
-        components.html(public_html, height=750, scrolling=True)
+        components.html(public_html, height=780, scrolling=True)
     else:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
     st.stop()
@@ -1492,6 +1493,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                             <table class="cust-box tbl">
                                 <tr>
                                     <td style="width: 65%;"><b>ชื่อลูกค้า / บริษัท:</b> {tax_cust_name}</td>
+                                    <td><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
                                 </tr>
                                 <tr>
                                     <td><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
