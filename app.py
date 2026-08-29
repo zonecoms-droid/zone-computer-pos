@@ -495,7 +495,7 @@ page_param = query_params.get("page", None)
 if track_code:
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT r.job_code, r.device_name, r.problem_description, r.status, r.created_at, r.updated_at, c.name
+        SELECT r.job_code, r.device_name, r.problem_description, r.status, r.created_at, r.updated_at, c.name, r.estimated_cost
         FROM repairs r JOIN customers c ON r.customer_id = c.id
         WHERE r.job_code = ?
     """, (track_code,))
@@ -503,7 +503,8 @@ if track_code:
     cursor.close()
     
     if job_data:
-        j_code, dev, prob, stat, d_in, d_up, c_name = job_data
+        j_code, dev, prob, stat, d_in, d_up, c_name, cost_val = job_data
+        cost_val = float(cost_val) if cost_val is not None else 0.0
         
         status_dict = {
             "RECEIVED": ("📥 รับเครื่องเข้าศูนย์ซ่อมแล้ว", "#17a2b8", "ช่างรับเครื่องและบันทึกเข้าสู่ระบบเรียบร้อย"),
@@ -519,6 +520,26 @@ if track_code:
         name_parts = c_name.split()
         masked_name = f"คุณ {name_parts[0]} ({name_parts[1][0]}***)" if len(name_parts) > 1 else f"คุณ {c_name}"
 
+        # ถ้าซ่อมเสร็จแล้ว (COMPLETED) และมีค่าบริการ พร้อมมีพร้อมเพย์ ให้สร้าง QR Code สำหรับสแกนจ่ายเงิน
+        payment_qr_public_html = ""
+        if stat == "COMPLETED" and cost_val > 0 and STORE_PROMPTPAY:
+            pay_payload = generate_promptpay_payload(STORE_PROMPTPAY, cost_val)
+            pay_stream = generate_qr_with_logo(pay_payload, LOGO_PATH, top_label="สแกนจ่ายค่าบริการพร้อมเพย์")
+            pay_b64 = base64.b64encode(pay_stream.getvalue()).decode()
+            payment_qr_public_html = f"""
+            <div style="margin-top: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px;">
+                <p style="margin: 0 0 8px 0; color: #16a34a; font-weight: bold; font-size: 15px;">💰 ยอดค่าบริการทั้งสิ้น: {cost_val:,.2f} บาท</p>
+                <img src="data:image/png;base64,{pay_b64}" width="150px"><br>
+                <span style="font-size: 11px; color: #15803d; font-weight: bold;">สแกนคิวอาร์โค้ดนี้เพื่อชำระเงินผ่านแอปธนาคาร</span>
+            </div>
+            """
+        elif stat == "COMPLETED" and cost_val > 0:
+            payment_qr_public_html = f"""
+            <div style="margin-top: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px;">
+                <p style="margin: 0; color: #16a34a; font-weight: bold; font-size: 15px;">💰 ยอดค่าบริการทั้งสิ้น: {cost_val:,.2f} บาท</p>
+            </div>
+            """
+
         public_html = f"""
         <!DOCTYPE html>
         <html lang="th">
@@ -527,17 +548,17 @@ if track_code:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>ติดตามสถานะงานซ่อม - {STORE_NAME}</title>
             <style>
-                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
-                .card {{ background: white; padding: 30px 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; animation: fadeIn 0.8s ease-in-out; }}
+                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; }}
+                .card {{ background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; animation: fadeIn 0.8s ease-in-out; }}
                 @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-                h2 {{ color: #333; margin-bottom: 5px; font-size: 22px; }}
-                .store-sub {{ color: #666; font-size: 13px; margin-bottom: 20px; }}
-                .info-box {{ background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; font-size: 14px; border-left: 4px solid #007bff; }}
-                .info-box p {{ margin: 6px 0; color: #444; }}
-                .status-badge {{ background-color: {badge_color}; color: white; padding: 12px 20px; border-radius: 30px; font-weight: bold; font-size: 16px; display: inline-block; margin: 15px 0; animation: pulse 2s infinite; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }}
+                h2 {{ color: #333; margin-bottom: 5px; font-size: 20px; }}
+                .store-sub {{ color: #666; font-size: 12px; margin-bottom: 15px; }}
+                .info-box {{ background: #f8f9fa; border-radius: 10px; padding: 12px; margin-bottom: 15px; text-align: left; font-size: 13px; border-left: 4px solid #007bff; }}
+                .info-box p {{ margin: 5px 0; color: #444; }}
+                .status-badge {{ background-color: {badge_color}; color: white; padding: 10px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; display: inline-block; margin: 10px 0; animation: pulse 2s infinite; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }}
                 @keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.03); }} 100% {{ transform: scale(1); }} }}
-                .desc {{ color: #555; font-size: 13px; margin-top: 5px; }}
-                .footer {{ margin-top: 25px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 15px; }}
+                .desc {{ color: #555; font-size: 12px; margin-top: 3px; }}
+                .footer {{ margin-top: 20px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 12px; }}
             </style>
         </head>
         <body>
@@ -556,6 +577,7 @@ if track_code:
                 <div>
                     <div class="status-badge">{thai_status}</div>
                     <div class="desc">ℹ️ {status_desc}</div>
+                    {payment_qr_public_html}
                 </div>
 
                 <div class="footer">
@@ -565,7 +587,7 @@ if track_code:
         </body>
         </html>
         """
-        components.html(public_html, height=650, scrolling=True)
+        components.html(public_html, height=750, scrolling=True)
     else:
         st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
     st.stop()
@@ -1318,7 +1340,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     if not link: return ""
                     s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
                     s_b64 = base64.b64encode(s_stream.getvalue()).decode()
-                    return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="35px"><br><span style="font-size:7px;">{label}</span></div>'
+                    return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="35px"><br><span style="font-size:8px;">{label}</span></div>'
 
                 social_html = ""
                 if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
