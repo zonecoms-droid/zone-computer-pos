@@ -1492,7 +1492,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                             <table class="summary-tbl">
                                                 <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 120px;">{subtotal:,.2f} บาท</td></tr>
                                                 {vat_html}
-                                                <tr><td style="text-align: right; font-size: 15px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; font-size: 15px; color: {t_color};"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                                <tr><td style="text-align: right; font-size: 15px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 150px;"><b>{grand_total:,.2f} บาท</b></td></tr>
                                             </table>
                                             {commercial_qr_tag}
                                         </td>
@@ -1537,12 +1537,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         </html>
                         """
 
-                        components.html(final_html, height=1050, scrolling=True)
-
-        else:
-            st.info("ยังไม่มีข้อมูลงานซ่อมในระบบ")
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาด: {e}")
+                    components.html(final_html, height=1050, scrolling=True)
 
 # ==========================================
 # 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท
