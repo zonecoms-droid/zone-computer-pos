@@ -324,6 +324,13 @@ def init_db(conn):
         )
     ''')
     conn.commit()
+    
+    # เพิ่มคอลัมน์ customer_phone ในตาราง commercial_docs เพื่อรองรับเบอร์โทรลูกค้าในหน้าเอกสาร
+    try:
+        cursor.execute("ALTER TABLE commercial_docs ADD COLUMN customer_phone TEXT;")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
 
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
@@ -800,9 +807,9 @@ if page_param == "commercial_request":
                 
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (doc_no_gen, d_type, status, req_name, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
+                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (doc_no_gen, d_type, status, req_name, req_phone, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
                 conn.commit()
                 cursor.close()
                 
@@ -960,7 +967,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             
             def make_social_qr_inline(link, label):
                 if not link: return ""
-                s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
                 s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                 return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
 
@@ -1587,6 +1594,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
             with col_c1:
                 st.subheader("🏢 ข้อมูลลูกค้า / คู่ค้า")
                 c_target_name = st.text_input("ชื่อลูกค้า / บริษัท", value="บริษัท ลูกค้าตัวอย่าง จำกัด")
+                c_target_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value="")
                 c_target_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก", value="0123456789012")
                 c_target_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
                 c_target_address = st.text_area("ที่อยู่ลูกค้า", value="123 ถนนอุบลราชธานี อำเภอเมือง จังหวัดอุบลราชธานี")
@@ -1688,9 +1696,9 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                 try:
                     cursor = conn.cursor()
                     cursor.execute("""
-                        INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, c_doc_date_str))
+                        INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (doc_no_gen, d_type, initial_status, c_target_name, c_target_phone, c_target_tax, c_target_branch, c_target_address, c_doc_date_str, due_date_str, salesperson, currency, items_json_str, com_subtotal, discount_pct, vat_amount, com_grand, ref_doc_no_input, com_notes))
                     conn.commit()
                     cursor.close()
                     st.success(f"🎉 บันทึกเอกสาร {doc_no_gen} สำเร็จ! ไปที่แท็บ 'ติดตามสถานะและส่งต่อเอกสาร' เพื่อจัดการต่อได้เลยครับ")
@@ -1751,9 +1759,9 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
 
                             new_doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
                             cursor.execute("""
-                                INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (new_doc_no_gen, target_next_type, target_next_status, cur_doc['customer_name'], cur_doc['customer_tax'], cur_doc['customer_branch'], cur_doc['customer_address'], cur_doc['doc_date'], cur_doc['due_date'], cur_doc['salesperson'], cur_doc['currency'], cur_doc['items_json'], cur_doc['subtotal'], cur_doc['discount_pct'], cur_doc['vat_amount'], cur_doc['grand_total'], cur_doc['doc_no'], cur_doc['notes']))
+                                INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, ref_doc_no, notes)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (new_doc_no_gen, target_next_type, target_next_status, cur_doc['customer_name'], cur_doc.get('customer_phone', ''), cur_doc['customer_tax'], cur_doc['customer_branch'], cur_doc['customer_address'], cur_doc['doc_date'], cur_doc['due_date'], cur_doc['salesperson'], cur_doc['currency'], cur_doc['items_json'], cur_doc['subtotal'], cur_doc['discount_pct'], cur_doc['vat_amount'], cur_doc['grand_total'], cur_doc['doc_no'], cur_doc['notes']))
                         
                         cursor.execute("UPDATE commercial_docs SET status = 'อนุมัติ/ส่งต่อแล้ว' WHERE doc_no = ?", (selected_doc_no,))
                         conn.commit()
@@ -1815,11 +1823,21 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             </div>
                             '''
 
-                    subtotal = float(cur_doc['subtotal']) if cur_doc['subtotal'] is not None else 0.0
-                    grand_total = float(cur_doc['grand_total']) if cur_doc['grand_total'] is not None else 0.0
+                    subtotal = float(cur_doc['subtotal']) if pd.notna(cur_doc['subtotal']) else 0.0
+                    discount_pct = float(cur_doc['discount_pct']) if pd.notna(cur_doc['discount_pct']) else 0.0
+                    vat_amount = float(cur_doc['vat_amount']) if pd.notna(cur_doc['vat_amount']) else 0.0
+                    grand_total = float(cur_doc['grand_total']) if pd.notna(cur_doc['grand_total']) else 0.0
+                    
+                    discount_amount = subtotal * (discount_pct / 100.0)
+                    
+                    summary_rows = f'<tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 110px;">{subtotal:,.2f}</td></tr>'
+                    if discount_amount > 0:
+                        summary_rows += f'<tr><td style="text-align: right;"><b>ส่วนลด ({discount_pct}%):</b></td><td style="text-align: right; width: 110px;">-{discount_amount:,.2f}</td></tr>'
+                    if vat_amount > 0:
+                        summary_rows += f'<tr><td style="text-align: right;"><b>ภาษีมูลค่าเพิ่ม 7%:</b></td><td style="text-align: right; width: 110px;">{vat_amount:,.2f}</td></tr>'
 
                     commercial_qr_tag = ""
-                    if d_t in ['RC', 'TAX'] and STORE_PROMPTPAY:
+                    if d_t in ['RC', 'TAX', 'IV'] and STORE_PROMPTPAY:
                         q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
                         q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
                         b64_qr = base64.b64encode(q_stream.getvalue()).decode()
@@ -1829,6 +1847,11 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                             <span style="font-size:9px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {cur_doc['currency']}</b></span>
                         </div>
                         '''
+                        
+                    c_phone_val = cur_doc['customer_phone'] if 'customer_phone' in cur_doc.index and pd.notna(cur_doc['customer_phone']) else "-"
+                    c_tax_val = cur_doc['customer_tax'] if pd.notna(cur_doc['customer_tax']) else "-"
+                    c_branch_val = cur_doc['customer_branch'] if pd.notna(cur_doc['customer_branch']) else "-"
+                    c_addr_val = cur_doc['customer_address'] if pd.notna(cur_doc['customer_address']) else "-"
 
                     print_html_full = f"""
                     <html>
@@ -1888,7 +1911,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                     </head>
                     <body>
                         <div class="print-btn-container">
-                            <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
+                            <button class="print-btn" onclick="window.print()">🖨️ พิมพ์เอกสาร (ปกติ)</button>
                             <button class="btn-print-nodate" onclick="printNoDate()">🖨️ พิมพ์แบบไม่ลงวันที่</button>
                         </div>
                         <div class="flow-container">
@@ -1914,15 +1937,21 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                 {t_title}
                                             </div>
                                             <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
-                                            <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
+                                            <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
                                             <p style="font-size: 12px; margin: 3px 0; color: #334155;"><b>พนักงานขาย:</b> {cur_doc['salesperson']} | <b>สกุลเงิน:</b> {cur_doc['currency']}</p>
                                         </td>
                                     </tr>
                                 </table>
 
                                 <table class="cust-box tbl">
-                                    <tr><td style="width: 100%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']}</td></tr>
-                                    <tr><td><b>ที่อยู่:</b> {cur_doc['customer_address']}</td></tr>
+                                    <tr>
+                                        <td style="width: 65%;"><b>ชื่อลูกค้า / บริษัท:</b> {cur_doc['customer_name']}</td>
+                                        <td><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>ที่อยู่:</b> {c_addr_val}</td>
+                                        <td><b>เลขผู้เสียภาษี:</b> {c_tax_val} ({c_branch_val})</td>
+                                    </tr>
                                 </table>
 
                                 <table class="items-tbl">
@@ -1942,9 +1971,10 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         </td>
                                         <td style="width: 45%;">
                                             <table class="summary-tbl">
-                                                <tr><td style="text-align: right;"><b>รวมเป็นเงิน:</b></td><td style="text-align: right; width: 150px;">{subtotal:,.2f} {cur_doc['currency']}</td></tr>
-                                                <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
+                                                {summary_rows}
+                                                <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px; font-size: 14px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                             </table>
+                                            {commercial_qr_tag}
                                         </td>
                                     </tr>
                                 </table>
@@ -1971,9 +2001,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                         </div>
 
                                         <div style="text-align: right; width: 42%; display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px;">
-                                            <div style="text-align: center;">
-                                                {commercial_qr_tag if 'commercial_qr_tag' in locals() else ''}
-                                            </div>
                                             <div style="text-align: center; background: #f8fafc; padding: 4px 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                                 <div style="font-size:7px; font-weight:bold; color:#475569; margin-bottom:2px;">ติดตามโซเชียลร้านค้า</div>
                                                 <div style="display: flex; gap: 3px;">{social_html}</div>
