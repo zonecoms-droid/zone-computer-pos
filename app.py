@@ -693,7 +693,7 @@ if page_param == "register":
                 st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
                 st.balloons()
             else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญ (ชื่อ, เบอร์โทร, รุ่นอุปกรณ์) ให้ครบถ้วนครับ")
 
     if 'public_registered_job' in st.session_state:
         j_c = st.session_state['public_registered_job']
@@ -1537,7 +1537,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         </html>
                         """
 
-                        components.html(final_html, height=1050, scrolling=True)
+                    components.html(final_html, height=1050, scrolling=True)
 
 # ==========================================
 # 4. ระบบออกเอกสารการค้าครบชุด 6 ประเภท
@@ -1915,6 +1915,7 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                             </table>
                                         </td>
                                     </tr>
+                                endtable
                                 </table>
                             </div>
 
