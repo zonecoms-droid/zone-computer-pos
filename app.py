@@ -570,8 +570,8 @@ if track_code:
                     <p><b>ชื่อลูกค้า:</b> {masked_name}</p>
                     <p><b>เบอร์โทรศัพท์:</b> {c_phone}</p>
                     <p><b>รุ่นอุปกรณ์:</b> {dev}</p>
-                    <p><b>อาการแจ้งซ่อม:</b> {prob}</p>
-                    <p><b>ราคาประเมิน / ค่าบริการ:</b> <b style="color: #0284c7;">{cost_val:,.2f} บาท</b></p>
+                    <p><b>รายการซ่อม:</b> {prob}</p>
+                    <p><b>ราคา / ค่าบริการ:</b> <b style="color: #0284c7;">{cost_val:,.2f} บาท</b></p>
                     <p><b>วันที่แจ้งซ่อม:</b> {d_in}</p>
                 </div>
                 
@@ -1322,18 +1322,21 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             if st.button("🖨️ สร้างเอกสารพร้อมพิมพ์อย่างเป็นทางการ", type="primary", key=f"gen_doc_{selected_job}"):
                 grand_total = subtotal * 1.07 if include_vat else subtotal
                 
+                items_desc_list = []
+                items_html = ""
+                for idx, val in enumerate(st.session_state[items_state_key]):
+                    items_desc_list.append(val['desc'])
+                    items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:6px;'>{idx+1}. {val['desc']}</td><td style='border-bottom:1px solid #e2e8f0; padding:6px; text-align:center;'>{val['qty']}</td><td style='border-bottom:1px solid #e2e8f0; padding:6px; text-align:right;'>{val['price']:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:6px; text-align:right;'>{val['tot']:,.2f}</td></tr>"
+                items_desc_str = ", ".join(items_desc_list)
+
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE repairs 
-                    SET tax_name = ?, tax_id = ?, tax_branch = ?, tax_address = ?
+                    SET tax_name = ?, tax_id = ?, tax_branch = ?, tax_address = ?, estimated_cost = ?, problem_description = ?
                     WHERE job_code = ?
-                """, (tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, selected_job))
+                """, (tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, grand_total, items_desc_str, selected_job))
                 conn.commit()
                 cursor.close()
-
-                items_html = ""
-                for idx, val in enumerate(st.session_state[items_state_key]):
-                    items_html += f"<tr><td style='border-bottom:1px solid #e2e8f0; padding:6px;'>{idx+1}. {val['desc']}</td><td style='border-bottom:1px solid #e2e8f0; padding:6px; text-align:center;'>{val['qty']}</td><td style='border-bottom:1px solid #e2e8f0; padding:6px; text-align:right;'>{val['price']:,.2f}</td><td style='border-bottom:1px solid #e2e8f0; padding:6px; text-align:right;'>{val['tot']:,.2f}</td></tr>"
 
                 vat_html = f"<tr><td style='text-align: right; padding: 4px;'><b>VAT 7%:</b></td><td style='text-align: right; width: 120px; padding: 4px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
 
