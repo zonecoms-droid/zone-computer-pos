@@ -40,23 +40,19 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🌐 โหลดฟอนต์แบบปลอดภัยและมีระบบกันค้าง (Timeout 3 วินาที)
+# 🌐 ดาวน์โหลดฟอนต์ภาษาไทยมาตรฐาน (Sarabun) จาก Google Fonts อัตโนมัติ ป้องกันปัญหาฟอนต์สี่เหลี่ยม
 SARABUN_REGULAR = "Sarabun-Regular.ttf"
 SARABUN_BOLD = "Sarabun-Bold.ttf"
 
 if not os.path.exists(SARABUN_REGULAR):
     try:
-        req = urllib.request.Request("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf", headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=3) as response, open(SARABUN_REGULAR, 'wb') as f:
-            f.write(response.read())
+        urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf", SARABUN_REGULAR)
     except Exception:
         pass
 
 if not os.path.exists(SARABUN_BOLD):
     try:
-        req = urllib.request.Request("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf", headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=3) as response, open(SARABUN_BOLD, 'wb') as f:
-            f.write(response.read())
+        urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf", SARABUN_BOLD)
     except Exception:
         pass
 
@@ -87,7 +83,7 @@ def get_dynamic_repair_terms():
     colors = ["#2563eb", "#16a34a", "#d97706", "#0d9488", "#4f46e5", "#e11d48", "#9333ea"]
     chosen_color = random.choice(colors)
     
-    return f"<div style='font-size: 10.5px; font-weight: bold; color: {chosen_color}; margin-top: 2px;'>{festival_msg}</div>"
+    return f"<div style='font-size: 10px; font-weight: bold; color: {chosen_color}; margin-top: 2px;'>{festival_msg}</div>"
 
 # 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (Push Message)
 def send_line_push_message(message, access_token, target_id):
@@ -915,10 +911,10 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (3 ขนาดเลือกได้)
+# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (เปลี่ยนเป็นบาร์โค้ด เลือกได้ 3 ขนาด)
 # ==========================================
 elif menu == "🖨️ พิมพ์สติกเกอร์ติดเครื่อง":
-    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่องลูกค้า")
+    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่องลูกค้า (บาร์โค้ด)")
     st.markdown("เลือกขนาดและสไตล์สติกเกอร์ที่ต้องการพิมพ์ (รองรับเครื่องพิมพ์สติกเกอร์ความร้อน)")
 
     cursor = conn.cursor()
@@ -950,22 +946,25 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             box_width = "340px"
             box_pad = "8px 10px"
             font_content = "11px"
-            qr_width = "75px"
+            bc_height = "32"
+            bc_width = "1.3"
         elif "40 x 30" in size_choice:
             box_width = "290px"
             box_pad = "6px 8px"
             font_content = "10px"
-            qr_width = "65px"
+            bc_height = "26"
+            bc_width = "1.1"
         else:
             box_width = "270px"
             box_pad = "5px 6px"
             font_content = "9.5px"
-            qr_width = "55px"
+            bc_height = "22"
+            bc_width = "1.0"
 
         st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
         
         sticker_styles = [
-            "1. คลาสสิกเน้นคิวอาร์โค้ด (Blue Gradient)",
+            "1. คลาสสิกเน้นบาร์โค้ด (Blue Gradient)",
             "2. สไตล์มินิมอลตัวหนังสือใหญ่ (Indigo Banner)",
             "3. วอยด์รับประกันหลังซ่อม (Emerald Green)",
             "4. มินิบาร์โค้ดขนาดเล็กพิเศษ (Amber Orange)",
@@ -988,11 +987,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         st.markdown(f"🎯 **สไตล์สติกเกอร์ที่เลือก:** `{chosen_style}` | **ขนาด:** `{size_choice}`")
 
         s_code, s_name, s_phone, s_dev, s_sn, s_prob, s_cost, s_stat = chosen_job_data
-
-        stk_qr_url = f"https://zone-computer-pos.streamlit.app/?track={s_code}"
-        stk_qr_stream = generate_qr_with_logo(stk_qr_url, LOGO_PATH, top_label="เช็คสถานะ")
-        stk_qr_b64 = base64.b64encode(stk_qr_stream.getvalue()).decode()
-        stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="{qr_width}">'
 
         logo_sticker_tag = ""
         if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
@@ -1032,17 +1026,20 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             theme_border = "#fda4af"
 
         stk_dynamic_terms = get_dynamic_repair_terms()
+        barcode_elem_id = f"barcode_{s_code.replace('-', '_')}"
 
+        # HTML สติกเกอร์ พร้อมสคริปต์ JsBarcode สำหรับสร้างบาร์โค้ดอัตโนมัติ
         sticker_html_card = f"""
         <html>
         <head>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 10px; }}
             .sticker-box {{ background: {theme_bg}; border: 1.5px solid {theme_border}; border-radius: 8px; padding: {box_pad}; width: {box_width}; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
             .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 4px; margin-bottom: 4px; position: relative; z-index: 1; }}
             .stk-title {{ font-size: 12px; font-weight: bold; color: {theme_header}; line-height: 1.1; }}
             .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.3; position: relative; z-index: 1; }}
-            .stk-footer {{ margin-top: 4px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed {theme_border}; padding-top: 4px; position: relative; z-index: 1; }}
+            .stk-footer {{ margin-top: 4px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px dashed {theme_border}; padding-top: 4px; position: relative; z-index: 1; }}
             .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
             @media print {{
                 body {{ background: white; padding: 0; }}
@@ -1053,7 +1050,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         </head>
         <body>
             <div>
-                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์ขนาดนี้</button>
+                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์บาร์โค้ดนี้</button>
                 <div class="sticker-box">
                     {wm_sticker_html}
                     <div class="stk-header">
@@ -1061,7 +1058,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                         <div class="stk-title"><b>{STORE_NAME}</b></div>
                     </div>
                     <div class="stk-content">
-                        <p style="margin: 2px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold; font-size:12px;">{s_code}</span></p>
                         <p style="margin: 2px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
                         <p style="margin: 2px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
                         <div style="margin-top: 2px; text-align: center;">
@@ -1073,12 +1069,26 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                             📞 โทร: {STORE_PHONE}<br>
                             ⭐ ขอบคุณที่ใช้บริการครับ 🙏
                         </div>
-                        <div>
-                            {stk_qr_tag}
+                        <div style="text-align: center;">
+                            <svg id="{barcode_elem_id}"></svg>
                         </div>
                     </div>
                 </div>
             </div>
+            <script>
+                try {{
+                    JsBarcode("#{barcode_elem_id}", "{s_code}", {{
+                        format: "CODE128",
+                        width: {bc_width},
+                        height: {bc_height},
+                        displayValue: true,
+                        fontSize: 10,
+                        margin: 0
+                    }});
+                }} catch(e) {{
+                    console.error(e);
+                }}
+            </script>
         </body>
         </html>
         """
