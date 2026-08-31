@@ -1001,7 +1001,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .nodate-field {{ display: none; }}
                 @media print {{
                     body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                    .print-btn-container {{ display: none !important; }}
+                    .print-btn-container {{ display: none !important; visibility: hidden !important; height: 0 !important; }}
                     .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                 }}
             </style>
@@ -1255,17 +1255,20 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
             
             doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
-                "📦 ใบคืนสินค้า (Delivery Slip - A4 เต็มแผ่น หน้าเดียว)", 
-                "💵 ใบเสร็จรับเงิน (Cash Receipt - A4 เต็มแผ่น FlowAccount Style)", 
-                "📄 ใบกำกับภาษี (Tax Invoice - A4 เต็มแผ่น FlowAccount Style)"
-            ])
+                "📦 ใบคืนสินค้า / ส่งสินค้า (Delivery Slip / DO)", 
+                "💵 ใบเสร็จรับเงิน (Cash Receipt - RC)", 
+                "📄 ใบกำกับภาษี (Tax Invoice - TAX)",
+                "📋 ใบเสนอราคา (Quotation - QT)",
+                "📉 ใบลดหนี้ (Credit Note - CN)",
+                "📈 ใบเพิ่มหนี้ (Debit Note - DN)"
+            ], key=f"doc_choice_{selected_job}")
             
             tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
             tax_cust_id = repair_full['tax_id'] if pd.notna(repair_full['tax_id']) else ""
             tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else "สำนักงานใหญ่"
             tax_cust_address = repair_full['tax_address'] if pd.notna(repair_full['tax_address']) else selected_row['address']
             
-            if "ใบกำกับภาษี" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice:
+            if "ใบกำกับภาษี" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice or "ใบลดหนี้" in doc_choice or "ใบเพิ่มหนี้" in doc_choice:
                 st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (ดึงมาจากข้อมูลที่ลูกค้าลงทะเบียนไว้)")
                 tc_col1, tc_col2 = st.columns(2)
                 with tc_col1:
@@ -1369,47 +1372,48 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         </div>
                         '''
 
-                if "ใบคืนสินค้า" in doc_choice:
+                if "ใบคืนสินค้า" in doc_choice or "ส่งสินค้า" in doc_choice:
                     doc_title = "ใบคืนสินค้า / DELIVERY SLIP"
-                    doc_color = "#16a34a"
                     t_color = "#16a34a"
                     l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                     r_sign = "ผู้รับสินค้า / ลูกค้า"
-                    commercial_qr_tag = ""
-                    if "PromptPay" in pay_chanel and STORE_PROMPTPAY:
-                        q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
-                        q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
-                        b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                        commercial_qr_tag = f'''
-                        <div style="text-align: right; margin-top: 5px;">
-                            <img src="data:image/png;base64,{b64_qr}" width="95px"><br>
-                            <span style="font-size:8px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
-                        </div>
-                        '''
                 elif "ใบเสร็จรับเงิน" in doc_choice:
                     doc_title = "ใบเสร็จรับเงิน / CASH RECEIPT"
-                    doc_color = "#16a34a"
                     t_color = "#16a34a"
                     l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร"
                     r_sign = "ผู้จ่ายเงิน / ลูกค้า"
-                    commercial_qr_tag = ""
-                    if "PromptPay" in pay_chanel and STORE_PROMPTPAY:
-                        q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
-                        q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
-                        b64_qr = base64.b64encode(q_stream.getvalue()).decode()
-                        commercial_qr_tag = f'''
-                        <div style="text-align: right; margin-top: 5px;">
-                            <img src="data:image/png;base64,{b64_qr}" width="95px"><br>
-                            <span style="font-size:8px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
-                        </div>
-                        '''
+                elif "ใบเสนอราคา" in doc_choice:
+                    doc_title = "ใบเสนอราคา / QUOTATION"
+                    t_color = "#0d9488"
+                    l_sign = "ผู้เสนอราคา"
+                    r_sign = "ผู้อนุมัติ / ลูกค้า"
+                elif "ใบลดหนี้" in doc_choice:
+                    doc_title = "ใบลดหนี้ / CREDIT NOTE"
+                    t_color = "#d97706"
+                    l_sign = "ผู้ออกใบลดหนี้"
+                    r_sign = "ผู้รับใบลดหนี้ / ลูกค้า"
+                elif "ใบเพิ่มหนี้" in doc_choice:
+                    doc_title = "ใบเพิ่มหนี้ / DEBIT NOTE"
+                    t_color = "#e11d48"
+                    l_sign = "ผู้ออกใบเพิ่มหนี้"
+                    r_sign = "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
                 else:
                     doc_title = "ใบกำกับภาษี / TAX INVOICE"
-                    doc_color = "#4f46e5"
                     t_color = "#4f46e5"
                     l_sign = "ผู้มีอำนาจออกเอกสาร"
                     r_sign = "ผู้รับบริการ / ลูกค้า"
-                    commercial_qr_tag = ""
+
+                commercial_qr_tag = ""
+                if STORE_PROMPTPAY and ("ใบเสร็จ" in doc_choice or "ใบกำกับภาษี" in doc_choice or "ใบคืนสินค้า" in doc_choice):
+                    q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
+                    q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
+                    b64_qr = base64.b64encode(q_stream.getvalue()).decode()
+                    commercial_qr_tag = f'''
+                    <div style="text-align: right; margin-top: 5px;">
+                        <img src="data:image/png;base64,{b64_qr}" width="95px"><br>
+                        <span style="font-size:8px; color:#334155;">สแกนจ่าย PromptPay<br><b>ยอดเงิน: {grand_total:,.2f} {DEF_CURR}</b></span>
+                    </div>
+                    '''
 
                 print_html_full = f"""
                 <html>
