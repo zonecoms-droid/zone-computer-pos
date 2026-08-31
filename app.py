@@ -80,7 +80,6 @@ def get_dynamic_repair_terms():
         ]
         festival_msg = random.choice(quotes)
     
-    # สุ่มสีสันสดใสให้คำคมเด่นชัด
     colors = ["#2563eb", "#16a34a", "#d97706", "#0d9488", "#4f46e5", "#e11d48", "#9333ea"]
     chosen_color = random.choice(colors)
     
@@ -203,7 +202,6 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
     card = Image.new("RGB", (card_width, card_height), "white")
     draw = ImageDraw.Draw(card)
 
-    # 1. วาดข้อความระบุประเภท QR Code ด้านบน
     try:
         if hasattr(draw, "textbbox"):
             bbox = draw.textbbox((0, 0), top_label, font=font_top)
@@ -213,11 +211,8 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
     except Exception:
         tw = 300
     draw.text(((card_width - tw) / 2, 18), top_label, fill="#0284c7", font=font_top)
-
-    # 2. วาง QR Code ขยายสุดขีดไว้ตรงกลาง
     card.paste(img, (40, top_margin))
 
-    # 3. วาดกล่องข้อความชื่อร้านและเบอร์โทรด้านล่าง
     box_y = top_margin + img.height + 20
     draw.rectangle([25, box_y, card_width - 25, card_height - 20], fill="#f8fafc", outline="#cbd5e1", width=2)
     
@@ -240,11 +235,9 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
     stream.seek(0)
     return stream
 
-# ฟังก์ชันสร้าง QR Code ทั่วไป (แสดงบนหน้าจอ)
 def generate_qr_with_logo(data, logo_path=LOGO_DEFAULT_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม"):
     return generate_downloadable_qr_card(data, STORE_NAME, STORE_PHONE, logo_path, top_label)
 
-# ฟังก์ชันแปลงไฟล์รูปเป็น Data URI Base64 รองรับทั้ง JPG และ PNG อย่างถูกต้อง
 def get_img_base64(path):
     if path and isinstance(path, str) and os.path.exists(path):
         try:
@@ -269,8 +262,6 @@ def init_connection():
 
 def init_db(conn):
     cursor = conn.cursor()
-    
-    # 1. ตารางตั้งค่าร้านค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS store_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -328,7 +319,6 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # 2. ตารางเก็บข้อมูลเอกสารการค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -372,7 +362,6 @@ def init_db(conn):
         cursor.execute("UPDATE store_settings SET tax_id = '1340700066417', phone = '089-026-1927', address = '152 หมู่ 8 ต.บัวงาม อ.บุณฑริก จ.อุบลราชธานี 34230' WHERE id = 1;")
         conn.commit()
 
-    # 3. ตารางลูกค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -384,7 +373,6 @@ def init_db(conn):
     ''')
     conn.commit()
     
-    # 4. ตารางพนักงาน/ช่าง
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -401,7 +389,6 @@ def init_db(conn):
         cursor.execute("INSERT INTO staff (username, full_name, role) VALUES ('tech2', 'ช่างเสริม', 'technician')")
         conn.commit()
 
-    # 5. ตารางงานซ่อม
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repairs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -440,7 +427,6 @@ def init_db(conn):
 conn = init_connection()
 init_db(conn)
 
-# ดึงข้อมูลร้านค้ามาใช้แสดงผล
 cursor = conn.cursor()
 cursor.execute("SELECT store_name, phone, tax_id, address, note, promptpay, line_link, fb_link, tiktok_link, youtube_link, prefix_qt, prefix_iv, prefix_tax, prefix_rc, prefix_cn, prefix_dn, default_currency, accounting_method, accounting_period, lock_period, opening_balance, logo_path, watermark_path, use_logo, use_watermark, watermark_opacity, watermark_size, repair_terms, commercial_terms, line_access_token, line_target_id FROM store_settings WHERE id = 1")
 store_info = cursor.fetchone()
@@ -489,7 +475,6 @@ COMMERCIAL_TERMS = COMMERCIAL_TERMS or "รับประกันงานซ�
 LINE_ACCESS_TOKEN = LINE_ACCESS_TOKEN or ""
 LINE_TARGET_ID = LINE_TARGET_ID or ""
 
-# 💧 ประกาศตัวแปรส่วนกลางสำหรับลายน้ำ โลโก้หัวเอกสาร และโซเชียล HTML
 logo_img_header_tag = ""
 if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
     logo_hdr_uri = get_img_base64(LOGO_PATH)
@@ -506,28 +491,11 @@ if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
         </div>
         '''
 
-def make_social_qr_inline(link, label):
-    if not link: return ""
-    s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
-    s_b64 = base64.b64encode(s_stream.getvalue()).decode()
-    return f'<div style="text-align:center; display:inline-block; margin: 0 3px;"><img src="data:image/png;base64,{s_b64}" width="38px"><br><span style="font-size:7px;">{label}</span></div>'
-
-social_html = ""
-if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
-if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
-if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
-if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
-social_qr_html = social_html
-
-# ==========================================
-# 🔍 โหมดพิเศษ: ตรวจสอบ Query Parameters ทางเข้า
-# ==========================================
 query_params = st.query_params
 track_code = query_params.get("track", None)
 track_doc = query_params.get("track_doc", None)
 page_param = query_params.get("page", None)
 
-# 1. โหมดตรวจสอบสถานะงานซ่อมผ่าน QR Code
 if track_code:
     cursor = conn.cursor()
     cursor.execute("""
@@ -552,28 +520,8 @@ if track_code:
         }
         
         thai_status, badge_color, status_desc = status_dict.get(stat, ("📌 กำลังดำเนินการ", "#6c757d", "สถานะกำลังอัปเดต"))
-        
         name_parts = c_name.split()
         masked_name = f"คุณ {name_parts[0]} ({name_parts[1][0]}***)" if len(name_parts) > 1 else f"คุณ {c_name}"
-
-        payment_qr_public_html = ""
-        if stat == "COMPLETED" and cost_val > 0 and STORE_PROMPTPAY:
-            pay_payload = generate_promptpay_payload(STORE_PROMPTPAY, cost_val)
-            pay_stream = generate_qr_with_logo(pay_payload, LOGO_PATH, top_label="สแกนจ่ายค่าบริการพร้อมเพย์")
-            pay_b64 = base64.b64encode(pay_stream.getvalue()).decode()
-            payment_qr_public_html = f"""
-            <div style="margin-top: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px;">
-                <p style="margin: 0 0 8px 0; color: #16a34a; font-weight: bold; font-size: 15px;">💰 ยอดค่าบริการทั้งสิ้น: {cost_val:,.2f} บาท</p>
-                <img src="data:image/png;base64,{pay_b64}" width="150px"><br>
-                <span style="font-size: 11px; color: #15803d; font-weight: bold;">สแกนคิวอาร์โค้ดนี้เพื่อชำระเงินผ่านแอปธนาคาร</span>
-            </div>
-            """
-        elif stat == "COMPLETED" and cost_val > 0:
-            payment_qr_public_html = f"""
-            <div style="margin-top: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px;">
-                <p style="margin: 0; color: #16a34a; font-weight: bold; font-size: 15px;">💰 ยอดค่าบริการทั้งสิ้น: {cost_val:,.2f} บาท</p>
-            </div>
-            """
 
         public_html = f"""
         <!DOCTYPE html>
@@ -584,293 +532,32 @@ if track_code:
             <title>ติดตามสถานะงานซ่อม - {STORE_NAME}</title>
             <style>
                 body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; }}
-                .card {{ background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; animation: fadeIn 0.8s ease-in-out; }}
-                @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+                .card {{ background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; }}
                 h2 {{ color: #333; margin-bottom: 5px; font-size: 20px; }}
                 .store-sub {{ color: #666; font-size: 12px; margin-bottom: 15px; }}
                 .info-box {{ background: #f8f9fa; border-radius: 10px; padding: 12px; margin-bottom: 15px; text-align: left; font-size: 13px; border-left: 4px solid #007bff; }}
                 .info-box p {{ margin: 5px 0; color: #444; }}
-                .status-badge {{ background-color: {badge_color}; color: white; padding: 10px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; display: inline-block; margin: 10px 0; animation: pulse 2s infinite; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }}
-                @keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.03); }} 100% {{ transform: scale(1); }} }}
-                .desc {{ color: #555; font-size: 12px; margin-top: 3px; }}
-                .footer {{ margin-top: 20px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 12px; }}
+                .status-badge {{ background-color: {badge_color}; color: white; padding: 10px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; display: inline-block; margin: 10px 0; }}
             </style>
         </head>
         <body>
             <div class="card">
                 <h2>⚡ {STORE_NAME}</h2>
                 <div class="store-sub">ระบบติดตามสถานะงานซ่อมเรียลไทม์</div>
-                
                 <div class="info-box">
                     <p><b>เลขที่ใบงาน:</b> {j_code}</p>
                     <p><b>ชื่อลูกค้า:</b> {masked_name}</p>
-                    <p><b>เบอร์โทรศัพท์:</b> {c_phone}</p>
                     <p><b>รุ่นอุปกรณ์:</b> {dev}</p>
                     <p><b>รายการซ่อม:</b> {prob}</p>
-                    <p><b>ราคา / ค่าบริการ:</b> <b style="color: #0284c7;">{cost_val:,.2f} บาท</b></p>
-                    <p><b>วันที่แจ้งซ่อม:</b> {d_in}</p>
                 </div>
-                
-                <div>
-                    <div class="status-badge">{thai_status}</div>
-                    <div class="desc">ℹ️ {status_desc}</div>
-                    {payment_qr_public_html}
-                </div>
-
-                <div class="footer">
-                    📞 โทรสอบถามด่วน: {STORE_PHONE}<br>ขอบคุณที่ใช้บริการร้านโซนคอมพิวเตอร์ครับ 🙏
-                </div>
+                <div class="status-badge">{thai_status}</div>
             </div>
         </body>
         </html>
         """
-        components.html(public_html, height=780, scrolling=True)
+        components.html(public_html, height=650, scrolling=True)
     else:
-        st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้ง หรือติดต่อหน้าร้านครับ")
-    st.stop()
-
-# 1.1 โหมดตรวจสอบสถานะเอกสารการค้าผ่าน QR Code (track_doc)
-if track_doc:
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT doc_no, doc_type, status, customer_name, grand_total, currency, items_json, created_at 
-        FROM commercial_docs WHERE doc_no = ?
-    """, (track_doc,))
-    doc_data = cursor.fetchone()
-    cursor.close()
-    
-    if doc_data:
-        d_no, d_type, d_stat, c_name, g_tot, curr, items_json_str, d_date = doc_data
-        type_dict = {"QT": "ใบเสนอราคา (Quotation)", "IV": "ใบส่งสินค้า / ใบแจ้งหนี้ (Invoice)", "TAX": "ใบกำกับภาษี (Tax Invoice)", "RC": "ใบเสร็จรับเงิน (Cash Receipt)"}
-        doc_type_name = type_dict.get(d_type, d_type)
-        
-        name_parts = c_name.split()
-        masked_cname = f"คุณ {name_parts[0]} ({name_parts[1][0]}***)" if len(name_parts) > 1 else f"คุณ {c_name}"
-
-        public_doc_html = f"""
-        <!DOCTYPE html>
-        <html lang="th">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>สถานะเอกสาร - {STORE_NAME}</title>
-            <style>
-                body {{ background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
-                .card {{ background: white; padding: 30px 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; animation: fadeIn 0.8s ease-in-out; }}
-                @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-                h2 {{ color: #333; margin-bottom: 5px; font-size: 22px; }}
-                .store-sub {{ color: #666; font-size: 13px; margin-bottom: 20px; }}
-                .info-box {{ background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; font-size: 14px; border-left: 4px solid #0284c7; }}
-                .info-box p {{ margin: 6px 0; color: #444; }}
-                .status-badge {{ background-color: #0284c7; color: white; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 15px; display: inline-block; margin: 15px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }}
-                .footer {{ margin-top: 20px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 15px; }}
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h2>⚡ {STORE_NAME}</h2>
-                <div class="store-sub">ระบบตรวจสอบสถานะเอกสารทางการค้า</div>
-                
-                <div class="info-box">
-                    <p><b>เลขที่เอกสาร:</b> {d_no}</p>
-                    <p><b>ประเภทเอกสาร:</b> {doc_type_name}</p>
-                    <p><b>ชื่อลูกค้า:</b> {masked_cname}</p>
-                    <p><b>ยอดเงินรวมทั้งสิ้น:</b> <b style="color: #0284c7;">{g_tot:,.2f} {curr}</b></p>
-                    <p><b>วันที่ขอเอกสาร:</b> {d_date}</p>
-                </div>
-                
-                <div>
-                    <div class="status-badge">📌 สถานะ: {d_stat}</div>
-                </div>
-
-                <div class="footer">
-                    📞 โทรสอบถามด่วน: {STORE_PHONE}<br>ขอบคุณที่ใช้บริการร้านโซนคอมพิวเตอร์ครับ 🙏
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        components.html(public_doc_html, height=620, scrolling=True)
-    else:
-        st.error("❌ ไม่พบข้อมูลเอกสารนี้ในระบบ กรุณาตรวจสอบใหม่อีกครั้งครับ")
-    st.stop()
-
-# 2. โหมดลูกค้าลงทะเบียนแจ้งซ่อมผ่าน QR Code
-if page_param == "register":
-    st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📱 {STORE_NAME}</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>ระบบลงทะเบียนแจ้งซ่อมออนไลน์สำหรับลูกค้า</p>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    with st.form("public_self_service_form"):
-        c_name = st.text_input("ชื่อ-นามสกุลของคุณ *")
-        c_phone = st.text_input("เบอร์โทรศัพท์ติดต่อกลับ *")
-        c_device = st.text_input("ยี่ห้อ / รุ่นอุปกรณ์ (เช่น Notebook ASUS ROG) *")
-        c_problem = st.text_area("อาการเสีย / รายละเอียดเบื้องต้น")
-        c_accessories = st.text_input("อุปกรณ์ที่ส่งมาด้วย (เช่น สายชาร์จ, กระเป๋า)")
-        uploaded_file = st.file_uploader("📷 แนบรูปภาพ หรือ 🎥 วิดีโออาการเสีย (ถ้ามี)", type=["jpg", "png", "jpeg", "mp4", "mov"])
-        
-        st.markdown("---")
-        st.markdown("##### 🧾 ข้อมูลสำหรับออกใบเสร็จรับเงิน / ใบกำกับภาษี (ไม่บังคับ)")
-        need_tax = st.checkbox("ต้องการใบเสร็จรับเงิน / ใบกำกับภาษีในนามบริษัทหรือบุคคล (กรอกข้อมูลออกบิล)")
-        tax_name = st.text_input("ชื่อ-นามสกุล / ชื่อบริษัท สำหรับออกบิล", value="")
-        tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก (หรือเลขบัตรประชาชน)", value="")
-        tax_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่ หรือ 00001)", value="สำนักงานใหญ่")
-        tax_address = st.text_area("ที่อยู่ตามทะเบียนภาษี สำหรับออกบิล", value="")
-        
-        self_submit = st.form_submit_button("📤 ส่งข้อมูลแจ้งซ่อมเข้าร้าน")
-        if self_submit:
-            if c_name and c_phone and c_device:
-                file_path = None
-                if uploaded_file is not None:
-                    file_extension = uploaded_file.name.split(".")[-1]
-                    file_name = f"MEDIA_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(100,999)}.{file_extension}"
-                    file_path = os.path.join(UPLOAD_DIR, file_name)
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO customers (name, phone) VALUES (?, ?) 
-                    ON CONFLICT(phone) DO UPDATE SET name = excluded.name;
-                """, (c_name, c_phone))
-                cursor.execute("SELECT id FROM customers WHERE phone = ?", (c_phone,))
-                cust_id = cursor.fetchone()[0]
-                
-                job_code = f"REP-{datetime.now().strftime('%Y%m%d')}-{random.randint(100,999)}"
-                cursor.execute("""
-                    INSERT INTO repairs (job_code, customer_id, device_name, problem_description, accessories, media_file, status, need_tax, tax_name, tax_id, tax_branch, tax_address)
-                    VALUES (?, ?, ?, ?, ?, ?, 'RECEIVED', ?, ?, ?, ?, ?)
-                """, (job_code, cust_id, c_device, c_problem, c_accessories, file_path, 1 if need_tax else 0, tax_name if need_tax else c_name, tax_id, tax_branch, tax_address))
-                conn.commit()
-                cursor.close()
-                
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Messaging API ทันทีที่ลูกค้าลงทะเบียนแจ้งซ่อม
-                line_msg = f"🚨 มีแจ้งซ่อมใหม่ผ่าน QR Code!\n- เลขใบงาน: {job_code}\n- ลูกค้า: {c_name} ({c_phone})\n- อุปกรณ์: {c_device}\n- อาการเสีย: {c_problem}"
-                send_line_push_message(line_msg, LINE_ACCESS_TOKEN, LINE_TARGET_ID)
-                
-                st.session_state['public_registered_job'] = job_code
-                st.success(f"🎉 ลงทะเบียนแจ้งซ่อมสำเร็จ! เลขที่ใบงานของคุณคือ: **{job_code}**")
-                st.balloons()
-            else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
-
-    if 'public_registered_job' in st.session_state:
-        j_c = st.session_state['public_registered_job']
-        st.markdown("---")
-        st.markdown("### 🔍 QR Code ติดตามสถานะงานซ่อมของคุณ")
-        track_url = f"https://zone-computer-pos.streamlit.app/?track={j_c}"
-        
-        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
-        qr_stream = generate_downloadable_qr_card(track_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะงานซ่อม")
-        
-        st.image(qr_stream.getvalue(), width=320, caption="สแกนหรือบันทึก QR Code นี้เพื่อติดตามสถานะ")
-        
-        st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง (พร้อมชื่อร้านและเบอร์โทร)",
-            data=qr_stream.getvalue(),
-            file_name=f"QR_Tracking_{j_c}.png",
-            mime="image/png"
-        )
-        st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะงานซ่อม]({track_url})")
-
-    st.stop()
-
-# 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสาร และเพิ่มรายการสินค้าได้หลายรายการ)
-if page_param == "commercial_request":
-    st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📄 {STORE_NAME}</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า (เพิ่มรายการสินค้าได้ตามต้องการ)</p>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    with st.form("public_commercial_form"):
-        req_name = st.text_input("ชื่อ-นามสกุล / ชื่อบริษัท ลูกค้า *")
-        req_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ *")
-        req_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก (กรณีออกใบกำกับภาษี)")
-        req_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่)", value="สำนักงานใหญ่")
-        req_address = st.text_area("ที่อยู่สำหรับออกเอกสาร / ใบกำกับภาษี *")
-        
-        req_doc_type = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการ", [
-            "ใบเสนอราคา (Quotation - QT)",
-            "ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
-            "ใบกำกับภาษี (Tax Invoice - TAX)",
-            "ใบเสร็จรับเงิน (Cash Receipt - RC)"
-        ])
-        
-        st.markdown("---")
-        st.markdown("##### 🛒 รายการสินค้า / บริการ / อะไหล่ที่ต้องการ")
-        num_req_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
-        
-        subtotal = 0.0
-        req_items_list = []
-        for i in range(int(num_req_items)):
-            cols = st.columns([3, 1, 1])
-            with cols[0]:
-                r_desc = st.text_input(f"รายการที่ {i+1}", value=f"รายการสินค้า/บริการ {i+1}", key=f"req_desc_{i}")
-            with cols[1]:
-                r_qty = st.number_input("จำนวน", min_value=1.0, value=1.0, key=f"req_qty_{i}")
-            with cols[2]:
-                r_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"req_price_{i}")
-            tot = float(r_qty) * float(r_price)
-            subtotal += tot
-            req_items_list.append((r_desc, r_qty, r_price, tot))
-            
-        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True if "ใบกำกับภาษี" in req_doc_type else False)
-        req_notes = st.text_area("หมายเหตุเพิ่มเติม (ถ้ามี)")
-        
-        submit_req = st.form_submit_button("📤 ส่งคำขอออกเอกสารเข้าร้าน")
-        if submit_req:
-            if req_name and req_phone and req_address and req_items_list:
-                vat_amount = subtotal * 0.07 if include_vat else 0.0
-                grand_total = subtotal + vat_amount
-                
-                if "ใบเสนอราคา" in req_doc_type:
-                    d_type, prefix, status = "QT", P_QT, "รออนุมัติ"
-                elif "ใบส่งสินค้า" in req_doc_type:
-                    d_type, prefix, status = "IV", P_IV, "รอส่งสินค้า"
-                elif "ใบกำกับภาษี" in req_doc_type:
-                    d_type, prefix, status = "TAX", P_TAX, "รอออกใบเสร็จ"
-                else:
-                    d_type, prefix, status = "RC", P_RC, "เสร็จสิ้นการขาย"
-                    
-                doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
-                items_json_str = json.dumps(req_items_list, ensure_ascii=False)
-                
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (doc_no_gen, d_type, status, req_name, req_phone, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
-                conn.commit()
-                cursor.close()
-                
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Messaging API ทันทีที่มีคำขอออกเอกสารการค้าใหม่
-                line_msg = f"📄 มีคำขอเอกสารการค้าใหม่!\n- เลขเอกสาร: {doc_no_gen}\n- ประเภท: {req_doc_type}\n- ลูกค้า: {req_name} ({req_phone})\n- ยอดรวมสุทธิ: {grand_total:,.2f} {DEF_CURR}"
-                send_line_push_message(line_msg, LINE_ACCESS_TOKEN, LINE_TARGET_ID)
-                
-                st.session_state['public_registered_doc'] = doc_no_gen
-                st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}**")
-                st.balloons()
-            else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
-
-    if 'public_registered_doc' in st.session_state:
-        d_c = st.session_state['public_registered_doc']
-        st.markdown("---")
-        st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
-        track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
-        
-        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
-        qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะเอกสาร")
-        
-        st.image(qr_stream.getvalue(), width=320, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
-        
-        st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง",
-            data=qr_stream.getvalue(),
-            file_name=f"QR_Document_{d_c}.png",
-            mime="image/png"
-        )
-        st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะเอกสาร]({track_doc_url})")
-
+        st.error("❌ ไม่พบข้อมูลใบงานนี้ในระบบ")
     st.stop()
 
 # ==========================================
@@ -885,6 +572,7 @@ if 'current_job_code' not in st.session_state:
 # แผงควบคุมเมนูหลักแบบสวิตช์เปิด-ปิด มีไฟสีเขียวเมื่อใช้งานหน้านั้นอยู่
 menu_options = [
     "📥 รับเครื่องซ่อมใหม่", 
+    "🖨️ พิมพ์สติกเกอร์ติดเครื่อง",
     "📱 QR โหลดหน้าลงทะเบียน",
     "🔍 ติดตามสถานะซ่อม", 
     "⚙️ ศูนย์กลางการตั้งค่า"
@@ -1210,7 +898,155 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
+# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (มีสีสัน โลโก้ และลายน้ำ 5 แบบ)
+# ==========================================
+elif menu == "🖨️ พิมพ์สติกเกอร์ติดเครื่อง":
+    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่อง (มีสีสัน, โลโก้ และลายน้ำ)")
+    st.markdown("เลือกใบงานและสไตล์สติกเกอร์ที่ต้องการพิมพ์ (รองรับเครื่องพิมพ์สติกเกอร์ความร้อน/บาร์โค้ด)")
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.estimated_cost, r.status
+        FROM repairs r JOIN customers c ON r.customer_id = c.id
+        ORDER BY r.created_at DESC LIMIT 50
+    """)
+    sticker_jobs = cursor.fetchall()
+    cursor.close()
+
+    if sticker_jobs:
+        job_options = [f"{j[0]} - {j[1]} ({j[3])}" for j in sticker_jobs]
+        selected_sticker_job_str = st.selectbox("เลือกใบงานที่ต้องการพิมพ์สติกเกอร์", job_options)
+        
+        selected_job_code_val = selected_sticker_job_str.split(" - ")[0]
+        chosen_job_data = next(j for j in sticker_jobs if j[0] == selected_job_code_val)
+        
+        st.markdown("---")
+        st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
+        
+        sticker_styles = [
+            "1. คลาสสิกเน้นคิวอาร์โค้ด (Blue Gradient)",
+            "2. สไตล์มินิมอลตัวหนังสือใหญ่ (Indigo Banner)",
+            "3. วอยด์รับประกันหลังซ่อม (Emerald Green)",
+            "4. มินิบาร์โค้ดขนาดเล็กพิเศษ (Amber Orange)",
+            "5. สไตล์พรีเมียมข้อมูลครบถ้วนพร้อมราคา (Rose Gradient)"
+        ]
+        
+        if 'sticker_style_choice' not in st.session_state:
+            st.session_state.sticker_style_choice = sticker_styles[0]
+
+        cols_stk = st.columns(len(sticker_styles))
+        for s_idx, s_name in enumerate(sticker_styles):
+            with cols_stk[s_idx]:
+                is_stk_active = (st.session_state.sticker_style_choice == s_name)
+                btn_sw = "🟢 ON" if is_stk_active else "🔌 OFF"
+                if st.button(f"{btn_sw}\nแบบที่ {s_idx+1}", use_container_width=True, key=f"stk_btn_{s_idx}"):
+                    st.session_state.sticker_style_choice = s_name
+                    st.rerun()
+
+        chosen_style = st.session_state.sticker_style_choice
+        st.markdown(f"🎯 **สไตล์สติกเกอร์ที่เลือกปัจจุบัน:** `{chosen_style}`")
+
+        # เตรียมข้อมูลสำหรับพรีวิวสติกเกอร์
+        s_code, s_name, s_phone, s_dev, s_sn, s_prob, s_cost, s_stat = chosen_job_data
+        s_cost = float(s_cost) if s_cost is not None else 0.0
+
+        stk_qr_url = f"https://zone-computer-pos.streamlit.app/?track={s_code}"
+        stk_qr_stream = generate_qr_with_logo(stk_qr_url, LOGO_PATH, top_label="เช็คสถานะ")
+        stk_qr_b64 = base64.b64encode(stk_qr_stream.getvalue()).decode()
+        stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="90px">'
+
+        logo_sticker_tag = ""
+        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+            logo_uri = get_img_base64(LOGO_PATH)
+            if logo_uri:
+                logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 30px; vertical-align: middle; margin-right: 6px;">'
+
+        wm_sticker_html = ""
+        if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+            wm_uri = get_img_base64(WATERMARK_PATH)
+            if wm_uri:
+                wm_sticker_html = f'''
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); opacity: 0.06; z-index: 0; pointer-events: none; width: 70%;">
+                    <img src="{wm_uri}" style="width: 100%; height: auto;">
+                </div>
+                '''
+
+        # กำหนดธีมสีตามแบบสติกเกอร์
+        if "1." in chosen_style:
+            theme_bg = "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)"
+            theme_header = "#2563eb"
+            theme_border = "#93c5fd"
+        elif "2." in chosen_style:
+            theme_bg = "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)"
+            theme_header = "#4f46e5"
+            theme_border = "#c7d2fe"
+        elif "3." in chosen_style:
+            theme_bg = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+            theme_header = "#16a34a"
+            theme_border = "#86efac"
+        elif "4." in chosen_style:
+            theme_bg = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
+            theme_header = "#d97706"
+            theme_border = "#fde68a"
+        else:
+            theme_bg = "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)"
+            theme_header = "#e11d48"
+            theme_border = "#fda4af"
+
+        sticker_html_card = f"""
+        <html>
+        <head>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 20px; }}
+            .sticker-box {{ background: {theme_bg}; border: 2px solid {theme_border}; border-radius: 12px; padding: 15px; width: 380px; box-sizing: border-box; box-shadow: 0 6px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
+            .stk-header {{ display: flex; align-items: center; border-bottom: 2px solid {theme_header}; padding-bottom: 8px; margin-bottom: 8px; position: relative; z-index: 1; }}
+            .stk-title {{ font-size: 15px; font-weight: bold; color: {theme_header}; line-height: 1.2; }}
+            .stk-content {{ font-size: 12px; color: #1e293b; line-height: 1.5; position: relative; z-index: 1; }}
+            .stk-footer {{ margin-top: 10px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed {theme_border}; padding-top: 8px; position: relative; z-index: 1; }}
+            .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 15px auto; }}
+            @media print {{
+                body {{ background: white; padding: 0; }}
+                .print-btn {{ display: none !important; }}
+                .sticker-box {{ border: 2px solid #000; box-shadow: none; width: 100%; }}
+            }}
+        </style>
+        </head>
+        <body>
+            <div>
+                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์นี้</button>
+                <div class="sticker-box">
+                    {wm_sticker_html}
+                    <div class="stk-header">
+                        {logo_sticker_tag}
+                        <div class="stk-title"><b>{STORE_NAME}</b><br><span style="font-size:10px; color:#475569;">ศูนย์ซ่อมและบริการไอทีครบวงจร</span></div>
+                    </div>
+                    <div class="stk-content">
+                        <p style="margin: 3px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold;">{s_code}</span></p>
+                        <p style="margin: 3px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
+                        <p style="margin: 3px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
+                        <p style="margin: 3px 0;"><b>🔧 อาการ:</b> {s_prob}</p>
+                        <p style="margin: 3px 0;"><b>💰 ยอดสุทธิ:</b> <b style="color:{theme_header};">{s_cost:,.2f} {DEF_CURR}</b></p>
+                    </div>
+                    <div class="stk-footer">
+                        <div style="font-size: 10px; color: #475569;">
+                            📞 โทร: {STORE_PHONE}<br>
+                            ⭐ ขอบคุณที่ใช้บริการครับ 🙏
+                        </div>
+                        <div>
+                            {stk_qr_tag}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        components.html(sticker_html_card, height=360, scrolling=True)
+    else:
+        st.info("ยังไม่มีข้อมูลใบงานสำหรับพิมพ์สติกเกอร์ในระบบ")
+
+# ==========================================
+# 3. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
 # ==========================================
 elif menu == "📱 QR โหลดหน้าลงทะเบียน":
     st.header("📱 QR Code สำหรับลูกค้าสแกน (เลือกประเภท QR Code ตามต้องการ)")
@@ -1231,7 +1067,7 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
         st.code(doc_req_url, language="text")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม
+# 4. ติดตาม & อัปเดตสถานะงานซ่อม
 # ==========================================
 elif menu == "🔍 ติดตามสถานะซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -1619,7 +1455,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 components.html(print_html_full, height=1050, scrolling=True)
 
 # ==========================================
-# 4. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
+# 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
 # ==========================================
 elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
