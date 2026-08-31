@@ -967,7 +967,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             
             def make_social_qr_inline(link, label):
                 if not link: return ""
-                s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
+                s_stream = generate_qr_with_logo(link, LOGO_PATH)
                 s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                 return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
 
@@ -1526,7 +1526,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <table class="summary-tbl">
                                             <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 110px;">{subtotal:,.2f} บาท</td></tr>
                                             {vat_html}
-                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px;"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                         </table>
                                         {commercial_qr_tag}
                                     </td>
@@ -1543,12 +1543,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({l_sign})<br>
-                                                    วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                    วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                 </td>
                                                 <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({r_sign})<br>
-                                                    วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
+                                                    วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
                                                 </td>
                                             </tr>
                                         </table>
