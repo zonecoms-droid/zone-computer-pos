@@ -967,7 +967,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             
             def make_social_qr_inline(link, label):
                 if not link: return ""
-                s_stream = generate_qr_with_logo(link, LOGO_PATH)
+                s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
                 s_b64 = base64.b64encode(s_stream.getvalue()).decode()
                 return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
 
@@ -1489,19 +1489,19 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div style="background: {t_color}; color: white; padding: 6px 14px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
                                             {doc_title}
                                         </div>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
                             </table>
 
                             <table class="cust-box tbl">
                                 <tr>
-                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {tax_cust_name} ({tax_cust_branch})</td>
-                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
+                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']} ({tax_cust_branch})</td>
+                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
                                 </tr>
                                 <tr>
-                                    <td style="width: 50%;"><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
+                                    <td style="width: 50%;"><b>ที่อยู่:</b> {cur_doc['customer_address']}</td>
                                     <td style="width: 50%;"><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'}</td>
                                 </tr>
                             </table>
@@ -1513,7 +1513,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <th style="text-align: right; width: 100px;">ราคา/หน่วย</th>
                                     <th style="text-align: right; width: 120px;">จำนวนเงิน (บาท)</th>
                                 </tr>
-                                {items_html}
+                                {print_items_html}
                             </table>
 
                             <table style="width: 100%; margin-top: 8px;">
