@@ -1976,7 +1976,6 @@ elif menu == "📄 ระบบออกเอกสารการค้า":
                                                 {summary_rows}
                                                 <tr><td style="text-align: right; font-size: 13px; color: {t_color};"><b>จำนวนเงินรวมทั้งสิ้น:</b></td><td style="text-align: right; width: 120px; font-size: 13px; color: {t_color};"><b>{grand_total:,.2f} {cur_doc['currency']}</b></td></tr>
                                             </table>
-                                            {commercial_qr_tag}
                                         </td>
                                     </tr>
                                 </table>
