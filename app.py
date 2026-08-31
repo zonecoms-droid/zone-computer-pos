@@ -928,7 +928,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             "2. สไตล์มินิมอลตัวหนังสือใหญ่ (Indigo Banner)",
             "3. วอยด์รับประกันหลังซ่อม (Emerald Green)",
             "4. มินิบาร์โค้ดขนาดเล็กพิเศษ (Amber Orange)",
-            "5. สไตล์พรีเมียมข้อมูลครบถ้วนพร้อมราคา (Rose Gradient)"
+            "5. สไตล์พรีเมียมข้อมูลครบถ้วน (Rose Gradient)"
         ]
         
         if 'sticker_style_choice' not in st.session_state:
@@ -947,18 +947,17 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         st.markdown(f"🎯 **สไตล์สติกเกอร์ที่เลือกปัจจุบัน:** `{chosen_style}`")
 
         s_code, s_name, s_phone, s_dev, s_sn, s_prob, s_cost, s_stat = chosen_job_data
-        s_cost = float(s_cost) if s_cost is not None else 0.0
 
         stk_qr_url = f"https://zone-computer-pos.streamlit.app/?track={s_code}"
         stk_qr_stream = generate_qr_with_logo(stk_qr_url, LOGO_PATH, top_label="เช็คสถานะ")
         stk_qr_b64 = base64.b64encode(stk_qr_stream.getvalue()).decode()
-        stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="90px">'
+        stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="85px">'
 
         logo_sticker_tag = ""
         if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
             logo_uri = get_img_base64(LOGO_PATH)
             if logo_uri:
-                logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 30px; vertical-align: middle; margin-right: 6px;">'
+                logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 28px; vertical-align: middle; margin-right: 6px;">'
 
         wm_sticker_html = ""
         if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
@@ -991,12 +990,15 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             theme_header = "#e11d48"
             theme_border = "#fda4af"
 
+        # เรียกใช้คำคม/วันสำคัญสุ่มสีและขยายใหญ่
+        stk_dynamic_terms = get_dynamic_repair_terms()
+
         sticker_html_card = f"""
         <html>
         <head>
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 20px; }}
-            .sticker-box {{ background: {theme_bg}; border: 2px solid {theme_border}; border-radius: 12px; padding: 15px; width: 380px; box-sizing: border-box; box-shadow: 0 6px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
+            .sticker-box {{ background: {theme_bg}; border: 2px solid {theme_border}; border-radius: 12px; padding: 15px; width: 390px; box-sizing: border-box; box-shadow: 0 6px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
             .stk-header {{ display: flex; align-items: center; border-bottom: 2px solid {theme_header}; padding-bottom: 8px; margin-bottom: 8px; position: relative; z-index: 1; }}
             .stk-title {{ font-size: 15px; font-weight: bold; color: {theme_header}; line-height: 1.2; }}
             .stk-content {{ font-size: 12px; color: #1e293b; line-height: 1.5; position: relative; z-index: 1; }}
@@ -1019,14 +1021,15 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                         <div class="stk-title"><b>{STORE_NAME}</b><br><span style="font-size:10px; color:#475569;">ศูนย์ซ่อมและบริการไอทีครบวงจร</span></div>
                     </div>
                     <div class="stk-content">
-                        <p style="margin: 3px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold;">{s_code}</span></p>
+                        <p style="margin: 3px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold; font-size:13px;">{s_code}</span></p>
                         <p style="margin: 3px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
                         <p style="margin: 3px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
-                        <p style="margin: 3px 0;"><b>🔧 อาการ:</b> {s_prob}</p>
-                        <p style="margin: 3px 0;"><b>💰 ยอดสุทธิ:</b> <b style="color:{theme_header};">{s_cost:,.2f} {DEF_CURR}</b></p>
+                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dotted {theme_border}; text-align: center;">
+                            {stk_dynamic_terms}
+                        </div>
                     </div>
                     <div class="stk-footer">
-                        <div style="font-size: 10px; color: #475569;">
+                        <div style="font-size: 11px; color: #334155; font-weight: bold; line-height: 1.4;">
                             📞 โทร: {STORE_PHONE}<br>
                             ⭐ ขอบคุณที่ใช้บริการครับ 🙏
                         </div>
@@ -1039,7 +1042,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         </body>
         </html>
         """
-        components.html(sticker_html_card, height=360, scrolling=True)
+        components.html(sticker_html_card, height=390, scrolling=True)
     else:
         st.info("ยังไม่มีข้อมูลใบงานสำหรับพิมพ์สติกเกอร์ในระบบ")
 
