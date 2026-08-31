@@ -1260,18 +1260,36 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.success(f"อัปเดตสถานะสำเร็จ!")
             st.rerun()
 
-        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
+        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสารด้วยปุ่มสวิตช์เปิด-ปิด ---
         if selected_row['status'].startswith('COMPLETED'):
             st.markdown("---")
-            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
+            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! เลือกประเภทเอกสารทางการค้าเพื่อพิมพ์ส่งมอบได้ทันที")
             
-            doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
-                "📦 ใบส่งสินค้า (Delivery Order - DO)", 
-                "🔄 ใบคืนสินค้า (Return Slip)", 
-                "💵 ใบเสร็จรับเงิน (Cash Receipt - RC)", 
-                "📄 ใบกำกับภาษี (Tax Invoice - TAX)",
-                "📋 ใบเสนอราคา (Quotation - QT)"
-            ], key=f"doc_choice_{selected_job}")
+            st.markdown("🖨️ เลือกประเภทเอกสารทางการค้า:")
+            doc_options = [
+                "📦 ใบส่งสินค้า (Delivery Order)",
+                "🔄 ใบคืนสินค้า (Return Slip)",
+                "💵 ใบเสร็จรับเงิน (Cash Receipt)",
+                "📄 ใบกำกับภาษี (Tax Invoice)",
+                "📋 ใบเสนอราคา (Quotation)"
+            ]
+            
+            doc_state_key = f"doc_choice_state_{selected_job}"
+            if doc_state_key not in st.session_state:
+                st.session_state[doc_state_key] = doc_options[0]
+
+            cols_doc_sw = st.columns(len(doc_options))
+            for d_idx, d_opt in enumerate(doc_options):
+                with cols_doc_sw[d_idx]:
+                    is_doc_active = (st.session_state[doc_state_key] == d_opt)
+                    short_names = ["📦 ใบส่งของ", "🔄 ใบคืนสินค้า", "💵 ใบเสร็จ", "📄 ใบกำกับ", "📋 ใบเสนอราคา"]
+                    sw_label = f"🟢 ON" if is_doc_active else f"🔌 OFF"
+                    if st.button(f"{sw_label}\n{short_names[d_idx]}", use_container_width=True, key=f"sw_doc_{selected_job}_{d_idx}"):
+                        st.session_state[doc_state_key] = d_opt
+                        st.rerun()
+            
+            doc_choice = st.session_state[doc_state_key]
+            st.markdown(f"🎯 **เอกสารที่เลือกปัจจุบัน:** `{doc_choice}`")
             
             tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
             tax_cust_id = repair_full['tax_id'] if pd.notna(repair_full['tax_id']) else ""
