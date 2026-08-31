@@ -745,6 +745,104 @@ if page_param == "register":
 
     st.stop()
 
+# 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสาร และเพิ่มรายการสินค้าได้หลายรายการ)
+if page_param == "commercial_request":
+    st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📄 {STORE_NAME}</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า (เพิ่มรายการสินค้าได้ตามต้องการ)</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    with st.form("public_commercial_form"):
+        req_name = st.text_input("ชื่อ-นามสกุล / ชื่อบริษัท ลูกค้า *")
+        req_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ *")
+        req_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก (กรณีออกใบกำกับภาษี)")
+        req_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่)", value="สำนักงานใหญ่")
+        req_address = st.text_area("ที่อยู่สำหรับออกเอกสาร / ใบกำกับภาษี *")
+        
+        req_doc_type = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการ", [
+            "ใบเสนอราคา (Quotation - QT)",
+            "ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
+            "ใบกำกับภาษี (Tax Invoice - TAX)",
+            "ใบเสร็จรับเงิน (Cash Receipt - RC)"
+        ])
+        
+        st.markdown("---")
+        st.markdown("##### 🛒 รายการสินค้า / บริการ / อะไหล่ที่ต้องการ")
+        num_req_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
+        
+        subtotal = 0.0
+        req_items_list = []
+        for i in range(int(num_req_items)):
+            cols = st.columns([3, 1, 1])
+            with cols[0]:
+                r_desc = st.text_input(f"รายการที่ {i+1}", value=f"รายการสินค้า/บริการ {i+1}", key=f"req_desc_{i}")
+            with cols[1]:
+                r_qty = st.number_input("จำนวน", min_value=1.0, value=1.0, key=f"req_qty_{i}")
+            with cols[2]:
+                r_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"req_price_{i}")
+            tot = float(r_qty) * float(r_price)
+            subtotal += tot
+            req_items_list.append((r_desc, r_qty, r_price, tot))
+            
+        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True if "ใบกำกับภาษี" in req_doc_type else False)
+        req_notes = st.text_area("หมายเหตุเพิ่มเติม (ถ้ามี)")
+        
+        submit_req = st.form_submit_button("📤 ส่งคำขอออกเอกสารเข้าร้าน")
+        if submit_req:
+            if req_name and req_phone and req_address and req_items_list:
+                vat_amount = subtotal * 0.07 if include_vat else 0.0
+                grand_total = subtotal + vat_amount
+                
+                if "ใบเสนอราคา" in req_doc_type:
+                    d_type, prefix, status = "QT", P_QT, "รออนุมัติ"
+                elif "ใบส่งสินค้า" in req_doc_type:
+                    d_type, prefix, status = "IV", P_IV, "รอส่งสินค้า"
+                elif "ใบกำกับภาษี" in req_doc_type:
+                    d_type, prefix, status = "TAX", P_TAX, "รอออกใบเสร็จ"
+                else:
+                    d_type, prefix, status = "RC", P_RC, "เสร็จสิ้นการขาย"
+                    
+                doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
+                items_json_str = json.dumps(req_items_list, ensure_ascii=False)
+                
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (doc_no_gen, d_type, status, req_name, req_phone, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
+                conn.commit()
+                cursor.close()
+                
+                # 🔔 ยิงแจ้งเตือนเข้า LINE Messaging API ทันทีที่มีคำขอออกเอกสารการค้าใหม่
+                line_msg = f"📄 มีคำขอเอกสารการค้าใหม่!\n- เลขเอกสาร: {doc_no_gen}\n- ประเภท: {req_doc_type}\n- ลูกค้า: {req_name} ({req_phone})\n- ยอดรวมสุทธิ: {grand_total:,.2f} {DEF_CURR}"
+                send_line_push_message(line_msg, LINE_ACCESS_TOKEN, LINE_TARGET_ID)
+                
+                st.session_state['public_registered_doc'] = doc_no_gen
+                st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}**")
+                st.balloons()
+            else:
+                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
+
+    if 'public_registered_doc' in st.session_state:
+        d_c = st.session_state['public_registered_doc']
+        st.markdown("---")
+        st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
+        track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
+        
+        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
+        qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะเอกสาร")
+        
+        st.image(qr_stream.getvalue(), width=320, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
+        
+        st.download_button(
+            label="📥 บันทึก QR Code ลงเครื่อง",
+            data=qr_stream.getvalue(),
+            file_name=f"QR_Document_{d_c}.png",
+            mime="image/png"
+        )
+        st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะเอกสาร]({track_doc_url})")
+
+    st.stop()
+
 # ==========================================
 # 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Switcher Menu)
 # ==========================================
@@ -1101,10 +1199,10 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
         st.code(doc_req_url, language="text")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม พร้อมระบบออกเอกสารการค้าครบวงจร
+# 3. ติดตาม & อัปเดตสถานะซ่อม
 # ==========================================
 elif menu == "🔍 ติดตามสถานะซ่อม":
-    st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ / ใบกำกับภาษี (COMPLETED)")
+    st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
     try:
@@ -1162,13 +1260,13 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.success(f"อัปเดตสถานะสำเร็จ!")
             st.rerun()
 
-        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสารทางการค้า ---
+        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
         if selected_row['status'].startswith('COMPLETED'):
             st.markdown("---")
-            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! เลือกประเภทเอกสารทางการค้าเพื่อพิมพ์ส่งมอบได้ทันที")
+            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
             
             doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
-                "📦 ใบคืนสินค้า / ส่งสินค้า (Delivery Slip / DO)", 
+                "📦 ใบส่งสินค้า / ใบคืนสินค้า (Delivery Slip / DO)", 
                 "💵 ใบเสร็จรับเงิน (Cash Receipt - RC)", 
                 "📄 ใบกำกับภาษี (Tax Invoice - TAX)",
                 "📋 ใบเสนอราคา (Quotation - QT)"
@@ -1255,7 +1353,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     UPDATE repairs 
                     SET tax_name = ?, tax_id = ?, tax_branch = ?, tax_address = ?, estimated_cost = ?, problem_description = ?
                     WHERE job_code = ?
-                """, (tax_name if 'tax_name' in locals() else tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, grand_total, items_desc_str, selected_job))
+                """, (tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, grand_total, items_desc_str, selected_job))
                 conn.commit()
                 cursor.close()
 
@@ -1271,9 +1369,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         </div>
                         '''
 
-                if "ใบคืนสินค้า" in doc_choice or "ส่งสินค้า" in doc_choice:
-                    doc_title = "ใบคืนสินค้า / DELIVERY SLIP"
-                    t_color = "#16a34a"
+                if "ใบส่งสินค้า" in doc_choice or "ใบคืนสินค้า" in doc_choice:
+                    doc_title = "ใบส่งสินค้า / DELIVERY ORDER"
+                    t_color = "#2563eb"
                     l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                     r_sign = "ผู้รับสินค้า / ลูกค้า"
                 elif "ใบเสร็จรับเงิน" in doc_choice:
@@ -1293,7 +1391,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     r_sign = "ผู้รับบริการ / ลูกค้า"
 
                 commercial_qr_tag = ""
-                if STORE_PROMPTPAY and ("ใบเสร็จ" in doc_choice or "ใบกำกับภาษี" in doc_choice or "ใบคืนสินค้า" in doc_choice):
+                if STORE_PROMPTPAY and ("ใบเสร็จ" in doc_choice or "ใบกำกับภาษี" in doc_choice or "ใบส่งสินค้า" in doc_choice):
                     q_payload = generate_promptpay_payload(STORE_PROMPTPAY, grand_total)
                     q_stream = generate_qr_with_logo(q_payload, LOGO_PATH, top_label="สแกนจ่ายพร้อมเพย์")
                     b64_qr = base64.b64encode(q_stream.getvalue()).decode()
@@ -1383,7 +1481,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div style="background: {t_color}; color: white; padding: 6px 14px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
                                             {doc_title}
                                         </div>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
