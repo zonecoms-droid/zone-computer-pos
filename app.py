@@ -1489,19 +1489,19 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div style="background: {t_color}; color: white; padding: 6px 14px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
                                             {doc_title}
                                         </div>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {cur_doc['doc_no']}</p>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">....................................</span></p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
                             </table>
 
                             <table class="cust-box tbl">
                                 <tr>
-                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {cur_doc['customer_name']} ({tax_cust_branch})</td>
-                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {c_phone_val}</td>
+                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {tax_cust_name} ({tax_cust_branch})</td>
+                                    <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
                                 </tr>
                                 <tr>
-                                    <td style="width: 50%;"><b>ที่อยู่:</b> {cur_doc['customer_address']}</td>
+                                    <td style="width: 50%;"><b>ที่อยู่:</b> {tax_cust_address if tax_cust_address else '-'}</td>
                                     <td style="width: 50%;"><b>เลขผู้เสียภาษี:</b> {tax_cust_id if tax_cust_id else '-'}</td>
                                 </tr>
                             </table>
@@ -1513,7 +1513,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                     <th style="text-align: right; width: 100px;">ราคา/หน่วย</th>
                                     <th style="text-align: right; width: 120px;">จำนวนเงิน (บาท)</th>
                                 </tr>
-                                {print_items_html}
+                                {items_html}
                             </table>
 
                             <table style="width: 100%; margin-top: 8px;">
@@ -1543,12 +1543,12 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                 <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({l_sign})<br>
-                                                    วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
+                                                    วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                 </td>
                                                 <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({r_sign})<br>
-                                                    วันที่ <span class="normal-date">{cur_doc['doc_date']}</span><span class="nodate-field">......................................................</span>
+                                                    วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                 </td>
                                             </tr>
                                         </table>
