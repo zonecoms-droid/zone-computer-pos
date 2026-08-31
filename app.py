@@ -56,13 +56,12 @@ if not os.path.exists(SARABUN_BOLD):
     except Exception:
         pass
 
-# 🎁 ฟังก์ชันสุ่มคำคมและเช็ควันสำคัญอัตโนมัติสำหรับใบรับซ่อม
+# 🎁 ฟังก์ชันสุ่มคำคม (ตัวอักษรชัดเจน ขยายใหญ่ และสุ่มสีสดใส)
 def get_dynamic_repair_terms():
     today = datetime.now()
     month = today.month
     day = today.day
     
-    # 1. เช็ควันสำคัญและเทศกาลพิเศษอัตโนมัติ
     if month == 1 and day == 1:
         festival_msg = "🎉 สวัสดีปีใหม่ ขอให้มีความสุขตลอดปี! ขอบคุณที่ไว้ใจช่างดิด"
     elif month == 4 and (13 <= day <= 15):
@@ -72,7 +71,6 @@ def get_dynamic_repair_terms():
     elif month == 2 and day == 14:
         festival_msg = "💖 สุขสันต์วันวาเลนไทน์ รักใครให้ดูแลสุขภาพ และดูแลคอมพิวเตอร์ดีๆ นะครับ"
     else:
-        # 2. สุ่มคำคมไอทีโดนๆ
         quotes = [
             "💡 'คอมพิวเตอร์ก็เหมือนความรัก ถ้าปล่อยให้ร้อนรุ่ม เดี๋ยวก็พัง'",
             "⚡ 'ข้อมูลสำคัญคือสิ่งมีชีวิต สำรองข้อมูลไว้ก่อนปลอดภัยที่สุด'",
@@ -82,8 +80,11 @@ def get_dynamic_repair_terms():
         ]
         festival_msg = random.choice(quotes)
     
-    core_term = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)"
-    return f"{festival_msg}<br><span style='font-size:9px; color:#64748b;'>{core_term}</span>"
+    # สุ่มสีสันสดใสให้คำคมเด่นชัด
+    colors = ["#2563eb", "#16a34a", "#d97706", "#0d9488", "#4f46e5", "#e11d48", "#9333ea"]
+    chosen_color = random.choice(colors)
+    
+    return f"<div style='font-size: 11px; font-weight: bold; color: {chosen_color}; margin-top: 4px; line-height: 1.4;'>{festival_msg}</div>"
 
 # 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (Push Message)
 def send_line_push_message(message, access_token, target_id):
@@ -1017,7 +1018,6 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
             
-            # เรียกใช้ฟังก์ชันสุ่มคำคม/วันสำคัญ
             current_dynamic_terms = get_dynamic_repair_terms()
             
             portrait_a4_html = f"""
@@ -1040,7 +1040,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .items-tbl th {{ background: #0f172a; color: white; padding: 8px 6px; text-align: left; font-weight: 600; }}
                 .items-tbl td {{ padding: 8px 6px; border-bottom: 1px solid #e2e8f0; word-break: break-word; }}
                 .perforation {{ border-top: 2px dashed #94a3b8; margin: 6mm 0; text-align: center; font-size: 11px; color: #64748b; font-weight: bold; position: relative; z-index: 1; }}
-                .signature-row {{ display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 8px; }}
+                .signature-row {{ display: flex; justify-content: space-between; margin-top: 15px; font-size: 11px; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 12px; }}
                 .nodate-field {{ display: none; }}
                 @media print {{
                     body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
@@ -1122,7 +1122,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 </div>
                                 <div>
                                     <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                    <span style="font-size:9px; color:#64748b;">{current_dynamic_terms}</span>
+                                    {current_dynamic_terms}
                                 </div>
                             </div>
                             <div style="text-align: right; width: 42%; padding-right: 0; margin-right: 0;">
