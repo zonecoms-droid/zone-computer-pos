@@ -40,19 +40,23 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🌐 ดาวน์โหลดฟอนต์ภาษาไทยมาตรฐาน (Sarabun) จาก Google Fonts อัตโนมัติ ป้องกันปัญหาฟอนต์สี่เหลี่ยม
+# 🌐 โหลดฟอนต์แบบปลอดภัยและมีระบบกันค้าง (Timeout 3 วินาที)
 SARABUN_REGULAR = "Sarabun-Regular.ttf"
 SARABUN_BOLD = "Sarabun-Bold.ttf"
 
 if not os.path.exists(SARABUN_REGULAR):
     try:
-        urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf", SARABUN_REGULAR)
+        req = urllib.request.Request("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf", headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response, open(SARABUN_REGULAR, 'wb') as f:
+            f.write(response.read())
     except Exception:
         pass
 
 if not os.path.exists(SARABUN_BOLD):
     try:
-        urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf", SARABUN_BOLD)
+        req = urllib.request.Request("https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf", headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response, open(SARABUN_BOLD, 'wb') as f:
+            f.write(response.read())
     except Exception:
         pass
 
@@ -172,7 +176,6 @@ def generate_downloadable_qr_card(data, store_name, store_phone, logo_path=LOGO_
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
     
-    # ฝังโลโก้ตรงกลาง QR Code
     if logo_path and os.path.exists(logo_path):
         try:
             logo = Image.open(logo_path)
@@ -255,7 +258,6 @@ def get_img_base64(path):
             return ""
     return ""
 
-# ฟังก์ชันเชื่อมต่อและสร้างฐานข้อมูล SQLite แบบอัตโนมัติ
 def init_connection():
     conn = sqlite3.connect('zone_online.db', check_same_thread=False)
     return conn
@@ -319,7 +321,6 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # ตารางสินค้าและอะไหล่ (Products / Inventory Table)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -938,7 +939,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         
         st.markdown("---")
         
-        # 📏 เลือกขนาดสติกเกอร์
         st.markdown("##### 📐 เลือกขนาดสติกเกอร์")
         size_choice = st.radio("ขนาดสติกเกอร์", [
             "📏 50 x 30 มม. (ยอดนิยม มาตรฐาน)", 
@@ -1095,7 +1095,6 @@ elif menu == "📦 จัดการลูกค้า & สินค้า":
     
     tab_cust, tab_prod = st.tabs(["👥 จัดการข้อมูลลูกค้า (Customers)", "📦 จัดการข้อมูลสินค้า / อะไหล่ (Products)"])
     
-    # --- Tab ลูกค้า ---
     with tab_cust:
         st.subheader("👥 ฐานข้อมูลลูกค้า (Customer Management)")
         
@@ -1146,7 +1145,6 @@ elif menu == "📦 จัดการลูกค้า & สินค้า":
         else:
             st.info("ยังไม่มีข้อมูลลูกค้าในระบบ")
 
-    # --- Tab สินค้า ---
     with tab_prod:
         st.subheader("📦 ฐานข้อมูลสินค้าและอะไหล่ (Inventory Management)")
         
