@@ -298,7 +298,7 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
-    # 2. ตารางเก็บข้อมูลเอกสารการค้า (Sales Pipeline & Workflow) - บังคับ commit ชัดเจน
+    # 2. ตารางเก็บข้อมูลเอกสารการค้า
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -325,7 +325,6 @@ def init_db(conn):
     ''')
     conn.commit()
     
-    # เพิ่มคอลัมน์ customer_phone ในตาราง commercial_docs เพื่อรองรับเบอร์โทรลูกค้าในหน้าเอกสาร
     try:
         cursor.execute("ALTER TABLE commercial_docs ADD COLUMN customer_phone TEXT;")
         conn.commit()
@@ -746,123 +745,37 @@ if page_param == "register":
 
     st.stop()
 
-# 3. โหมดลูกค้าขอออกเอกสารการค้าผ่าน QR Code (เลือกประเภทเอกสาร และเพิ่มรายการสินค้าได้หลายรายการ)
-if page_param == "commercial_request":
-    st.markdown(f"<h2 style='text-align: center; color: #0284c7;'>📄 {STORE_NAME}</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>ระบบแจ้งความประสงค์ขอเอกสารทางการค้าสำหรับลูกค้า (เพิ่มรายการสินค้าได้ตามต้องการ)</p>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    with st.form("public_commercial_form"):
-        req_name = st.text_input("ชื่อ-นามสกุล / ชื่อบริษัท ลูกค้า *")
-        req_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ *")
-        req_tax = st.text_input("เลขประจำตัวผู้เสียภาษี 13 หลัก (กรณีออกใบกำกับภาษี)")
-        req_branch = st.text_input("สาขา (เช่น สำนักงานใหญ่)", value="สำนักงานใหญ่")
-        req_address = st.text_area("ที่อยู่สำหรับออกเอกสาร / ใบกำกับภาษี *")
-        
-        req_doc_type = st.selectbox("🎯 เลือกประเภทเอกสารที่ต้องการ", [
-            "ใบเสนอราคา (Quotation - QT)",
-            "ใบส่งสินค้า / ใบแจ้งหนี้ (Delivery Order & Invoice - IV)",
-            "ใบกำกับภาษี (Tax Invoice - TAX)",
-            "ใบเสร็จรับเงิน (Cash Receipt - RC)"
-        ])
-        
-        st.markdown("---")
-        st.markdown("##### 🛒 รายการสินค้า / บริการ / อะไหล่ที่ต้องการ")
-        num_req_items = st.number_input("จำนวนรายการสินค้า", min_value=1, max_value=10, value=1)
-        
-        subtotal = 0.0
-        req_items_list = []
-        for i in range(int(num_req_items)):
-            cols = st.columns([3, 1, 1])
-            with cols[0]:
-                r_desc = st.text_input(f"รายการที่ {i+1}", value=f"รายการสินค้า/บริการ {i+1}", key=f"req_desc_{i}")
-            with cols[1]:
-                r_qty = st.number_input("จำนวน", min_value=1.0, value=1.0, key=f"req_qty_{i}")
-            with cols[2]:
-                r_price = st.number_input("ราคา/หน่วย", min_value=0.0, step=100.0, value=1500.0, key=f"req_price_{i}")
-            tot = float(r_qty) * float(r_price)
-            subtotal += tot
-            req_items_list.append((r_desc, r_qty, r_price, tot))
-            
-        include_vat = st.checkbox("คิดภาษีมูลค่าเพิ่ม (VAT 7%)", value=True if "ใบกำกับภาษี" in req_doc_type else False)
-        req_notes = st.text_area("หมายเหตุเพิ่มเติม (ถ้ามี)")
-        
-        submit_req = st.form_submit_button("📤 ส่งคำขอออกเอกสารเข้าร้าน")
-        if submit_req:
-            if req_name and req_phone and req_address and req_items_list:
-                vat_amount = subtotal * 0.07 if include_vat else 0.0
-                grand_total = subtotal + vat_amount
-                
-                if "ใบเสนอราคา" in req_doc_type:
-                    d_type, prefix, status = "QT", P_QT, "รออนุมัติ"
-                elif "ใบส่งสินค้า" in req_doc_type:
-                    d_type, prefix, status = "IV", P_IV, "รอส่งสินค้า"
-                elif "ใบกำกับภาษี" in req_doc_type:
-                    d_type, prefix, status = "TAX", P_TAX, "รอออกใบเสร็จ"
-                else:
-                    d_type, prefix, status = "RC", P_RC, "เสร็จสิ้นการขาย"
-                    
-                doc_no_gen = f"{prefix}-{datetime.today().strftime('%Y%m%d')}-{random.randint(100,999)}"
-                items_json_str = json.dumps(req_items_list, ensure_ascii=False)
-                
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO commercial_docs (doc_no, doc_type, status, customer_name, customer_phone, customer_tax, customer_branch, customer_address, doc_date, due_date, salesperson, currency, items_json, subtotal, discount_pct, vat_amount, grand_total, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (doc_no_gen, d_type, status, req_name, req_phone, req_tax, req_branch, req_address, datetime.today().strftime('%Y-%m-%d'), (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d'), "ระบบออนไลน์", DEF_CURR, items_json_str, subtotal, 0.0, vat_amount, grand_total, req_notes))
-                conn.commit()
-                cursor.close()
-                
-                # 🔔 ยิงแจ้งเตือนเข้า LINE Messaging API ทันทีที่มีคำขอออกเอกสารการค้าใหม่
-                line_msg = f"📄 มีคำขอเอกสารการค้าใหม่!\n- เลขเอกสาร: {doc_no_gen}\n- ประเภท: {req_doc_type}\n- ลูกค้า: {req_name} ({req_phone})\n- ยอดรวมสุทธิ: {grand_total:,.2f} {DEF_CURR}"
-                send_line_push_message(line_msg, LINE_ACCESS_TOKEN, LINE_TARGET_ID)
-                
-                st.session_state['public_registered_doc'] = doc_no_gen
-                st.success(f"🎉 ส่งคำขอออกเอกสารสำเร็จ! เลขที่เอกสารของคุณคือ: **{doc_no_gen}**")
-                st.balloons()
-            else:
-                st.warning("⚠️ กรุณากรอกข้อมูลสำคัญให้ครบถ้วน")
-
-    if 'public_registered_doc' in st.session_state:
-        d_c = st.session_state['public_registered_doc']
-        st.markdown("---")
-        st.markdown("### 🔍 QR Code ติดตามสถานะเอกสารของคุณ")
-        track_doc_url = f"https://zone-computer-pos.streamlit.app/?track_doc={d_c}"
-        
-        # 🌟 สร้าง QR Card สำหรับดาวน์โหลด พร้อมชื่อร้านและเบอร์โทร
-        qr_stream = generate_downloadable_qr_card(track_doc_url, STORE_NAME, STORE_PHONE, LOGO_PATH, top_label="QR CODE ติดตามสถานะเอกสาร")
-        
-        st.image(qr_stream.getvalue(), width=320, caption=f"สแกนเพื่อเช็คสถานะเอกสาร: {d_c}")
-        
-        st.download_button(
-            label="📥 บันทึก QR Code ลงเครื่อง",
-            data=qr_stream.getvalue(),
-            file_name=f"QR_Document_{d_c}.png",
-            mime="image/png"
-        )
-        st.markdown(f"🔗 หรือคลิกลิงก์เพื่อติดตามสถานะ: [คลิกที่นี่เพื่อเช็คสถานะเอกสาร]({track_doc_url})")
-
-    st.stop()
-
 # ==========================================
-# 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Horizontal Navigation)
+# 🖥️ หน้าแอดมินหลัก (Enterprise Dashboard with Switcher Menu)
 # ==========================================
 st.title(f"⚡ {STORE_NAME} [Enterprise Edition]")
-st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (พร้อมศูนย์กลางการตั้งค่า FlowAccount & ERP Style)")
+st.markdown("ระบบบริหารจัดการร้านคอมพิวเตอร์และงานซ่อมครบวงจร (สไตล์ Enterprise พรีเมียม)")
 
 if 'current_job_code' not in st.session_state:
     st.session_state.current_job_code = None
 
-# แถบเมนูหลักแนวนอน (Horizontal Navigation Buttons)
+# แผงควบคุมเมนูหลักแบบสวิตช์เปิด-ปิด มีไฟสีเขียวเมื่อใช้งานหน้านั้นอยู่
 menu_options = [
     "📥 รับเครื่องซ่อมใหม่", 
     "📱 QR โหลดหน้าลงทะเบียน",
     "🔍 ติดตามสถานะซ่อม", 
-    "📄 ระบบออกเอกสารการค้า",
     "⚙️ ศูนย์กลางการตั้งค่า"
 ]
 
-menu = st.radio("🎯 เลือกเมนูการทำงานหลัก", menu_options, horizontal=True)
+if 'current_menu' not in st.session_state:
+    st.session_state.current_menu = menu_options[0]
+
+st.markdown("##### 🎛️ แผงควบคุมสวิตช์เมนูหลักระบบ")
+cols_menu = st.columns(len(menu_options))
+for i, m_opt in enumerate(menu_options):
+    with cols_menu[i]:
+        is_active = (st.session_state.current_menu == m_opt)
+        btn_label = f"🟢 ON: {m_opt}" if is_active else f"🔌 OFF: {m_opt}"
+        if st.button(btn_label, use_container_width=True, key=f"sw_menu_{i}"):
+            st.session_state.current_menu = m_opt
+            st.rerun()
+
+menu = st.session_state.current_menu
 st.markdown("---")
 
 # ==========================================
@@ -1188,10 +1101,10 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
         st.code(doc_req_url, language="text")
 
 # ==========================================
-# 3. ติดตาม & อัปเดตสถานะงานซ่อม
+# 3. ติดตาม & อัปเดตสถานะงานซ่อม พร้อมระบบออกเอกสารการค้าครบวงจร
 # ==========================================
 elif menu == "🔍 ติดตามสถานะซ่อม":
-    st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
+    st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ / ใบกำกับภาษี (COMPLETED)")
     search_query = st.text_input("🔍 ค้นหาด้วยเลขใบงาน, เบอร์โทร หรือชื่อลูกค้า")
     
     try:
@@ -1249,18 +1162,16 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.success(f"อัปเดตสถานะสำเร็จ!")
             st.rerun()
 
-        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
+        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสารทางการค้า ---
         if selected_row['status'].startswith('COMPLETED'):
             st.markdown("---")
-            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
+            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! เลือกประเภทเอกสารทางการค้าเพื่อพิมพ์ส่งมอบได้ทันที")
             
             doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
                 "📦 ใบคืนสินค้า / ส่งสินค้า (Delivery Slip / DO)", 
                 "💵 ใบเสร็จรับเงิน (Cash Receipt - RC)", 
                 "📄 ใบกำกับภาษี (Tax Invoice - TAX)",
-                "📋 ใบเสนอราคา (Quotation - QT)",
-                "📉 ใบลดหนี้ (Credit Note - CN)",
-                "📈 ใบเพิ่มหนี้ (Debit Note - DN)"
+                "📋 ใบเสนอราคา (Quotation - QT)"
             ], key=f"doc_choice_{selected_job}")
             
             tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
@@ -1268,7 +1179,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else "สำนักงานใหญ่"
             tax_cust_address = repair_full['tax_address'] if pd.notna(repair_full['tax_address']) else selected_row['address']
             
-            if "ใบกำกับภาษี" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice or "ใบลดหนี้" in doc_choice or "ใบเพิ่มหนี้" in doc_choice:
+            if "ใบกำกับภาษี" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice:
                 st.markdown("#### 🏢 ข้อมูลผู้ซื้อสินค้า / ผู้รับบริการ (ดึงมาจากข้อมูลที่ลูกค้าลงทะเบียนไว้)")
                 tc_col1, tc_col2 = st.columns(2)
                 with tc_col1:
@@ -1344,23 +1255,11 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     UPDATE repairs 
                     SET tax_name = ?, tax_id = ?, tax_branch = ?, tax_address = ?, estimated_cost = ?, problem_description = ?
                     WHERE job_code = ?
-                """, (tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, grand_total, items_desc_str, selected_job))
+                """, (tax_name if 'tax_name' in locals() else tax_cust_name, tax_cust_id, tax_cust_branch, tax_cust_address, grand_total, items_desc_str, selected_job))
                 conn.commit()
                 cursor.close()
 
                 vat_html = f"<tr><td style='text-align: right; padding: 4px;'><b>VAT 7%:</b></td><td style='text-align: right; width: 120px; padding: 4px;'>{subtotal * 0.07:,.2f} บาท</td></tr>" if include_vat else ""
-
-                def make_social_qr(link, label):
-                    if not link: return ""
-                    s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
-                    s_b64 = base64.b64encode(s_stream.getvalue()).decode()
-                    return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="35px"><br><span style="font-size:8px;">{label}</span></div>'
-
-                social_html = ""
-                if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
-                if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
-                if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
-                if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
 
                 watermark_html = ""
                 if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
@@ -1387,16 +1286,6 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     t_color = "#0d9488"
                     l_sign = "ผู้เสนอราคา"
                     r_sign = "ผู้อนุมัติ / ลูกค้า"
-                elif "ใบลดหนี้" in doc_choice:
-                    doc_title = "ใบลดหนี้ / CREDIT NOTE"
-                    t_color = "#d97706"
-                    l_sign = "ผู้ออกใบลดหนี้"
-                    r_sign = "ผู้รับใบลดหนี้ / ลูกค้า"
-                elif "ใบเพิ่มหนี้" in doc_choice:
-                    doc_title = "ใบเพิ่มหนี้ / DEBIT NOTE"
-                    t_color = "#e11d48"
-                    l_sign = "ผู้ออกใบเพิ่มหนี้"
-                    r_sign = "ผู้รับใบเพิ่มหนี้ / ลูกค้า"
                 else:
                     doc_title = "ใบกำกับภาษี / TAX INVOICE"
                     t_color = "#4f46e5"
@@ -1494,7 +1383,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div style="background: {t_color}; color: white; padding: 6px 14px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
                                             {doc_title}
                                         </div>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
@@ -1576,7 +1465,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 components.html(print_html_full, height=1050, scrolling=True)
 
 # ==========================================
-# 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
+# 4. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
 # ==========================================
 elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
