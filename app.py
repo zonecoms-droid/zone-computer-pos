@@ -1266,7 +1266,8 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
             
             doc_choice = st.radio("🖨️ เลือกประเภทเอกสารทางการค้า:", [
-                "📦 ใบส่งสินค้า / ใบคืนสินค้า (Delivery Slip / DO)", 
+                "📦 ใบส่งสินค้า (Delivery Order - DO)", 
+                "🔄 ใบคืนสินค้า (Return Slip)", 
                 "💵 ใบเสร็จรับเงิน (Cash Receipt - RC)", 
                 "📄 ใบกำกับภาษี (Tax Invoice - TAX)",
                 "📋 ใบเสนอราคา (Quotation - QT)"
@@ -1369,11 +1370,16 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         </div>
                         '''
 
-                if "ใบส่งสินค้า" in doc_choice or "ใบคืนสินค้า" in doc_choice:
+                if "ใบส่งสินค้า" in doc_choice:
                     doc_title = "ใบส่งสินค้า / DELIVERY ORDER"
                     t_color = "#2563eb"
                     l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
                     r_sign = "ผู้รับสินค้า / ลูกค้า"
+                elif "ใบคืนสินค้า" in doc_choice:
+                    doc_title = "ใบคืนสินค้า / RETURN SLIP"
+                    t_color = "#d97706"
+                    l_sign = "ผู้รับคืนสินค้า / ผู้ออกเอกสาร"
+                    r_sign = "ผู้ส่งคืนสินค้า / ลูกค้า"
                 elif "ใบเสร็จรับเงิน" in doc_choice:
                     doc_title = "ใบเสร็จรับเงิน / CASH RECEIPT"
                     t_color = "#16a34a"
@@ -1481,7 +1487,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <div style="background: {t_color}; color: white; padding: 6px 14px; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px; margin-bottom: 6px;">
                                             {doc_title}
                                         </div>
-                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่ใบงาน:</b> {selected_job}</p>
+                                        <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>เลขที่เอกสาร:</b> {selected_job}</p>
                                         <p style="font-size: 11px; margin: 2px 0; color: #334155;"><b>วันที่ออกเอกสาร:</b> <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">....................................</span></p>
                                     </td>
                                 </tr>
