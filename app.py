@@ -56,6 +56,35 @@ if not os.path.exists(SARABUN_BOLD):
     except Exception:
         pass
 
+# 🎁 ฟังก์ชันสุ่มคำคมและเช็ควันสำคัญอัตโนมัติสำหรับใบรับซ่อม
+def get_dynamic_repair_terms():
+    today = datetime.now()
+    month = today.month
+    day = today.day
+    
+    # 1. เช็ควันสำคัญและเทศกาลพิเศษอัตโนมัติ
+    if month == 1 and day == 1:
+        festival_msg = "🎉 สวัสดีปีใหม่ ขอให้มีความสุขตลอดปี! ขอบคุณที่ไว้ใจช่างดิด"
+    elif month == 4 and (13 <= day <= 15):
+        festival_msg = "💦 สุขสันต์วันสงกรานต์ เดินทางปลอดภัย เล่นน้ำกันอย่างระมัดระวังนะครับ"
+    elif month == 12 and (25 <= day <= 31):
+        festival_msg = "🎄 Merry Christmas & Happy New Year ส่งท้ายปีเก่าต้อนรับปีใหม่"
+    elif month == 2 and day == 14:
+        festival_msg = "💖 สุขสันต์วันวาเลนไทน์ รักใครให้ดูแลสุขภาพ และดูแลคอมพิวเตอร์ดีๆ นะครับ"
+    else:
+        # 2. สุ่มคำคมไอทีโดนๆ
+        quotes = [
+            "💡 'คอมพิวเตอร์ก็เหมือนความรัก ถ้าปล่อยให้ร้อนรุ่ม เดี๋ยวก็พัง'",
+            "⚡ 'ข้อมูลสำคัญคือสิ่งมีชีวิต สำรองข้อมูลไว้ก่อนปลอดภัยที่สุด'",
+            "🔧 'ซ่อมไว ไว้ใจช่างดิด บริการด้วยใจ ใส่ใจทุกรายละเอียด'",
+            "💻 'หน้าจอฟ้าไม่ใช่จุดจบ แต่เป็นจุดเริ่มต้นของการซ่อมแซม'",
+            "🚀 'อัปเกรดความเร็วให้คอมพิวเตอร์ เหมือนเติมพลังให้ชีวิต'"
+        ]
+        festival_msg = random.choice(quotes)
+    
+    core_term = "(เงื่อนไข: ฝากซ่อมเกิน 30 วัน ทางร้านขอสงวนสิทธิ์เก็บค่าฝากรักษา)"
+    return f"{festival_msg}<br><span style='font-size:9px; color:#64748b;'>{core_term}</span>"
+
 # 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (Push Message)
 def send_line_push_message(message, access_token, target_id):
     if not access_token or not target_id or not access_token.strip() or not target_id.strip():
@@ -988,6 +1017,9 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
             if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
             
+            # เรียกใช้ฟังก์ชันสุ่มคำคม/วันสำคัญ
+            current_dynamic_terms = get_dynamic_repair_terms()
+            
             portrait_a4_html = f"""
             <html>
             <head>
@@ -1090,7 +1122,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                                 </div>
                                 <div>
                                     <span>ลงชื่อลูกค้า: ......................................................</span><br>
-                                    <span style="font-size:9px; color:#64748b;">{REPAIR_TERMS}</span>
+                                    <span style="font-size:9px; color:#64748b;">{current_dynamic_terms}</span>
                                 </div>
                             </div>
                             <div style="text-align: right; width: 42%; padding-right: 0; margin-right: 0;">
