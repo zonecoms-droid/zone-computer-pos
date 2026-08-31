@@ -319,6 +319,21 @@ def init_db(conn):
         except sqlite3.OperationalError:
             pass
 
+    # ตารางสินค้าและอะไหล่ (Products / Inventory Table)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_code TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            category TEXT,
+            price REAL DEFAULT 0.0,
+            cost REAL DEFAULT 0.0,
+            stock INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS commercial_docs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -573,6 +588,7 @@ if 'current_job_code' not in st.session_state:
 menu_options = [
     "📥 รับเครื่องซ่อมใหม่", 
     "🖨️ พิมพ์สติกเกอร์ติดเครื่อง",
+    "📦 จัดการลูกค้า & สินค้า",
     "📱 QR โหลดหน้าลงทะเบียน",
     "🔍 ติดตามสถานะซ่อม", 
     "⚙️ ศูนย์กลางการตั้งค่า"
@@ -898,7 +914,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (มี 3 ขนาดเลือกได้)
+# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (3 ขนาดเลือกได้)
 # ==========================================
 elif menu == "🖨️ พิมพ์สติกเกอร์ติดเครื่อง":
     st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่องลูกค้า")
@@ -1053,7 +1069,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                         </div>
                     </div>
                     <div class="stk-footer">
-                        <div style="font-size: 12px; color: #0f172a; font-weight: bold; line-height: 1.3;">
+                        <div style="font-size: 11.5px; color: #0f172a; font-weight: bold; line-height: 1.3;">
                             📞 โทร: {STORE_PHONE}<br>
                             ⭐ ขอบคุณที่ใช้บริการครับ 🙏
                         </div>
@@ -1071,7 +1087,157 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         st.info("ยังไม่มีข้อมูลใบงานสำหรับพิมพ์สติกเกอร์ในระบบ")
 
 # ==========================================
-# 3. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
+# 3. จัดการลูกค้า & สินค้า (CRM & Inventory Management)
+# ==========================================
+elif menu == "📦 จัดการลูกค้า & สินค้า":
+    st.header("📦 ระบบจัดการข้อมูลลูกค้าและสินค้า / อะไหล่ (CRM & Inventory)")
+    st.markdown("เพิ่ม, ค้นหา, แก้ไข และลบข้อมูลลูกค้าและสินค้าในสต็อกได้อย่างสะดวกรวดเร็ว")
+    
+    tab_cust, tab_prod = st.tabs(["👥 จัดการข้อมูลลูกค้า (Customers)", "📦 จัดการข้อมูลสินค้า / อะไหล่ (Products)"])
+    
+    # --- Tab ลูกค้า ---
+    with tab_cust:
+        st.subheader("👥 ฐานข้อมูลลูกค้า (Customer Management)")
+        
+        c_search = st.text_input("🔍 ค้นหาลูกค้า (ด้วยชื่อ หรือ เบอร์โทรศัพท์)")
+        cursor = conn.cursor()
+        c_query = "SELECT id, name, phone, address, created_at FROM customers"
+        if c_search:
+            c_query += f" WHERE name LIKE '%{c_search}%' OR phone LIKE '%{c_search}%'"
+        c_query += " ORDER BY id DESC;"
+        cust_df = pd.read_sql(c_query, conn)
+        cursor.close()
+        
+        if not cust_df.empty:
+            st.dataframe(cust_df, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("##### ✏️ แก้ไข หรือ 🗑️ ลบข้อมูลลูกค้า")
+            selected_cust_id = st.selectbox("เลือกลูกค้าที่ต้องการจัดการ", cust_df['id'].tolist(), format_func=lambda x: f"ID: {x} - {cust_df[cust_df['id']==x]['name'].values[0]} ({cust_df[cust_df['id']==x]['phone'].values[0]})")
+            
+            target_cust = cust_df[cust_df['id'] == selected_cust_id].iloc[0]
+            
+            with st.form("edit_customer_form"):
+                e_name = st.text_input("ชื่อ-นามสกุล", value=target_cust['name'])
+                e_phone = st.text_input("เบอร์โทรศัพท์", value=target_cust['phone'])
+                e_address = st.text_area("ที่อยู่", value=target_cust['address'] if pd.notna(target_cust['address']) else "")
+                
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    update_cust_btn = st.form_submit_button("💾 บันทึกการแก้ไขข้อมูลลูกค้า", type="primary")
+                with col_e2:
+                    delete_cust_btn = st.form_submit_button("🗑️ ลบลูกค้ารายนี้")
+                    
+                if update_cust_btn:
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE customers SET name = ?, phone = ?, address = ? WHERE id = ?", (e_name, e_phone, e_address, selected_cust_id))
+                    conn.commit()
+                    cursor.close()
+                    st.success("อัปเดตข้อมูลลูกค้าสำเร็จ!")
+                    st.rerun()
+                    
+                if delete_cust_btn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM customers WHERE id = ?", (selected_cust_id,))
+                    conn.commit()
+                    cursor.close()
+                    st.success("ลบข้อมูลลูกค้าสำเร็จ!")
+                    st.rerun()
+        else:
+            st.info("ยังไม่มีข้อมูลลูกค้าในระบบ")
+
+    # --- Tab สินค้า ---
+    with tab_prod:
+        st.subheader("📦 ฐานข้อมูลสินค้าและอะไหล่ (Inventory Management)")
+        
+        with st.expander("➕ เพิ่มสินค้า / อะไหล่ใหม่เข้าสต็อก", expanded=False):
+            with st.form("add_product_form"):
+                p_code = st.text_input("รหัสสินค้า / Barcode (เช่น PART-001)")
+                p_name = st.text_input("ชื่อสินค้า / อะไหล่ (เช่น แรม DDR4 8GB)")
+                p_cat = st.text_input("หมวดหมู่สินค้า (เช่น RAM, Harddisk, อุปกรณ์เสริม)", value="อะไหล่คอมพิวเตอร์")
+                p_cols = st.columns(3)
+                with p_cols[0]:
+                    p_price = st.number_input("ราคาขาย (บาท)", min_value=0.0, step=50.0, value=500.0)
+                with p_cols[1]:
+                    p_cost = st.number_input("ทุน (บาท)", min_value=0.0, step=50.0, value=300.0)
+                with p_cols[2]:
+                    p_stock = st.number_input("จำนวนคงเหลือ (Stock)", min_value=0, value=10)
+                    
+                add_prod_submit = st.form_submit_button("💾 บันทึกสินค้าใหม่", type="primary")
+                if add_prod_submit:
+                    if p_code and p_name:
+                        try:
+                            cursor = conn.cursor()
+                            cursor.execute("""
+                                INSERT INTO products (product_code, name, category, price, cost, stock)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (p_code, p_name, p_cat, p_price, p_cost, p_stock))
+                            conn.commit()
+                            cursor.close()
+                            st.success(f"เพิ่มสินค้า {p_name} สำเร็จ!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"เกิดข้อผิดพลาด (รหัสสินค้าอาจซ้ำ): {e}")
+                    else:
+                        st.warning("กรุณากรอกรหัสและชื่อสินค้าให้ครบถ้วน")
+
+        st.markdown("---")
+        p_search = st.text_input("🔍 ค้นหาสินค้า (ด้วยรหัส หรือ ชื่อสินค้า)")
+        cursor = conn.cursor()
+        p_query = "SELECT id, product_code, name, category, price, cost, stock, created_at FROM products"
+        if p_search:
+            p_query += f" WHERE product_code LIKE '%{p_search}%' OR name LIKE '%{p_search}%'"
+        p_query += " ORDER BY id DESC;"
+        prod_df = pd.read_sql(p_query, conn)
+        cursor.close()
+        
+        if not prod_df.empty:
+            st.dataframe(prod_df, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("##### ✏️ แก้ไข หรือ 🗑️ ลบข้อมูลสินค้า / อะไหล่")
+            selected_prod_id = st.selectbox("เลือกสินค้าที่ต้องการจัดการ", prod_df['id'].tolist(), format_func=lambda x: f"Code: {prod_df[prod_df['id']==x]['product_code'].values[0]} - {prod_df[prod_df['id']==x]['name'].values[0]} (คงเหลือ: {prod_df[prod_df['id']==x]['stock'].values[0]})")
+            
+            target_prod = prod_df[prod_df['id'] == selected_prod_id].iloc[0]
+            
+            with st.form("edit_product_form"):
+                ep_code = st.text_input("รหัสสินค้า / Barcode", value=target_prod['product_code'])
+                ep_name = st.text_input("ชื่อสินค้า / อะไหล่", value=target_prod['name'])
+                ep_cat = st.text_input("หมวดหมู่สินค้า", value=target_prod['category'] if pd.notna(target_prod['category']) else "")
+                ep_cols = st.columns(3)
+                with ep_cols[0]:
+                    ep_price = st.number_input("ราคาขาย (บาท)", min_value=0.0, step=50.0, value=float(target_prod['price']))
+                with ep_cols[1]:
+                    ep_cost = st.number_input("ทุน (บาท)", min_value=0.0, step=50.0, value=float(target_prod['cost']))
+                with ep_cols[2]:
+                    ep_stock = st.number_input("จำนวนคงเหลือ (Stock)", min_value=0, value=int(target_prod['stock']))
+                
+                col_ep1, col_ep2 = st.columns(2)
+                with col_ep1:
+                    update_prod_btn = st.form_submit_button("💾 บันทึกการแก้ไขสินค้า", type="primary")
+                with col_ep2:
+                    delete_prod_btn = st.form_submit_button("🗑️ ลบสินค้ารายนี้")
+                    
+                if update_prod_btn:
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE products SET product_code = ?, name = ?, category = ?, price = ?, cost = ?, stock = ? WHERE id = ?", (ep_code, ep_name, ep_cat, ep_price, ep_cost, ep_stock, selected_prod_id))
+                    conn.commit()
+                    cursor.close()
+                    st.success("อัปเดตข้อมูลสินค้าสำเร็จ!")
+                    st.rerun()
+                    
+                if delete_prod_btn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM products WHERE id = ?", (selected_prod_id,))
+                    conn.commit()
+                    cursor.close()
+                    st.success("ลบข้อมูลสินค้าสำเร็จ!")
+                    st.rerun()
+        else:
+            st.info("ยังไม่มีข้อมูลสินค้าหรืออะไหล่ในระบบ")
+
+# ==========================================
+# 4. QR Code สำหรับให้ลูกค้าสแกนลงทะเบียนเอง
 # ==========================================
 elif menu == "📱 QR โหลดหน้าลงทะเบียน":
     st.header("📱 QR Code สำหรับลูกค้าสแกน (เลือกประเภท QR Code ตามต้องการ)")
@@ -1092,7 +1258,7 @@ elif menu == "📱 QR โหลดหน้าลงทะเบียน":
         st.code(doc_req_url, language="text")
 
 # ==========================================
-# 4. ติดตาม & อัปเดตสถานะงานซ่อม
+# 5. ติดตาม & อัปเดตสถานะงานซ่อม
 # ==========================================
 elif menu == "🔍 ติดตามสถานะซ่อม":
     st.header("🔍 ค้นหา จัดการสถานะงานซ่อม และออกเอกสารส่งมอบ (COMPLETED)")
@@ -1480,7 +1646,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                 components.html(print_html_full, height=1050, scrolling=True)
 
 # ==========================================
-# 5. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
+# 6. ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)
 # ==========================================
 elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     st.header("⚙️ ศูนย์กลางการตั้งค่าระบบ (Enterprise Settings Hub)")
