@@ -1526,7 +1526,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                         <table class="summary-tbl">
                                             <tr><td style="text-align: right;"><b>มูลค่ารวม (Subtotal):</b></td><td style="text-align: right; width: 110px;">{subtotal:,.2f} บาท</td></tr>
                                             {vat_html}
-                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px;"><b>{grand_total:,.2f} บาท</b></td></tr>
+                                            <tr><td style="text-align: right; font-size: 14px; color: {t_color};"><b>ยอดชำระสุทธิ (Grand Total):</b></td><td style="text-align: right; width: 130px;"><b>{grand_total:,.2f} {DEF_CURR}</b></td></tr>
                                         </table>
                                         {commercial_qr_tag}
                                     </td>
@@ -1545,7 +1545,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                                                     ({l_sign})<br>
                                                     วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
                                                 </td>
-                                                <td style="padding-bottom: 3px; width: 50%; line-height: 1.8;">
+                                                <td style="padding-bottom: 3px; width: 50%; line-height: 2.0;">
                                                     ลงชื่อ ......................................................<br>
                                                     ({r_sign})<br>
                                                     วันที่ <span class="normal-date">{datetime.today().strftime('%Y-%m-%d')}</span><span class="nodate-field">......................................................</span>
@@ -1809,7 +1809,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     # --- Tab 10: จัดการฟอร์มเอกสาร (Document Template Manager) ---
     with set_tab10:
         st.subheader("📝 ตัวจัดการแบบฟอร์มเอกสาร (Document Template Manager)")
-        st.markdown("ปรับเปลี่ยนข้อความ เงื่อนไข และข้อกำหนดต่างๆ ในเอกสารของร้านได้อย่างอิสระ")
+        st.markdown("ปรับปรุงแก้ไขข้อความ เงื่อนไข และข้อกำหนดต่างๆ ในเอกสารของร้านได้อย่างอิสระ")
         
         with st.form("settings_template_form"):
             new_repair_terms = st.text_input("เงื่อนไขท้ายใบรับซ่อม (เช่น เงื่อนไขการฝากซ่อมเกิน 30 วัน)", value=REPAIR_TERMS)
