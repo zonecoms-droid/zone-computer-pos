@@ -584,7 +584,7 @@ if 'current_job_code' not in st.session_state:
 # แผงควบคุมเมนูหลักแบบสวิตช์เปิด-ปิด มีไฟสีเขียวเมื่อใช้งานหน้านั้นอยู่
 menu_options = [
     "📥 รับเครื่องซ่อมใหม่", 
-    "🖨️ พิมพ์สติกเกอร์ติดเครื่อง",
+    "🖨️ พิมพ์สติกเกอร์",
     "📦 จัดการลูกค้า & สินค้า",
     "📱 QR โหลดหน้าลงทะเบียน",
     "🔍 ติดตามสถานะซ่อม", 
@@ -911,192 +911,230 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (3 ขนาดเลือกได้)
+# 2. พิมพ์สติกเกอร์ (รองรับทั้งงานซ่อม และ ขายเครื่องใหม่)
 # ==========================================
-elif menu == "🖨️ พิมพ์สติกเกอร์ติดเครื่อง":
-    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่องลูกค้า")
-    st.markdown("เลือกขนาดและสไตล์สติกเกอร์ที่ต้องการพิมพ์ (รองรับเครื่องพิมพ์สติกเกอร์ความร้อน)")
+elif menu == "🖨️ พิมพ์สติกเกอร์":
+    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่อง (งานซ่อม & ขายเครื่องใหม่)")
+    st.markdown("เลือกประเภทสติกเกอร์ ขนาด และสไตล์ที่ต้องการพิมพ์ (รองรับเครื่องพิมพ์สติกเกอร์ความร้อน)")
 
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.estimated_cost, r.status
-        FROM repairs r JOIN customers c ON r.customer_id = c.id
-        ORDER BY r.created_at DESC LIMIT 50
-    """)
-    sticker_jobs = cursor.fetchall()
-    cursor.close()
+    stk_mode = st.radio("🎯 เลือกประเภทสติกเกอร์ที่ต้องการพิมพ์", [
+        "🏷️ สติกเกอร์งานซ่อม (Repair Sticker)", 
+        "🏷️ สติกเกอร์ติดขายเครื่องใหม่ / สินค้า (New Sale / Product Sticker)"
+    ], horizontal=True)
 
-    if sticker_jobs:
-        job_options = [f"{j[0]} - {j[1]} ({j[2]})" for j in sticker_jobs]
-        selected_sticker_job_str = st.selectbox("เลือกเลขใบงานที่ต้องการพิมพ์สติกเกอร์", job_options)
-        
-        selected_job_code_val = selected_sticker_job_str.split(" - ")[0]
-        chosen_job_data = next(j for j in sticker_jobs if j[0] == selected_job_code_val)
-        
-        st.markdown("---")
-        
-        st.markdown("##### 📐 เลือกขนาดสติกเกอร์")
-        size_choice = st.radio("ขนาดสติกเกอร์", [
-            "📏 50 x 30 มม. (ยอดนิยม มาตรฐาน)", 
-            "📏 40 x 30 มม. (ไซส์กะทัดรัด)", 
-            "📏 40 x 25 มม. (ไซส์จิ๋วพิเศษ)"
-        ], horizontal=True)
+    st.markdown("---")
 
-        if "50 x 30" in size_choice:
-            box_width = "340px"
-            box_pad = "8px 10px"
-            font_content = "11px"
-            font_footer = "10.5px"
-            bc_height = "30"
-            bc_width = "1.3"
-        elif "40 x 30" in size_choice:
-            box_width = "290px"
-            box_pad = "6px 8px"
-            font_content = "10px"
-            font_footer = "9px"
-            bc_height = "24"
-            bc_width = "1.0"
+    if "งานซ่อม" in stk_mode:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT r.job_code, c.name, c.phone, r.device_name, r.serial_number, r.problem_description, r.estimated_cost, r.status
+            FROM repairs r JOIN customers c ON r.customer_id = c.id
+            ORDER BY r.created_at DESC LIMIT 50
+        """)
+        sticker_jobs = cursor.fetchall()
+        cursor.close()
+
+        if sticker_jobs:
+            job_options = [f"{j[0]} - {j[1]} ({j[2]})" for j in sticker_jobs]
+            selected_sticker_job_str = st.selectbox("เลือกเลขใบงานซ่อม", job_options)
+            
+            selected_job_code_val = selected_sticker_job_str.split(" - ")[0]
+            chosen_job_data = next(j for j in sticker_jobs if j[0] == selected_job_code_val)
+            s_code, s_name, s_phone, s_dev, s_sn, s_prob, s_cost, s_stat = chosen_job_data
         else:
-            box_width = "270px"
-            box_pad = "5px 6px"
-            font_content = "9px"
-            font_footer = "8px"
-            bc_height = "20"
-            bc_width = "0.9"
+            st.warning("ยังไม่มีข้อมูลงานซ่อมในระบบ")
+            st.stop()
+    else:
+        cursor = conn.cursor()
+        cursor.execute("SELECT product_code, name, category, price, stock FROM products ORDER BY id DESC LIMIT 50")
+        products_list = cursor.fetchall()
+        cursor.close()
 
-        st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
-        
-        sticker_styles = [
-            "1. คลาสสิกเน้นบาร์โค้ด (Blue Gradient)",
-            "2. สไตล์มินิมอลตัวหนังสือใหญ่ (Indigo Banner)",
-            "3. วอยด์รับประกันหลังซ่อม (Emerald Green)",
-            "4. มินิบาร์โค้ดขนาดเล็กพิเศษ (Amber Orange)",
-            "5. สไตล์พรีเมียมข้อมูลครบถ้วน (Rose Gradient)"
-        ]
-        
-        if 'sticker_style_choice' not in st.session_state:
-            st.session_state.sticker_style_choice = sticker_styles[0]
+        if products_list:
+            prod_options = [f"{p[0]} - {p[1]} (ราคา: {p[3]:,.2f} บาท)" for p in products_list]
+            selected_prod_str = st.selectbox("เลือกสินค้า / เครื่องใหม่จากสต็อก", prod_options)
+            
+            selected_prod_code = selected_prod_str.split(" - ")[0]
+            chosen_prod_data = next(p for p in products_list if p[0] == selected_prod_code)
+            p_code, p_name, p_cat, p_price, p_stock = chosen_prod_data
+            
+            s_code = p_code
+            s_name = "สินค้าหน้าร้าน"
+            s_phone = "-"
+            s_dev = f"{p_name} ({p_cat})"
+            s_cost = p_price
+        else:
+            st.warning("ยังไม่มีสินค้าในสต็อก กรุณาเพิ่มข้อมูลสินค้าในเมนู '📦 จัดการลูกค้า & สินค้า' ก่อนครับ")
+            st.stop()
 
-        cols_stk = st.columns(len(sticker_styles))
-        for s_idx, s_name in enumerate(sticker_styles):
-            with cols_stk[s_idx]:
-                is_stk_active = (st.session_state.sticker_style_choice == s_name)
-                btn_sw = "🟢 ON" if is_stk_active else "🔌 OFF"
-                if st.button(f"{btn_sw}\nแบบที่ {s_idx+1}", use_container_width=True, key=f"stk_btn_{s_idx}"):
-                    st.session_state.sticker_style_choice = s_name
-                    st.rerun()
+    # 📏 เลือกขนาดสติกเกอร์
+    st.markdown("##### 📐 เลือกขนาดสติกเกอร์")
+    size_choice = st.radio("ขนาดสติกเกอร์", [
+        "📏 50 x 30 มม. (ยอดนิยม มาตรฐาน)", 
+        "📏 40 x 30 มม. (ไซส์กะทัดรัด)", 
+        "📏 40 x 25 มม. (ไซส์จิ๋วพิเศษ)"
+    ], horizontal=True, key="stk_size_radio")
 
-        chosen_style = st.session_state.sticker_style_choice
-        st.markdown(f"🎯 **สไตล์สติกเกอร์ที่เลือก:** `{chosen_style}` | **ขนาด:** `{size_choice}`")
+    if "50 x 30" in size_choice:
+        box_width = "340px"
+        box_pad = "6px 8px"
+        font_content = "10.5px"
+        font_footer = "9px"
+        bc_height = "26"
+        bc_width = "1.2"
+    elif "40 x 30" in size_choice:
+        box_width = "280px"
+        box_pad = "5px 6px"
+        font_content = "9.5px"
+        font_footer = "8px"
+        bc_height = "22"
+        bc_width = "0.95"
+    else:
+        box_width = "260px"
+        box_pad = "4px 5px"
+        font_content = "8.5px"
+        font_footer = "7.5px"
+        bc_height = "18"
+        bc_width = "0.85"
 
-        s_code, s_name, s_phone, s_dev, s_sn, s_prob, s_cost, s_stat = chosen_job_data
+    st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
+    
+    sticker_styles = [
+        "1. คลาสสิกเน้นบาร์โค้ด (Blue Gradient)",
+        "2. สไตล์มินิมอลตัวหนังสือใหญ่ (Indigo Banner)",
+        "3. วอยด์รับประกันหลังซ่อม (Emerald Green)",
+        "4. มินิบาร์โค้ดขนาดเล็กพิเศษ (Amber Orange)",
+        "5. สไตล์พรีเมียมข้อมูลครบถ้วน (Rose Gradient)"
+    ]
+    
+    if 'sticker_style_choice' not in st.session_state:
+        st.session_state.sticker_style_choice = sticker_styles[0]
 
-        logo_sticker_tag = ""
-        if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
-            logo_uri = get_img_base64(LOGO_PATH)
-            if logo_uri:
-                logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 24px; vertical-align: middle; margin-right: 4px;">'
+    cols_stk = st.columns(len(sticker_styles))
+    for s_idx, s_name in enumerate(sticker_styles):
+        with cols_stk[s_idx]:
+            is_stk_active = (st.session_state.sticker_style_choice == s_name)
+            btn_sw = "🟢 ON" if is_stk_active else "🔌 OFF"
+            if st.button(f"{btn_sw}\nแบบที่ {s_idx+1}", use_container_width=True, key=f"stk_btn_{s_idx}"):
+                st.session_state.sticker_style_choice = s_name
+                st.rerun()
 
-        wm_sticker_html = ""
-        if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
-            wm_uri = get_img_base64(WATERMARK_PATH)
-            if wm_uri:
-                wm_sticker_html = f'''
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); opacity: 0.05; z-index: 0; pointer-events: none; width: 60%;">
-                    <img src="{wm_uri}" style="width: 100%; height: auto;">
+    chosen_style = st.session_state.sticker_style_choice
+    st.markdown(f"🎯 **สไตล์สติกเกอร์ที่เลือก:** `{chosen_style}` | **ขนาด:** `{size_choice}`")
+
+    logo_sticker_tag = ""
+    if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
+        logo_uri = get_img_base64(LOGO_PATH)
+        if logo_uri:
+            logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 20px; vertical-align: middle; margin-right: 4px;">'
+
+    wm_sticker_html = ""
+    if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
+        wm_uri = get_img_base64(WATERMARK_PATH)
+        if wm_uri:
+            wm_sticker_html = f'''
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); opacity: 0.05; z-index: 0; pointer-events: none; width: 60%;">
+                <img src="{wm_uri}" style="width: 100%; height: auto;">
+            </div>
+            '''
+
+    if "1." in chosen_style:
+        theme_bg = "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)"
+        theme_header = "#2563eb"
+        theme_border = "#93c5fd"
+    elif "2." in chosen_style:
+        theme_bg = "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)"
+        theme_header = "#4f46e5"
+        theme_border = "#c7d2fe"
+    elif "3." in chosen_style:
+        theme_bg = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+        theme_header = "#16a34a"
+        theme_border = "#86efac"
+    elif "4." in chosen_style:
+        theme_bg = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
+        theme_header = "#d97706"
+        theme_border = "#fde68a"
+    else:
+        theme_bg = "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)"
+        theme_header = "#e11d48"
+        theme_border = "#fda4af"
+
+    stk_dynamic_terms = get_dynamic_repair_terms()
+    barcode_elem_id = f"barcode_{s_code.replace('-', '_')}"
+
+    # เนื้อหาสติกเกอร์ที่จัดกระชับ ฟอนต์เล็กลง ไม่ล้นกรอบ
+    if "งานซ่อม" in stk_mode:
+        middle_info = f"""
+        <p style="margin: 1px 0;"><b>📋 เลขงาน:</b> <span style="color:{theme_header}; font-weight:bold;">{s_code}</span></p>
+        <p style="margin: 1px 0;"><b>👤 ลูกค้า:</b> {s_name}</p>
+        <p style="margin: 1px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
+        """
+    else:
+        middle_info = f"""
+        <p style="margin: 1px 0;"><b>📦 รหัสสินค้า:</b> <span style="color:{theme_header}; font-weight:bold;">{s_code}</span></p>
+        <p style="margin: 1px 0;"><b>💻 สินค้า:</b> {s_dev}</p>
+        <p style="margin: 1px 0;"><b>💰 ราคา:</b> <b style="color:{theme_header};">{s_cost:,.2f} {DEF_CURR}</b></p>
+        """
+
+    sticker_html_card = f"""
+    <html>
+    <head>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 10px; }}
+        .sticker-box {{ background: {theme_bg}; border: 1.5px solid {theme_border}; border-radius: 6px; padding: {box_pad}; width: {box_width}; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
+        .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 2px; margin-bottom: 2px; position: relative; z-index: 1; }}
+        .stk-title {{ font-size: 11px; font-weight: bold; color: {theme_header}; line-height: 1.0; }}
+        .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.2; position: relative; z-index: 1; }}
+        .stk-footer {{ margin-top: 2px; display: flex; flex-direction: column; align-items: center; text-align: center; border-top: 1px dashed {theme_border}; padding-top: 2px; position: relative; z-index: 1; }}
+        .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
+        @media print {{
+            body {{ background: white; padding: 0; }}
+            .print-btn {{ display: none !important; }}
+            .sticker-box {{ border: 1px solid #000; box-shadow: none; width: 100%; }}
+        }}
+    </style>
+    </head>
+    <body>
+        <div>
+            <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์บาร์โค้ดนี้</button>
+            <div class="sticker-box">
+                {wm_sticker_html}
+                <div class="stk-header">
+                    {logo_sticker_tag}
+                    <div class="stk-title"><b>{STORE_NAME}</b></div>
                 </div>
-                '''
-
-        if "1." in chosen_style:
-            theme_bg = "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)"
-            theme_header = "#2563eb"
-            theme_border = "#93c5fd"
-        elif "2." in chosen_style:
-            theme_bg = "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)"
-            theme_header = "#4f46e5"
-            theme_border = "#c7d2fe"
-        elif "3." in chosen_style:
-            theme_bg = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
-            theme_header = "#16a34a"
-            theme_border = "#86efac"
-        elif "4." in chosen_style:
-            theme_bg = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
-            theme_header = "#d97706"
-            theme_border = "#fde68a"
-        else:
-            theme_bg = "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)"
-            theme_header = "#e11d48"
-            theme_border = "#fda4af"
-
-        stk_dynamic_terms = get_dynamic_repair_terms()
-        barcode_elem_id = f"barcode_{s_code.replace('-', '_')}"
-
-        sticker_html_card = f"""
-        <html>
-        <head>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-        <style>
-            body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 10px; }}
-            .sticker-box {{ background: {theme_bg}; border: 1.5px solid {theme_border}; border-radius: 8px; padding: {box_pad}; width: {box_width}; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
-            .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 3px; margin-bottom: 3px; position: relative; z-index: 1; }}
-            .stk-title {{ font-size: 11.5px; font-weight: bold; color: {theme_header}; line-height: 1.1; }}
-            .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.25; position: relative; z-index: 1; }}
-            .stk-footer {{ margin-top: 3px; display: flex; flex-direction: column; align-items: center; text-align: center; border-top: 1px dashed {theme_border}; padding-top: 3px; position: relative; z-index: 1; }}
-            .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
-            @media print {{
-                body {{ background: white; padding: 0; }}
-                .print-btn {{ display: none !important; }}
-                .sticker-box {{ border: 1px solid #000; box-shadow: none; width: 100%; }}
-            }}
-        </style>
-        </head>
-        <body>
-            <div>
-                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์บาร์โค้ดนี้</button>
-                <div class="sticker-box">
-                    {wm_sticker_html}
-                    <div class="stk-header">
-                        {logo_sticker_tag}
-                        <div class="stk-title"><b>{STORE_NAME}</b></div>
+                <div class="stk-content">
+                    {middle_info}
+                </div>
+                <div class="stk-footer">
+                    <div style="font-size: {font_footer}; color: #0f172a; font-weight: bold; margin-bottom: 1px; white-space: nowrap;">
+                        📞 โทร: {STORE_PHONE} | ⭐ ขอบคุณครับ 🙏
                     </div>
-                    <div class="stk-content">
-                        <p style="margin: 1.5px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold; font-size:11.5px;">{s_code}</span></p>
-                        <p style="margin: 1.5px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
-                        <p style="margin: 1.5px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
-                        <div style="margin-top: 1px; text-align: center;">
-                            {stk_dynamic_terms}
-                        </div>
-                    </div>
-                    <div class="stk-footer">
-                        <div style="font-size: {font_footer}; color: #0f172a; font-weight: bold; margin-bottom: 2px;">
-                            📞 โทร: {STORE_PHONE} &nbsp;|&nbsp; ⭐ ขอบคุณที่ใช้บริการครับ 🙏
-                        </div>
-                        <div style="text-align: center;">
-                            <svg id="{barcode_elem_id}"></svg>
-                        </div>
+                    <div style="text-align: center;">
+                        <svg id="{barcode_elem_id}"></svg>
                     </div>
                 </div>
             </div>
-            <script>
-                try {{
-                    JsBarcode("#{barcode_elem_id}", "{s_code}", {{
-                        format: "CODE128",
-                        width: {bc_width},
-                        height: {bc_height},
-                        displayValue: true,
-                        fontSize: 9,
-                        margin: 0
-                    }});
-                }} catch(e) {{
-                    console.error(e);
-                }}
-            </script>
-        </body>
-        </html>
-        """
-        components.html(sticker_html_card, height=350, scrolling=True)
-    else:
-        st.info("ยังไม่มีข้อมูลใบงานสำหรับพิมพ์สติกเกอร์ในระบบ")
+        </div>
+        <script>
+            try {{
+                JsBarcode("#{barcode_elem_id}", "{s_code}", {{
+                    format: "CODE128",
+                    width: {bc_width},
+                    height: {bc_height},
+                    displayValue: true,
+                    fontSize: 8.5,
+                    margin: 0
+                }});
+            }} catch(e) {{
+                console.error(e);
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    components.html(sticker_html_card, height=330, scrolling=True)
 
 # ==========================================
 # 3. จัดการลูกค้า & สินค้า (CRM & Inventory Management)
