@@ -911,10 +911,10 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (เปลี่ยนเป็นบาร์โค้ด เลือกได้ 3 ขนาด)
+# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (3 ขนาดเลือกได้)
 # ==========================================
 elif menu == "🖨️ พิมพ์สติกเกอร์ติดเครื่อง":
-    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่องลูกค้า (บาร์โค้ด)")
+    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่องลูกค้า")
     st.markdown("เลือกขนาดและสไตล์สติกเกอร์ที่ต้องการพิมพ์ (รองรับเครื่องพิมพ์สติกเกอร์ความร้อน)")
 
     cursor = conn.cursor()
@@ -946,19 +946,19 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             box_width = "340px"
             box_pad = "8px 10px"
             font_content = "11px"
-            bc_height = "32"
+            bc_height = "30"
             bc_width = "1.3"
         elif "40 x 30" in size_choice:
             box_width = "290px"
             box_pad = "6px 8px"
             font_content = "10px"
-            bc_height = "26"
+            bc_height = "25"
             bc_width = "1.1"
         else:
             box_width = "270px"
             box_pad = "5px 6px"
             font_content = "9.5px"
-            bc_height = "22"
+            bc_height = "20"
             bc_width = "1.0"
 
         st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
@@ -1028,7 +1028,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         stk_dynamic_terms = get_dynamic_repair_terms()
         barcode_elem_id = f"barcode_{s_code.replace('-', '_')}"
 
-        # HTML สติกเกอร์ พร้อมสคริปต์ JsBarcode สำหรับสร้างบาร์โค้ดอัตโนมัติ
         sticker_html_card = f"""
         <html>
         <head>
@@ -1039,7 +1038,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 4px; margin-bottom: 4px; position: relative; z-index: 1; }}
             .stk-title {{ font-size: 12px; font-weight: bold; color: {theme_header}; line-height: 1.1; }}
             .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.3; position: relative; z-index: 1; }}
-            .stk-footer {{ margin-top: 4px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px dashed {theme_border}; padding-top: 4px; position: relative; z-index: 1; }}
+            .stk-footer {{ margin-top: 4px; display: flex; flex-direction: column; align-items: center; text-align: center; border-top: 1px dashed {theme_border}; padding-top: 4px; position: relative; z-index: 1; }}
             .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
             @media print {{
                 body {{ background: white; padding: 0; }}
@@ -1058,6 +1057,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                         <div class="stk-title"><b>{STORE_NAME}</b></div>
                     </div>
                     <div class="stk-content">
+                        <p style="margin: 2px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold; font-size:12px;">{s_code}</span></p>
                         <p style="margin: 2px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
                         <p style="margin: 2px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
                         <div style="margin-top: 2px; text-align: center;">
@@ -1065,11 +1065,10 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                         </div>
                     </div>
                     <div class="stk-footer">
-                        <div style="font-size: 11.5px; color: #0f172a; font-weight: bold; line-height: 1.3;">
-                            📞 โทร: {STORE_PHONE}<br>
-                            ⭐ ขอบคุณที่ใช้บริการครับ 🙏
+                        <div style="font-size: 11px; color: #0f172a; font-weight: bold; margin-bottom: 3px;">
+                            📞 โทร: {STORE_PHONE} &nbsp;|&nbsp; ⭐ ขอบคุณที่ใช้บริการครับ 🙏
                         </div>
-                        <div style="text-align: center;">
+                        <div>
                             <svg id="{barcode_elem_id}"></svg>
                         </div>
                     </div>
