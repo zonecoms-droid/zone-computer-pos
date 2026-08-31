@@ -1435,6 +1435,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     .nodate-field {{ display: none; }}
                     @media print {{
                         body {{ background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                        .print-btn-container {{ display: none !important; visibility: hidden !important; height: 0 !important; }}
                         .flow-container {{ 
                             border: none !important; 
                             box-shadow: none !important; 
@@ -1809,7 +1810,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
     # --- Tab 10: จัดการฟอร์มเอกสาร (Document Template Manager) ---
     with set_tab10:
         st.subheader("📝 ตัวจัดการแบบฟอร์มเอกสาร (Document Template Manager)")
-        st.markdown("ปรับปรุงแก้ไขข้อความ เงื่อนไข และข้อกำหนดต่างๆ ในเอกสารของร้านได้อย่างอิสระ")
+        st.markdown("ปรับเปลี่ยนข้อความ เงื่อนไข และข้อกำหนดต่างๆ ในเอกสารของร้านได้อย่างอิสระ")
         
         with st.form("settings_template_form"):
             new_repair_terms = st.text_input("เงื่อนไขท้ายใบรับซ่อม (เช่น เงื่อนไขการฝากซ่อมเกิน 30 วัน)", value=REPAIR_TERMS)
