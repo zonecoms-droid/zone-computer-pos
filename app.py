@@ -914,8 +914,8 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
     cursor.close()
 
     if sticker_jobs:
-        job_options = [f"{j[0]} - {j[1]} ({j[3])}" for j in sticker_jobs]
-        selected_sticker_job_str = st.selectbox("เลือกใบงานที่ต้องการพิมพ์สติกเกอร์", job_options)
+        job_options = [f"{j[0]} - {j[1]} ({j[2]})" for j in sticker_jobs]
+        selected_sticker_job_str = st.selectbox("เลือกเลขใบงานที่ต้องการพิมพ์สติกเกอร์", job_options)
         
         selected_job_code_val = selected_sticker_job_str.split(" - ")[0]
         chosen_job_data = next(j for j in sticker_jobs if j[0] == selected_job_code_val)
@@ -946,7 +946,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         chosen_style = st.session_state.sticker_style_choice
         st.markdown(f"🎯 **สไตล์สติกเกอร์ที่เลือกปัจจุบัน:** `{chosen_style}`")
 
-        # เตรียมข้อมูลสำหรับพรีวิวสติกเกอร์
         s_code, s_name, s_phone, s_dev, s_sn, s_prob, s_cost, s_stat = chosen_job_data
         s_cost = float(s_cost) if s_cost is not None else 0.0
 
@@ -971,7 +970,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
                 </div>
                 '''
 
-        # กำหนดธีมสีตามแบบสติกเกอร์
         if "1." in chosen_style:
             theme_bg = "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)"
             theme_header = "#2563eb"
