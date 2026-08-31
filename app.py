@@ -63,27 +63,27 @@ def get_dynamic_repair_terms():
     day = today.day
     
     if month == 1 and day == 1:
-        festival_msg = "🎉 สวัสดีปีใหม่ ขอให้มีความสุขตลอดปี! ขอบคุณที่ไว้ใจช่างดิด"
+        festival_msg = "🎉 สวัสดีปีใหม่ ขอให้มีความสุขตลอดปี!"
     elif month == 4 and (13 <= day <= 15):
-        festival_msg = "💦 สุขสันต์วันสงกรานต์ เดินทางปลอดภัย เล่นน้ำกันอย่างระมัดระวังนะครับ"
+        festival_msg = "💦 สุกสันต์วันสงกรานต์ เดินทางปลอดภัยนะครับ"
     elif month == 12 and (25 <= day <= 31):
-        festival_msg = "🎄 Merry Christmas & Happy New Year ส่งท้ายปีเก่าต้อนรับปีใหม่"
+        festival_msg = "🎄 Merry Christmas & Happy New Year"
     elif month == 2 and day == 14:
-        festival_msg = "💖 สุขสันต์วันวาเลนไทน์ รักใครให้ดูแลสุขภาพ และดูแลคอมพิวเตอร์ดีๆ นะครับ"
+        festival_msg = "💖 สุขสันต์วันวาเลนไทน์ ดูแลสุขภาพด้วยนะ"
     else:
         quotes = [
-            "💡 'คอมพิวเตอร์ก็เหมือนความรัก ถ้าปล่อยให้ร้อนรุ่ม เดี๋ยวก็พัง'",
-            "⚡ 'ข้อมูลสำคัญคือสิ่งมีชีวิต สำรองข้อมูลไว้ก่อนปลอดภัยที่สุด'",
-            "🔧 'ซ่อมไว ไว้ใจช่างดิด บริการด้วยใจ ใส่ใจทุกรายละเอียด'",
-            "💻 'หน้าจอฟ้าไม่ใช่จุดจบ แต่เป็นจุดเริ่มต้นของการซ่อมแซม'",
-            "🚀 'อัปเกรดความเร็วให้คอมพิวเตอร์ เหมือนเติมพลังให้ชีวิต'"
+            "💡 'คอมพิวเตอร์ก็เหมือนความรัก ถ้าร้อนรุ่มเดี๋ยวก็พัง'",
+            "⚡ 'ข้อมูลสำคัญคือชีวิต สำรองไว้ก่อนปลอดภัยที่สุด'",
+            "🔧 'ซ่อมไว ไว้ใจช่างดิด บริการด้วยใจ ใส่ใจทุกชิ้น'",
+            "💻 'หน้าจอฟ้าไม่ใช่จุดจบ จุดเริ่มต้นของการซ่อม'",
+            "🚀 'อัปเกรดความเร็วให้คอมพิวเตอร์ เติมพลังชีวิต'"
         ]
         festival_msg = random.choice(quotes)
     
     colors = ["#2563eb", "#16a34a", "#d97706", "#0d9488", "#4f46e5", "#e11d48", "#9333ea"]
     chosen_color = random.choice(colors)
     
-    return f"<div style='font-size: 11px; font-weight: bold; color: {chosen_color}; margin-top: 4px; line-height: 1.4;'>{festival_msg}</div>"
+    return f"<div style='font-size: 10px; font-weight: bold; color: {chosen_color}; margin-top: 2px;'>{festival_msg}</div>"
 
 # 🔔 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (Push Message)
 def send_line_push_message(message, access_token, target_id):
@@ -898,11 +898,11 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
         st.info("ยังไม่มีข้อมูลใบงานในระบบ")
 
 # ==========================================
-# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (มีสีสัน โลโก้ และลายน้ำ 5 แบบ)
+# 2. พิมพ์สติกเกอร์ติดเครื่องลูกค้า (ขนาด 50x30 มม. แนวนอน)
 # ==========================================
 elif menu == "🖨️ พิมพ์สติกเกอร์ติดเครื่อง":
-    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่อง (มีสีสัน, โลโก้ และลายน้ำ)")
-    st.markdown("เลือกใบงานและสไตล์สติกเกอร์ที่ต้องการพิมพ์ (รองรับเครื่องพิมพ์สติกเกอร์ความร้อน/บาร์โค้ด)")
+    st.header("🖨️ ระบบพิมพ์สติกเกอร์ติดเครื่อง (ขนาด 50x30 มม.)")
+    st.markdown("เลือกใบงานและสไตล์สติกเกอร์ที่ต้องการพิมพ์ (ออกแบบสำหรับเครื่องพิมพ์สติกเกอร์ความร้อน 50x30 มม.)")
 
     cursor = conn.cursor()
     cursor.execute("""
@@ -951,20 +951,20 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         stk_qr_url = f"https://zone-computer-pos.streamlit.app/?track={s_code}"
         stk_qr_stream = generate_qr_with_logo(stk_qr_url, LOGO_PATH, top_label="เช็คสถานะ")
         stk_qr_b64 = base64.b64encode(stk_qr_stream.getvalue()).decode()
-        stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="85px">'
+        stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="75px">'
 
         logo_sticker_tag = ""
         if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
             logo_uri = get_img_base64(LOGO_PATH)
             if logo_uri:
-                logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 28px; vertical-align: middle; margin-right: 6px;">'
+                logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 22px; vertical-align: middle; margin-right: 4px;">'
 
         wm_sticker_html = ""
         if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
             wm_uri = get_img_base64(WATERMARK_PATH)
             if wm_uri:
                 wm_sticker_html = f'''
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); opacity: 0.06; z-index: 0; pointer-events: none; width: 70%;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); opacity: 0.05; z-index: 0; pointer-events: none; width: 60%;">
                     <img src="{wm_uri}" style="width: 100%; height: auto;">
                 </div>
                 '''
@@ -990,46 +990,46 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
             theme_header = "#e11d48"
             theme_border = "#fda4af"
 
-        # เรียกใช้คำคม/วันสำคัญสุ่มสีและขยายใหญ่
         stk_dynamic_terms = get_dynamic_repair_terms()
 
+        # ดีไซน์ขนาด 50x30 มม. (กระชับพอดีเป๊ะสำหรับเครื่องพิมพ์สติกเกอร์ความร้อน)
         sticker_html_card = f"""
         <html>
         <head>
         <style>
-            body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 20px; }}
-            .sticker-box {{ background: {theme_bg}; border: 2px solid {theme_border}; border-radius: 12px; padding: 15px; width: 390px; box-sizing: border-box; box-shadow: 0 6px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }}
-            .stk-header {{ display: flex; align-items: center; border-bottom: 2px solid {theme_header}; padding-bottom: 8px; margin-bottom: 8px; position: relative; z-index: 1; }}
-            .stk-title {{ font-size: 15px; font-weight: bold; color: {theme_header}; line-height: 1.2; }}
-            .stk-content {{ font-size: 12px; color: #1e293b; line-height: 1.5; position: relative; z-index: 1; }}
-            .stk-footer {{ margin-top: 10px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed {theme_border}; padding-top: 8px; position: relative; z-index: 1; }}
-            .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 15px auto; }}
+            body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 10px; }}
+            .sticker-box {{ background: {theme_bg}; border: 1.5px solid {theme_border}; border-radius: 8px; padding: 8px 10px; width: 340px; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
+            .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 4px; margin-bottom: 5px; position: relative; z-index: 1; }}
+            .stk-title {{ font-size: 12px; font-weight: bold; color: {theme_header}; line-height: 1.1; }}
+            .stk-content {{ font-size: 10.5px; color: #1e293b; line-height: 1.3; position: relative; z-index: 1; }}
+            .stk-footer {{ margin-top: 5px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed {theme_border}; padding-top: 4px; position: relative; z-index: 1; }}
+            .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
             @media print {{
                 body {{ background: white; padding: 0; }}
                 .print-btn {{ display: none !important; }}
-                .sticker-box {{ border: 2px solid #000; box-shadow: none; width: 100%; }}
+                .sticker-box {{ border: 1px solid #000; box-shadow: none; width: 50mm; height: 30mm; padding: 4px; }}
             }}
         </style>
         </head>
         <body>
             <div>
-                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์นี้</button>
+                <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์ 50x30 มม.</button>
                 <div class="sticker-box">
                     {wm_sticker_html}
                     <div class="stk-header">
                         {logo_sticker_tag}
-                        <div class="stk-title"><b>{STORE_NAME}</b><br><span style="font-size:10px; color:#475569;">ศูนย์ซ่อมและบริการไอทีครบวงจร</span></div>
+                        <div class="stk-title"><b>{STORE_NAME}</b></div>
                     </div>
                     <div class="stk-content">
-                        <p style="margin: 3px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold; font-size:13px;">{s_code}</span></p>
-                        <p style="margin: 3px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
-                        <p style="margin: 3px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
-                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dotted {theme_border}; text-align: center;">
+                        <p style="margin: 2px 0;"><b>📋 เลขใบงาน:</b> <span style="color:{theme_header}; font-weight:bold; font-size:11.5px;">{s_code}</span></p>
+                        <p style="margin: 2px 0;"><b>👤 ลูกค้า:</b> {s_name} ({s_phone})</p>
+                        <p style="margin: 2px 0;"><b>💻 อุปกรณ์:</b> {s_dev}</p>
+                        <div style="margin-top: 3px; text-align: center;">
                             {stk_dynamic_terms}
                         </div>
                     </div>
                     <div class="stk-footer">
-                        <div style="font-size: 11px; color: #334155; font-weight: bold; line-height: 1.4;">
+                        <div style="font-size: 9.5px; color: #334155; font-weight: bold; line-height: 1.2;">
                             📞 โทร: {STORE_PHONE}<br>
                             ⭐ ขอบคุณที่ใช้บริการครับ 🙏
                         </div>
@@ -1042,7 +1042,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์ติดเค�
         </body>
         </html>
         """
-        components.html(sticker_html_card, height=390, scrolling=True)
+        components.html(sticker_html_card, height=320, scrolling=True)
     else:
         st.info("ยังไม่มีข้อมูลใบงานสำหรับพิมพ์สติกเกอร์ในระบบ")
 
