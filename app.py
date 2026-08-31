@@ -1267,9 +1267,9 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             
             st.markdown("🖨️ เลือกประเภทเอกสารทางการค้า:")
             doc_options = [
-                "📦 ใบส่งสินค้า",
                 "🔄 ใบคืนสินค้า",
                 "📋 ใบเสนอราคา",
+                "📦 ใบส่งสินค้า",
                 "📄 ใบกำกับภาษี",
                 "💵 ใบเสร็จรับเงิน"
             ]
@@ -1282,7 +1282,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             for d_idx, d_opt in enumerate(doc_options):
                 with cols_doc_sw[d_idx]:
                     is_doc_active = (st.session_state[doc_state_key] == d_opt)
-                    short_names = ["📦 ใบส่งสินค้า", "🔄 ใบคืนสินค้า", "📋 ใบเสนอราคา", "📄 ใบกำกับภาษี", "💵 ใบเสร็จรับเงิน"]
+                    short_names = ["🔄 ใบคืนสินค้า", "📋 ใบเสนอราคา", "📦 ใบส่งสินค้า", "📄 ใบกำกับภาษี", "💵 ใบเสร็จรับเงิน"]
                     sw_label = f"🟢 ON" if is_doc_active else f"🔌 OFF"
                     if st.button(f"{sw_label}\n{short_names[d_idx]}", use_container_width=True, key=f"sw_doc_{selected_job}_{d_idx}"):
                         st.session_state[doc_state_key] = d_opt
