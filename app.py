@@ -1012,7 +1012,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .nodate-field {{ display: none; }}
                 @media print {{
                     body {{ background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                    .print-btn-container {{ display: none !important; visibility: hidden !important; height: 0 !important; }}
+                    .print-btn-container {{ display: none !important; }}
                     .print-container {{ border: none; box-shadow: none; padding: 0; width: 100%; }}
                 }}
             </style>
@@ -1260,18 +1260,18 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             st.success(f"อัปเดตสถานะสำเร็จ!")
             st.rerun()
 
-        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสารด้วยปุ่มสวิตช์เปิด-ปิด ---
+        # --- ถ้าสถานะเป็น COMPLETED ให้เลือกพิมพ์เอกสาร ---
         if selected_row['status'].startswith('COMPLETED'):
             st.markdown("---")
-            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! เลือกประเภทเอกสารทางการค้าเพื่อพิมพ์ส่งมอบได้ทันที")
+            st.success("🎉 งานซ่อมเสร็จสิ้นแล้ว! ข้อมูลออกบิลที่ลูกค้ากรอกไว้ถูกดึงมาให้เรียบร้อยแล้วครับ")
             
             st.markdown("🖨️ เลือกประเภทเอกสารทางการค้า:")
             doc_options = [
-                "📦 ใบส่งสินค้า (Delivery Order)",
-                "🔄 ใบคืนสินค้า (Return Slip)",
-                "💵 ใบเสร็จรับเงิน (Cash Receipt)",
-                "📄 ใบกำกับภาษี (Tax Invoice)",
-                "📋 ใบเสนอราคา (Quotation)"
+                "📦 ใบส่งสินค้า",
+                "🔄 ใบคืนสินค้า",
+                "📋 ใบเสนอราคา",
+                "📄 ใบกำกับภาษี",
+                "💵 ใบเสร็จรับเงิน"
             ]
             
             doc_state_key = f"doc_choice_state_{selected_job}"
@@ -1282,7 +1282,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             for d_idx, d_opt in enumerate(doc_options):
                 with cols_doc_sw[d_idx]:
                     is_doc_active = (st.session_state[doc_state_key] == d_opt)
-                    short_names = ["📦 ใบส่งของ", "🔄 ใบคืนสินค้า", "💵 ใบเสร็จ", "📄 ใบกำกับ", "📋 ใบเสนอราคา"]
+                    short_names = ["📦 ใบส่งสินค้า", "🔄 ใบคืนสินค้า", "📋 ใบเสนอราคา", "📄 ใบกำกับภาษี", "💵 ใบเสร็จรับเงิน"]
                     sw_label = f"🟢 ON" if is_doc_active else f"🔌 OFF"
                     if st.button(f"{sw_label}\n{short_names[d_idx]}", use_container_width=True, key=f"sw_doc_{selected_job}_{d_idx}"):
                         st.session_state[doc_state_key] = d_opt
@@ -1388,26 +1388,26 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                         </div>
                         '''
 
-                if "ใบส่งสินค้า" in doc_choice:
-                    doc_title = "ใบส่งสินค้า / DELIVERY ORDER"
-                    t_color = "#2563eb"
-                    l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
-                    r_sign = "ผู้รับสินค้า / ลูกค้า"
-                elif "ใบคืนสินค้า" in doc_choice:
+                if "ใบคืนสินค้า" in doc_choice:
                     doc_title = "ใบคืนสินค้า / RETURN SLIP"
                     t_color = "#d97706"
                     l_sign = "ผู้รับคืนสินค้า / ผู้ออกเอกสาร"
                     r_sign = "ผู้ส่งคืนสินค้า / ลูกค้า"
-                elif "ใบเสร็จรับเงิน" in doc_choice:
-                    doc_title = "ใบเสร็จรับเงิน / CASH RECEIPT"
-                    t_color = "#16a34a"
-                    l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร"
-                    r_sign = "ผู้จ่ายเงิน / ลูกค้า"
                 elif "ใบเสนอราคา" in doc_choice:
                     doc_title = "ใบเสนอราคา / QUOTATION"
                     t_color = "#0d9488"
                     l_sign = "ผู้เสนอราคา"
                     r_sign = "ผู้อนุมัติ / ลูกค้า"
+                elif "ใบส่งสินค้า" in doc_choice:
+                    doc_title = "ใบส่งสินค้า / DELIVERY ORDER"
+                    t_color = "#2563eb"
+                    l_sign = "ผู้ส่งสินค้า / ผู้ออกเอกสาร"
+                    r_sign = "ผู้รับสินค้า / ลูกค้า"
+                elif "ใบเสร็จรับเงิน" in doc_choice:
+                    doc_title = "ใบเสร็จรับเงิน / CASH RECEIPT"
+                    t_color = "#16a34a"
+                    l_sign = "ผู้รับเงิน / ผู้ออกเอกสาร"
+                    r_sign = "ผู้จ่ายเงิน / ลูกค้า"
                 else:
                     doc_title = "ใบกำกับภาษี / TAX INVOICE"
                     t_color = "#4f46e5"
