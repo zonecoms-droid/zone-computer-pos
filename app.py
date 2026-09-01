@@ -503,6 +503,18 @@ if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
         </div>
         '''
 
+def make_social_qr_inline(link, label):
+    if not link: return ""
+    s_stream = generate_qr_with_logo(link, LOGO_PATH, top_label=f"QR CODE {label}")
+    s_b64 = base64.b64encode(s_stream.getvalue()).decode()
+    return f'<div style="text-align:center; display:inline-block; margin: 0 3px;"><img src="data:image/png;base64,{s_b64}" width="38px"><br><span style="font-size:7px;">{label}</span></div>'
+
+social_html = ""
+if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
+if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
+if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
+if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
+
 query_params = st.query_params
 track_code = query_params.get("track", None)
 track_doc = query_params.get("track_doc", None)
@@ -706,18 +718,6 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
             track_stream_qr = generate_qr_with_logo(track_url, LOGO_PATH)
             track_b64 = base64.b64encode(track_stream_qr.getvalue()).decode()
             qr_track_tag = f'<img src="data:image/png;base64,{track_b64}" width="100px"><br><span style="font-size:8px; font-weight:bold;">สแกนเช็คสถานะงานซ่อม</span>'
-            
-            def make_social_qr_inline(link, label):
-                if not link: return ""
-                s_stream = generate_qr_with_logo(link, LOGO_PATH)
-                s_b64 = base64.b64encode(s_stream.getvalue()).decode()
-                return f'<div style="text-align:center; display:inline-block; margin: 0 4px;"><img src="data:image/png;base64,{s_b64}" width="40px"><br><span style="font-size:7px;">{label}</span></div>'
-
-            social_html = ""
-            if STORE_LINE: social_html += make_social_qr_inline(STORE_LINE, "Line")
-            if STORE_FB: social_html += make_social_qr_inline(STORE_FB, "Facebook")
-            if STORE_TIKTOK: social_html += make_social_qr_inline(STORE_TIKTOK, "TikTok")
-            if STORE_YOUTUBE: social_html += make_social_qr_inline(STORE_YOUTUBE, "YouTube")
             
             current_dynamic_terms = get_dynamic_repair_terms()
             
@@ -967,7 +967,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
             st.warning("ยังไม่มีสินค้าในสต็อก กรุณาเพิ่มข้อมูลสินค้าในเมนู '📦 จัดการลูกค้า & สินค้า' ก่อนครับ")
             st.stop()
 
-    # 📏 เลือกขนาดสติกเกอร์
     st.markdown("##### 📐 เลือกขนาดสติกเกอร์")
     size_choice = st.radio("ขนาดสติกเกอร์", [
         "📏 50 x 30 มม. (ยอดนิยม มาตรฐาน)", 
@@ -1062,7 +1061,6 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
     stk_dynamic_terms = get_dynamic_repair_terms()
     barcode_elem_id = f"barcode_{s_code.replace('-', '_')}"
 
-    # เนื้อหาสติกเกอร์ที่จัดกระชับ ฟอนต์เล็กลง ไม่ล้นกรอบ
     if "งานซ่อม" in stk_mode:
         middle_info = f"""
         <p style="margin: 1px 0;"><b>📋 เลขงาน:</b> <span style="color:{theme_header}; font-weight:bold;">{s_code}</span></p>
