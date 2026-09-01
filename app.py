@@ -1398,7 +1398,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
             
             tax_cust_name = repair_full['tax_name'] if pd.notna(repair_full['tax_name']) else selected_row['customer_name']
             tax_cust_id = repair_full['tax_id'] if pd.notna(repair_full['tax_id']) else ""
-            tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else "สำนักงานใหญ่"
+            tax_cust_branch = repair_full['tax_branch'] if pd.notna(repair_full['tax_branch']) else ""
             tax_cust_address = repair_full['tax_address'] if pd.notna(repair_full['tax_address']) else selected_row['address']
             
             if "ใบกำกับภาษี" in doc_choice or "ใบเสร็จรับเงิน" in doc_choice:
