@@ -979,27 +979,24 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
         box_pad = "6px 8px"
         font_content = "10px"
         font_footer = "8px"
-        bc_height = "22"
-        bc_width = "1.1"
+        qr_width = "72px"
     elif "40 x 30" in size_choice:
         box_width = "280px"
         box_pad = "5px 6px"
         font_content = "9px"
         font_footer = "7.5px"
-        bc_height = "18"
-        bc_width = "0.85"
+        qr_width = "60px"
     else:
         box_width = "260px"
         box_pad = "4px 5px"
         font_content = "8px"
         font_footer = "7px"
-        bc_height = "15"
-        bc_width = "0.75"
+        qr_width = "50px"
 
     st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
     
     sticker_styles = [
-        "1. คลาสสิกเน้นบาร์โค้ด (Blue Gradient)",
+        "1. คลาสสิกเน้นคิวอาร์โค้ด (Blue Gradient)",
         "2. สไตล์มินิมอลตัวหนังสือใหญ่ (Indigo Banner)",
         "3. วอยด์รับประกันหลังซ่อม (Emerald Green)",
         "4. มินิบาร์โค้ดขนาดเล็กพิเศษ (Amber Orange)",
@@ -1059,7 +1056,12 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
         theme_border = "#fda4af"
 
     stk_dynamic_terms = get_dynamic_repair_terms()
-    barcode_elem_id = f"barcode_{s_code.replace('-', '_')}"
+    
+    # สร้าง QR Code สำหรับสติกเกอร์
+    stk_qr_url = f"https://zone-computer-pos.streamlit.app/?track={s_code}"
+    stk_qr_stream = generate_qr_with_logo(stk_qr_url, LOGO_PATH, top_label="เช็คสถานะ")
+    stk_qr_b64 = base64.b64encode(stk_qr_stream.getvalue()).decode()
+    stk_qr_tag = f'<img src="data:image/png;base64,{stk_qr_b64}" width="{qr_width}">'
 
     if "งานซ่อม" in stk_mode:
         middle_info = f"""
@@ -1077,14 +1079,13 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
     sticker_html_card = f"""
     <html>
     <head>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 10px; }}
         .sticker-box {{ background: {theme_bg}; border: 1.5px solid {theme_border}; border-radius: 6px; padding: {box_pad}; width: {box_width}; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
         .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 2px; margin-bottom: 2px; position: relative; z-index: 1; }}
         .stk-title {{ font-size: 10.5px; font-weight: bold; color: {theme_header}; line-height: 1.0; }}
         .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.15; position: relative; z-index: 1; }}
-        .stk-footer {{ margin-top: 2px; display: flex; flex-direction: column; align-items: center; text-align: center; border-top: 1px dashed {theme_border}; padding-top: 2px; position: relative; z-index: 1; }}
+        .stk-footer {{ margin-top: 2px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed {theme_border}; padding-top: 2px; position: relative; z-index: 1; }}
         .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
         @media print {{
             body {{ background: white; padding: 0; }}
@@ -1095,7 +1096,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
     </head>
     <body>
         <div>
-            <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์บาร์โค้ดนี้</button>
+            <button class="print-btn" onclick="window.print()">🖨️ พิมพ์สติกเกอร์ QR Code นี้</button>
             <div class="sticker-box">
                 {wm_sticker_html}
                 <div class="stk-header">
@@ -1106,29 +1107,16 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
                     {middle_info}
                 </div>
                 <div class="stk-footer">
-                    <div style="font-size: {font_footer}; color: #0f172a; font-weight: bold; margin-bottom: 1px; white-space: nowrap;">
-                        📞 โทร: {STORE_PHONE} | ⭐ ขอบคุณครับ 🙏
+                    <div style="font-size: {font_footer}; color: #0f172a; font-weight: bold; line-height: 1.3;">
+                        📞 โทร: {STORE_PHONE}<br>
+                        ⭐ ขอบคุณครับ 🙏
                     </div>
-                    <div style="text-align: center;">
-                        <svg id="{barcode_elem_id}"></svg>
+                    <div>
+                        {stk_qr_tag}
                     </div>
                 </div>
             </div>
         </div>
-        <script>
-            try {{
-                JsBarcode("#{barcode_elem_id}", "{s_code}", {{
-                    format: "CODE128",
-                    width: {bc_width},
-                    height: {bc_height},
-                    displayValue: true,
-                    fontSize: 8,
-                    margin: 0
-                }});
-            }} catch(e) {{
-                console.error(e);
-            }}
-        </script>
     </body>
     </html>
     """
