@@ -977,24 +977,24 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
     if "50 x 30" in size_choice:
         box_width = "340px"
         box_pad = "6px 8px"
-        font_content = "10.5px"
-        font_footer = "9px"
-        bc_height = "26"
-        bc_width = "1.2"
+        font_content = "10px"
+        font_footer = "8px"
+        bc_height = "22"
+        bc_width = "1.1"
     elif "40 x 30" in size_choice:
         box_width = "280px"
         box_pad = "5px 6px"
-        font_content = "9.5px"
-        font_footer = "8px"
-        bc_height = "22"
-        bc_width = "0.95"
-    else:
-        box_width = "260px"
-        box_pad = "4px 5px"
-        font_content = "8.5px"
+        font_content = "9px"
         font_footer = "7.5px"
         bc_height = "18"
         bc_width = "0.85"
+    else:
+        box_width = "260px"
+        box_pad = "4px 5px"
+        font_content = "8px"
+        font_footer = "7px"
+        bc_height = "15"
+        bc_width = "0.75"
 
     st.markdown("##### 🎨 เลือกสไตล์สติกเกอร์ (5 สไตล์สุดพรีเมียม)")
     
@@ -1025,7 +1025,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
     if USE_LOGO and LOGO_PATH and os.path.exists(LOGO_PATH):
         logo_uri = get_img_base64(LOGO_PATH)
         if logo_uri:
-            logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 20px; vertical-align: middle; margin-right: 4px;">'
+            logo_sticker_tag = f'<img src="{logo_uri}" style="max-height: 18px; vertical-align: middle; margin-right: 4px;">'
 
     wm_sticker_html = ""
     if USE_WATERMARK and WATERMARK_PATH and os.path.exists(WATERMARK_PATH):
@@ -1082,8 +1082,8 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
         body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; display: flex; justify-content: center; align-items: center; padding: 10px; }}
         .sticker-box {{ background: {theme_bg}; border: 1.5px solid {theme_border}; border-radius: 6px; padding: {box_pad}; width: {box_width}; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
         .stk-header {{ display: flex; align-items: center; border-bottom: 1.5px solid {theme_header}; padding-bottom: 2px; margin-bottom: 2px; position: relative; z-index: 1; }}
-        .stk-title {{ font-size: 11px; font-weight: bold; color: {theme_header}; line-height: 1.0; }}
-        .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.2; position: relative; z-index: 1; }}
+        .stk-title {{ font-size: 10.5px; font-weight: bold; color: {theme_header}; line-height: 1.0; }}
+        .stk-content {{ font-size: {font_content}; color: #1e293b; line-height: 1.15; position: relative; z-index: 1; }}
         .stk-footer {{ margin-top: 2px; display: flex; flex-direction: column; align-items: center; text-align: center; border-top: 1px dashed {theme_border}; padding-top: 2px; position: relative; z-index: 1; }}
         .print-btn {{ background-color: {theme_header}; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; display: block; margin: 10px auto; }}
         @media print {{
@@ -1122,7 +1122,7 @@ elif menu == "🖨️ พิมพ์สติกเกอร์":
                     width: {bc_width},
                     height: {bc_height},
                     displayValue: true,
-                    fontSize: 8.5,
+                    fontSize: 8,
                     margin: 0
                 }});
             }} catch(e) {{
@@ -1618,7 +1618,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
 
                             <table class="cust-box tbl">
                                 <tr>
-                                    <td style="width: 50%;"><b>นามลูกค้า / บริษัท:</b> {tax_cust_name} ({tax_cust_branch})</td>
+                                    <td style="width: 50%;"><b>ชื่อลูกค้า:</b> {tax_cust_name} ({tax_cust_branch})</td>
                                     <td style="width: 50%;"><b>เบอร์โทรศัพท์:</b> {selected_row['phone']}</td>
                                 </tr>
                                 <tr>
