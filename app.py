@@ -735,7 +735,7 @@ if menu == "📥 รับเครื่องซ่อมใหม่":
                 .print-container {{ background: white; border: 1px solid #cbd5e1; padding: 12mm 15mm; width: 190mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; overflow: hidden; }}
                 .section-box {{ height: 125mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; z-index: 1; overflow: hidden; padding: 5px; }}
                 .header-tbl {{ width: 100%; border-collapse: collapse; }}
-                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 8px 0; font-size: 12px; }}
+                .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 8px 0; font-size: 12px; width: 100%; box-sizing: border-box; }}
                 .cust-box td {{ padding: 3px 6px; word-break: break-word; }}
                 .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }}
                 .items-tbl th {{ background: #0f172a; color: white; padding: 8px 6px; text-align: left; font-weight: 600; }}
@@ -1543,7 +1543,7 @@ elif menu == "🔍 ติดตามสถานะซ่อม":
                     .flow-container {{ background: white; border: 1px solid #cbd5e1; padding: 10mm 12mm; width: 190mm; height: 265mm; max-height: 265mm; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
                     .content-wrap {{ position: relative; z-index: 1; }}
                     .header-tbl {{ width: 100%; border-collapse: collapse; }}
-                    .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 12px; }}
+                    .cust-box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 12px; width: 100%; box-sizing: border-box; }}
                     .cust-box td {{ padding: 3px 6px; word-break: normal; overflow-wrap: break-word; }}
                     .items-tbl {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }}
                     .items-tbl th {{ background: {t_color}; color: white; padding: 8px 6px; text-align: left; font-weight: 600; }}
@@ -1913,7 +1913,7 @@ elif menu == "⚙️ ศูนย์กลางการตั้งค่า":
         if sn_input:
             st.success(f"✅ สินค้า Serial Number: `{sn_input}` อยู่ในระยะเวลาประกันของร้านค้าสมบูรณ์!")
 
-    # --- Tab 9: สรุปยอด & ค่าคอมช่างไทย ---
+    # --- Tab 9: สรุปยอด & ค่าคอมช่าง ---
     with set_tab9:
         st.subheader("💰 รายงานยอดขายและค่ามือช่างประจำร้าน")
         try:
